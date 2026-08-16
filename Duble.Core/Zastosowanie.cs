@@ -184,9 +184,9 @@ public static class Zastosowanie
         // ten sam plik moze byc w dwoch odrzucanych pozycjach (feet_050 i feet_050_1 obie odrzucone) — przenosimy raz
         var zaplanowane = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var brakZrodel = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var id in odrzucane.OrderBy(x => x, StringComparer.Ordinal))
+        var kolejnosc = odrzucane.Select(id => wgId[id]).OrderBy(p => p.Paczka, StringComparer.OrdinalIgnoreCase).ThenBy(p => p.Typ, StringComparer.Ordinal).ThenBy(p => p.Numer).ThenBy(p => p.Sufiks, StringComparer.Ordinal);
+        foreach (var p in kolejnosc)
         {
-            var p = wgId[id];
             var c = cel?.Invoke(p);
             var pp = new PozycjaPlanu
             {
@@ -278,7 +278,13 @@ public static class Zastosowanie
         foreach (var r in doCofniecia)
         {
             postep?.Invoke(new Postep("cofnij", i++, doCofniecia.Count, Path.GetFileName(r.Z)));
-            if (!File.Exists(r.Do) || File.Exists(r.Z)) { pominieto++; continue; }
+            if (!File.Exists(r.Do))
+            {
+                // pliku nie ma w koszu, a jest na starym miejscu = w praktyce juz cofniety (np. cofka nie zdazyla sie zapisac) — uznajemy
+                if (File.Exists(r.Z)) { r.Cofniety = true; } else pominieto++;
+                continue;
+            }
+            if (File.Exists(r.Z)) { pominieto++; continue; }
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(r.Z));

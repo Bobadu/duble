@@ -112,7 +112,7 @@ function karta(s, wToku, ctx) {
         <div class="top">
           <div class="ico-box">${icon(IKONA_TYPU[s.typ] || 'folder')}</div>
           <div class="info">
-            <div class="name"><span title="${esc(s.nazwa)}">${esc(s.nazwa)}</span>${s.format ? `<span class="badge ${fmtKlasa}">${esc(fmtTekst)}</span>` : ''}</div>
+            <div class="name"><span title="${esc(s.nazwa)}">${esc(s.nazwa)}</span>${s.format ? `<span class="badge ${fmtKlasa}">${esc(fmtTekst)}</span>` : ''}${s.typ === 'rpf' ? `<span class="badge unknown" title="${esc(t('sources.archiveOnly'))}">${icon('archive')} ${t('sources.readOnly')}</span>` : (s.archiwa ? `<span class="badge unknown" title="${esc(t('sources.hasArchives'))}">${icon('archive')} ${s.archiwa}</span>` : '')}</div>
             <div class="path" title="${esc(s.sciezka)}">${esc(s.sciezka)}</div>
           </div>
           <button class="btn ghost icon menu-btn" data-i18n-title="common.more">${icon('more')}</button>
@@ -133,6 +133,7 @@ function karta(s, wToku, ctx) {
     { tekst: s.zaindeksowano ? t('sources.reindex') : t('sources.index'), ikona: 'play', akcja: () => indeksuj(ctx, { ids: [s.id] }) },
     { tekst: t('sources.forceAll'), ikona: 'refresh', akcja: () => indeksuj(ctx, { ids: [s.id], wymus: true }) },
     { tekst: t('sources.openFolder'), ikona: 'external', akcja: () => bridge.call('shell.showInExplorer', { sciezka: s.sciezka }).catch(err => toast(err.message, { typ: 'warn' })) },
+    ...(s.typ === 'rpf' || s.archiwa ? [{ tekst: t('unpack.menu'), ikona: 'archive', akcja: () => rozpakuj(s, ctx) }] : []),
     { sep: true },
     { tekst: t('sources.remove'), ikona: 'trash', niebezpieczna: true, akcja: async () => {
         if (await confirm(t('sources.confirmRemove', { nazwa: s.nazwa }), { ok: t('common.remove'), niebezpieczne: true, tytul: t('sources.remove') }))
@@ -167,5 +168,40 @@ async function wykryjGry(ctx) {
           if (sciezki.length) await dodajSciezki(sciezki, ctx);
         } },
     ] : [{ tekst: t('common.close'), rola: 'primary' }],
+  });
+}
+
+/** Nazwa podfolderu kopii (jak Zrodla.NazwaFolderuKopii w C#): dlc.rpf -> nazwa zrodla, inne archiwum -> nazwa pliku, folder -> nazwa zrodla. */
+function nazwaKopii(s) {
+  if (s.typ !== 'rpf') return s.nazwa;
+  const plik = s.sciezka.split(/[\\/]/).pop();
+  return /^dlc\.rpf$/i.test(plik) ? s.nazwa : plik;
+}
+
+async function rozpakuj(s, ctx) {
+  const { t, icon, bridge } = ctx;
+  let folder = sessionStorage.getItem('unpack.folder') || '';
+  await dialog({
+    tytul: t('unpack.title'),
+    tresc: (body) => {
+      body.innerHTML = `<p class="lead">${esc(t('unpack.text', { nazwa: s.nazwa }))}</p>
+        <div class="field" style="margin-top:14px"><label>${t('unpack.folder')}</label><div class="row"><input class="input mono" id="unpack-folder" value="${esc(folder)}" placeholder="C:\\…"><button class="btn" id="unpack-pick">${icon('folder')}${t('apply.pick')}</button></div><p class="help">${esc(t('unpack.folderHint', { nazwa: nazwaKopii(s) }))}</p></div>
+        <label class="check-row"><input type="checkbox" id="unpack-add" checked><span>${t('unpack.addSource')}</span></label>`;
+      body.querySelector('#unpack-pick').onclick = async () => {
+        try { const r = await bridge.call('dialogs.pickFolder', { start: folder || null }); if (r?.sciezka) body.querySelector('#unpack-folder').value = r.sciezka; } catch (e) { toast(e.message, { typ: 'error' }); }
+      };
+    },
+    przyciski: [
+      { tekst: t('common.cancel') },
+      { tekst: t('unpack.go'), rola: 'primary', akcja: async () => {
+          const f = document.getElementById('unpack-folder')?.value?.trim();
+          if (!f) { toast(t('unpack.needFolder'), { typ: 'warn' }); return false; }
+          sessionStorage.setItem('unpack.folder', f);
+          try {
+            await bridge.call('sources.unpack', { id: s.id, folder: f, dodajZrodlo: !!document.getElementById('unpack-add')?.checked });
+            toast(t('unpack.running'), { typ: 'info', czas: 2500 });
+          } catch (e) { toast(e.code === 'busy' ? t('sources.busy') : t('unpack.failed', { blad: e.message }), { typ: 'error', czas: 8000 }); return false; }
+        } },
+    ],
   });
 }

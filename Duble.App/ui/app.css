@@ -437,3 +437,63 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .v3d-overlay.err { color: var(--warn); }
 .v3d-stats { font-variant-numeric: tabular-nums; }
 .v3d-ab-nazwa { font-size: 12.5px; }
+
+/* ---------- toast z akcja ---------- */
+.toast .txt { flex: 1; }
+.toast .act { border: 1px solid var(--border-2); background: var(--panel-2); color: var(--accent); font-weight: 600; padding: 4px 10px; border-radius: 7px; white-space: nowrap; }
+.toast .act:hover { background: var(--accent-soft); border-color: var(--accent); }
+.rot180 { transform: rotate(180deg); }
+.rot270 { transform: rotate(270deg); }
+.check-row, .radio-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: var(--text); font-size: 13.5px; }
+.check-row input, .radio-row input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.help-text p { margin: 0 0 10px; color: var(--text); line-height: 1.55; }
+.help-text p:last-child { margin-bottom: 0; }
+
+/* ---------- dialog Zastosuj ---------- */
+.apply-head .lead { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+.apply-head .lead .ico { color: var(--accent); }
+.apply-notes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.apply-notes li { display: flex; align-items: center; gap: 6px; }
+.apply-notes .ico { width: 16px; height: 16px; flex: none; color: var(--text-3); }
+.apply-label { font-size: 12.5px; font-weight: 600; color: var(--text-2); margin: 16px 0 6px; }
+.apply-where .radio-row { margin: 4px 0; flex-wrap: wrap; }
+.apply-where .radio-row .btn { margin-left: auto; }
+.apply-list { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
+.apply-row { display: grid; grid-template-columns: 40px minmax(140px, 1fr) minmax(160px, 1.2fr) auto; gap: 12px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.apply-row:last-child { border-bottom: 0; }
+.apply-row.skip { opacity: .6; }
+.apply-row .thumb { width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--bg-2); display: grid; place-items: center; color: var(--text-3); }
+.apply-row .thumb img { width: 100%; height: 100%; object-fit: cover; }
+.apply-row .who { display: flex; flex-direction: column; min-width: 0; }
+.apply-row .who .nm { font-family: var(--mono); font-weight: 700; }
+.apply-row .who .nm sub { font-size: 10px; color: var(--text-3); margin-left: 2px; }
+.apply-row .who .src { color: var(--text-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apply-row .to { display: flex; align-items: center; gap: 4px; color: var(--text-2); font-size: 12px; min-width: 0; }
+.apply-row .to .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apply-row .to .ico { width: 16px; height: 16px; flex: none; color: var(--text-3); }
+.apply-row .cnt { display: flex; align-items: center; gap: 8px; justify-content: flex-end; white-space: nowrap; }
+.apply-row .cnt .badge { text-transform: none; }
+.apply-row .cnt .badge .ico { width: 12px; height: 12px; }
+.apply-warn { display: flex; gap: 10px; margin-top: 14px; padding: 10px 12px; background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 10px; color: var(--text); font-size: 13px; }
+.apply-warn > .ico { color: var(--warn); flex: none; }
+.apply-warn p { margin: 2px 0 6px; color: var(--text-2); }
+.decision-text a { color: var(--text-3); }
+.decision-text a:hover { color: var(--accent); }
+
+/* ---------- historia ---------- */
+.hist-list { display: grid; gap: 12px; }
+.hist-card.undone { opacity: .75; }
+.hist-top { display: flex; align-items: flex-start; gap: 14px; }
+.hist-top .ico-box { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.hist-top .ico-box .ico { width: 22px; height: 22px; }
+.hist-top .info { flex: 1; min-width: 0; }
+.hist-top .name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hist-top .meta { color: var(--text-2); font-size: 12.5px; margin-top: 2px; }
+.hist-top .btn-row { flex: none; align-items: center; }
+.hist-details { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hist-table th { text-align: left; font-weight: 600; color: var(--text-3); font-size: 12px; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.hist-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.hist-table tr:last-child td { border-bottom: 0; }
+.hist-table tr.done td { color: var(--text-3); }
+.hist-table td.act { text-align: right; white-space: nowrap; }

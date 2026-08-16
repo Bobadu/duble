@@ -76,9 +76,9 @@ public static class Historia
             bool ok = jr.SprobujUruchom("cofnij", Path.GetFileName(plik), async (ct, postep) =>
             {
                 await Task.Yield();
-                var (wrocilo, pominieto) = Zastosowanie.Cofnij(cofka, pozycje.Count > 0 ? pozycje : null, postep);
-                cofka.Zapisz(plik);
-                m.Zdarzenie("history.changed", new { plik });
+                int wrocilo, pominieto;
+                try { (wrocilo, pominieto) = Zastosowanie.Cofnij(cofka, pozycje.Count > 0 ? pozycje : null, postep); }
+                finally { cofka.Zapisz(plik); m.Zdarzenie("history.changed", new { plik }); }   // stan cofki na dysku takze po bledzie
                 var ids = pozycje.Count > 0 ? new HashSet<string>(pozycje) : null;
                 var dotkniete = s.Projekt.Zrodla.Where(z => cofka.Pozycje.Any(p => p.ZrodloId == z.Id && (ids == null || ids.Contains(p.Id)))).ToList();
                 if (dotkniete.Count > 0) Zrodla.Indeksuj(s, m, dotkniete, false, ct, postep);
