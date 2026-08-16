@@ -615,3 +615,17 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .apply-warn a { color: var(--accent); font-weight: 600; white-space: nowrap; }
 a.badge { text-decoration: none; }
 a.badge:hover { text-decoration: underline; }
+
+/* ---------- wlasne listy rozwijane (dd) zamiast systemowego popupu select ---------- */
+select.dd-native { display: none !important; }
+.dd { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: default; background-image: none !important; padding-right: 10px !important; }
+.dd .dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd .dd-chev { width: 14px; height: 14px; color: var(--text-3); flex: none; transition: transform .12s; }
+.dd[aria-expanded="true"] .dd-chev { transform: rotate(180deg); }
+.dd:hover { border-color: var(--text-3); }
+.dd:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.dd-menu { max-height: 340px; overflow: auto; min-width: 180px; }
+.dd-menu button { justify-content: space-between; padding: 7px 10px; }
+.dd-menu button .txt { flex: 1; }
+.dd-menu button.on { color: var(--accent); background: var(--accent-soft); }
+.dd-menu button.on .ico { width: 16px; height: 16px; }

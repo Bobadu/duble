@@ -2,7 +2,7 @@
 import { bridge } from './bridge.js';
 import { i18n, t } from './i18n.js';
 import { icon } from './icons.js';
-import { el, toast, fmt } from './ui.js';
+import { el, toast, fmt, wlaczDropdowny } from './ui.js';
 import * as start from './views/start.js';
 import * as sources from './views/sources.js';
 import * as settings from './views/settings.js';
@@ -121,6 +121,7 @@ async function boot() {
   try { store.projekt = (await bridge.call('project.get'))?.projekt || null; } catch { store.projekt = null; }
   renderujPasek(); renderujRail(); renderujStatus();
   powiadomienia.zarejestruj(ctx);
+  wlaczDropdowny(document.getElementById('wrap')); wlaczDropdowny(document.getElementById('warstwa-dialog'));   // wlasne listy rozwijane zamiast systemowych
   if (store.info?.dev) window.__ctx = ctx;   // tryb dev: --exec ma dostep do kontekstu (np. otwarcie dialogu Zastosuj do zrzutu)
 
   document.getElementById('win-min').onclick = () => bridge.call('window.minimize');

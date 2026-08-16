@@ -71,6 +71,58 @@ export function menu(kotwica, pozycje) {
   return m;
 }
 
+/**
+ * Wlasne listy rozwijane zamiast systemowego popupu <select> (nie da sie go ostylowac): kazdy `select.input` w root dostaje
+ * przycisk .dd z aktualna opcja i panel .dd-menu z opcjami; wybor ustawia select.value i wysyla 'change' — kod widokow zostaje bez zmian.
+ * MutationObserver ulepsza takze selecty dodawane pozniej (widoki przerysowuja sie same).
+ */
+export function wlaczDropdowny(root) {
+  const ulepsz = (sel) => {
+    if (!(sel instanceof HTMLSelectElement) || sel.dataset.dd) return;
+    sel.dataset.dd = '1';
+    sel.classList.add('dd-native');
+    const btn = el(`<button type="button" class="dd ${[...sel.classList].filter(c => c !== 'dd-native').join(' ')}" aria-haspopup="listbox" aria-expanded="false" title="${esc(sel.getAttribute('aria-label') || '')}"><span class="dd-label"></span>${icon('chevron', 'dd-chev')}</button>`);
+    if (sel.disabled) btn.disabled = true;
+    const etyk = () => { const o = sel.options[sel.selectedIndex]; btn.querySelector('.dd-label').textContent = o ? o.textContent : ''; };
+    etyk();
+    sel.after(btn);
+    btn.onclick = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      document.querySelectorAll('.menu').forEach(m => m.remove());
+      const m = el('<div class="menu dd-menu" role="listbox"></div>');
+      for (const o of sel.options) {
+        const b = el(`<button type="button" role="option" aria-selected="${o.selected}" class="${o.selected ? 'on' : ''}"><span class="txt">${esc(o.textContent)}</span>${o.selected ? icon('check') : ''}</button>`);
+        b.onclick = () => { m.remove(); if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } etyk(); btn.setAttribute('aria-expanded', 'false'); };
+        m.append(b);
+      }
+      document.body.append(m);
+      const r = btn.getBoundingClientRect(); const mr = m.getBoundingClientRect();
+      m.style.minWidth = Math.max(r.width, 180) + 'px';
+      let x = r.left, y = r.bottom + 6;
+      if (x + mr.width > window.innerWidth - 8) x = window.innerWidth - 8 - mr.width; if (x < 8) x = 8;
+      if (y + mr.height > window.innerHeight - 8) y = Math.max(8, r.top - mr.height - 6);
+      m.style.left = x + 'px'; m.style.top = y + 'px';
+      btn.setAttribute('aria-expanded', 'true');
+      m.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
+      const zamknij = (ev) => { if (!m.contains(ev.target)) { m.remove(); btn.setAttribute('aria-expanded', 'false'); document.removeEventListener('mousedown', zamknij, true); document.removeEventListener('keydown', naKlawisz, true); } };
+      const naKlawisz = (ev) => { if (ev.key === 'Escape') { m.remove(); btn.setAttribute('aria-expanded', 'false'); document.removeEventListener('mousedown', zamknij, true); document.removeEventListener('keydown', naKlawisz, true); btn.focus(); } };
+      setTimeout(() => { document.addEventListener('mousedown', zamknij, true); document.addEventListener('keydown', naKlawisz, true); }, 0);
+    };
+    // zmiana wartosci z kodu (sel.value = …) -> odswiez etykiete
+    sel.addEventListener('change', etyk);
+  };
+  root.querySelectorAll('select.input').forEach(ulepsz);
+  const obs = new MutationObserver(muts => {
+    for (const mu of muts) for (const n of mu.addedNodes) {
+      if (!(n instanceof Element)) continue;
+      if (n.matches?.('select.input')) ulepsz(n);
+      n.querySelectorAll?.('select.input').forEach(ulepsz);
+    }
+  });
+  obs.observe(root, { childList: true, subtree: true });
+  return obs;
+}
+
 export const fmt = {
   liczba(n) { return new Intl.NumberFormat(document.documentElement.lang || 'pl').format(n ?? 0); },
   rozmiar(b) {
