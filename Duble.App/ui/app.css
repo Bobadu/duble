@@ -261,23 +261,18 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 /* ---------- zrodla ---------- */
 .src-card { position: relative; }
 .src-card .card-body { display: grid; gap: 12px; min-width: 0; padding: 18px 20px 14px; }
-.src-card .top { display: flex; align-items: flex-start; gap: 14px; min-width: 0; padding-right: 30px; }
-.src-card .ico-box { width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); color: var(--text-2); display: grid; place-items: center; flex: none; margin-top: 2px; }
+.src-card .top { display: flex; align-items: center; gap: 14px; min-width: 0; padding-right: 30px; }
+.src-card .ico-box { width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); color: var(--text-2); display: grid; place-items: center; flex: none; }
 .src-card .ico-box .ico { width: 21px; height: 21px; }
 .src-card.disabled .ico-box { opacity: .5; }
 .src-card .name { font-weight: 600; font-size: 16px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.src-card .path { color: var(--text-3); font-size: 11.5px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; user-select: text; margin-top: 2px; line-height: 1.35; }
-.src-card .meta { color: var(--text-2); font-size: 12.5px; margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; row-gap: 2px; }
-.src-card .meta i, .src-card .stats i, .src-card .slots i { font-style: normal; color: var(--text-3); margin: 0 7px; }
-.src-card .meta .fmt { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text); }
-.src-card .meta .fmt i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); margin: 0; }
-.src-card .meta .fmt.gen9 i { background: var(--info); } .src-card .meta .fmt.legacy i { background: var(--warn); } .src-card .meta .fmt.mixed i { background: var(--accent); }
+.src-card .path { color: var(--text-3); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; margin-top: 3px; }
 .src-card .info { flex: 1; min-width: 0; }
 .src-card .menu-btn { position: absolute; top: 10px; right: 10px; }
+.src-card .pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .src-card .stats { font-size: 14px; color: var(--text-2); }
 .src-card .stats b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-.src-card .slots { font-size: 12.5px; color: var(--text-2); line-height: 1.7; }
-.src-card .slots b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.src-card .stats i { font-style: normal; color: var(--text-3); margin: 0 8px; }
 .src-card .foot { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: 12px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; }
 .src-card .foot .switch { white-space: nowrap; flex: none; }
 .src-card .foot .grow { flex: 1; min-width: 8px; }
@@ -285,6 +280,13 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .src-card.disabled { opacity: .72; }
 .src-card.missing { border-color: var(--err); }
 .src-card .missing-text { color: var(--err); font-size: 12.5px; }
+
+/* miekkie kapsulki: bez wersalikow, spokojne tlo, kropka koloru formatu */
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); font-size: 12px; line-height: 16px; color: var(--text-2); white-space: nowrap; }
+.pill b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; }
+.pill.fmt { color: var(--text); font-weight: 600; }
+.pill.fmt.gen9 .dot { background: var(--info); } .pill.fmt.legacy .dot { background: var(--warn); } .pill.fmt.mixed .dot { background: var(--accent); }
 .src-card .indexing { display: grid; gap: 4px; font-size: 12px; color: var(--text-2); }
 
 /* ---------- ustawienia / o programie / wip ---------- */
