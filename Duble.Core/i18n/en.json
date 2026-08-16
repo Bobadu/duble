@@ -1,0 +1,19 @@
+{
+  "geo.identyczna": "identical",
+  "geo.podobna": "similar",
+  "powod.NO_TEXTURES": "{geo} geometry, but no textures to compare",
+  "powod.SAME_MODEL_SAME_TEX": "same model, same textures ({a}/{na} and {b}/{nb} textures in common)",
+  "powod.SAME_MODEL_SUBSET": "same model; one texture set is contained in the other ({a}/{na} and {b}/{nb} textures in common)",
+  "powod.SAME_MODEL_PARTIAL": "same model, textures partly in common ({a}/{na} and {b}/{nb} textures in common)",
+  "powod.SAME_MODEL_OTHER_TEX": "same model, but different textures — a retexture, not a duplicate ({a}/{na} and {b}/{nb} textures in common)",
+  "powod.SIMILAR_MODEL_SAME_TEX": "model only SIMILAR (distance {dist}), but same textures ({a}/{na} and {b}/{nb} textures in common)",
+  "powod.SIMILAR_MODEL_PARTIAL": "similar model (distance {dist}), textures partly in common ({a}/{na} and {b}/{nb} textures in common)",
+  "powod.WINNER": "winner {zw} pts, losers {przegrani} pts",
+  "jakosc.brak": "no textures",
+  "jakosc.rozpiska": "resolution {px}px:{pRozdz} | mips {mipy}:{pMipy} | variants {n}:{pWar} | format:{pFmt}{zly} | LOD {lod}:{pLod}",
+  "jakosc.zlyFormat": " ({n} BC1 with alpha)",
+  "werdykt.DUPLIKAT": "Duplicate",
+  "werdykt.DUPLIKAT-NADZBIOR": "Duplicate (superset)",
+  "werdykt.DO WGLADU": "Needs review",
+  "werdykt.PRZEMALOWANIE": "Retexture"
+}

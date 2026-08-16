@@ -43,7 +43,7 @@ public static class Zastosowanie
         foreach (var g in wynik.Grupy.Where(g => g.Werdykt == Porownanie.Duplikat || g.Werdykt == Porownanie.Nadzbior))
             foreach (var id in g.Pozycje.Where(x => x != g.Zwyciezca))
             {
-                var powod = g.Pary.FirstOrDefault()?.Powod ?? g.Powod ?? "";
+                var powod = Teksty.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod, "pl");
                 sb.AppendLine($"TAK\t{g.Werdykt}\t{id}\t{g.Zwyciezca}\t{powod.Replace('\t', ' ')}");
             }
         var kat = Path.GetDirectoryName(Path.GetFullPath(sciezka));

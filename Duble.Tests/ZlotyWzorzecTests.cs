@@ -39,10 +39,10 @@ public class ZlotyWzorzecTests
             Rozpiska = g.Rozpiska.ToDictionary(k => k.Key, k => TekstRozpiski(k.Value)),
         }).ToList()
     };
-    // Zadanie 3: Powod i Rozpiska sa jeszcze stringami; Zadanie 4 podmienia te trzy funkcje na formatter PL.
-    static string TekstPowodu(Grupa g) => g.Powod;
-    static string TekstPowodu(Para p) => p.Powod;
-    static string TekstRozpiski(string r) => r;
+    // Powod/Rozpiska sa kodami+parametrami; wzorzec ma stare polskie napisy — formatter PL musi je odtworzyc co do znaku.
+    static string TekstPowodu(Grupa g) => Teksty.Powod(g.Powod, "pl");
+    static string TekstPowodu(Para p) => Teksty.Powod(p.Powod, "pl");
+    static string TekstRozpiski(Punktacja r) => r.Tekst("pl");
 
     void Porownaj(ZWynik zloty, ZWynik nowy)
     {

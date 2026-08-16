@@ -1,0 +1,19 @@
+{
+  "geo.identyczna": "identyczna",
+  "geo.podobna": "podobna",
+  "powod.NO_TEXTURES": "geometria {geo}, ale brak tekstur do porownania",
+  "powod.SAME_MODEL_SAME_TEX": "ten sam model, te same tekstury ({a}/{na} i {b}/{nb} tekstur wspolnych)",
+  "powod.SAME_MODEL_SUBSET": "ten sam model; jeden zestaw tekstur zawiera sie w drugim ({a}/{na} i {b}/{nb} tekstur wspolnych)",
+  "powod.SAME_MODEL_PARTIAL": "ten sam model, tekstury czesciowo wspolne ({a}/{na} i {b}/{nb} tekstur wspolnych)",
+  "powod.SAME_MODEL_OTHER_TEX": "ten sam model, ale inne tekstury — to przemalowanie, nie duplikat ({a}/{na} i {b}/{nb} tekstur wspolnych)",
+  "powod.SIMILAR_MODEL_SAME_TEX": "model tylko PODOBNY (odleglosc {dist}), ale tekstury te same ({a}/{na} i {b}/{nb} tekstur wspolnych)",
+  "powod.SIMILAR_MODEL_PARTIAL": "model podobny (odleglosc {dist}), tekstury czesciowo wspolne ({a}/{na} i {b}/{nb} tekstur wspolnych)",
+  "powod.WINNER": "zwyciezca {zw} pkt, przegrani {przegrani} pkt",
+  "jakosc.brak": "brak tekstur",
+  "jakosc.rozpiska": "rozdzielczosc {px}px:{pRozdz} | mipy {mipy}:{pMipy} | wariantow {n}:{pWar} | format:{pFmt}{zly} | LOD {lod}:{pLod}",
+  "jakosc.zlyFormat": " ({n} BC1 z alfa)",
+  "werdykt.DUPLIKAT": "Duplikat",
+  "werdykt.DUPLIKAT-NADZBIOR": "Duplikat-nadzbior",
+  "werdykt.DO WGLADU": "Do wgladu",
+  "werdykt.PRZEMALOWANIE": "Przemalowanie"
+}

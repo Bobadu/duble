@@ -4,7 +4,7 @@
 //   duble indeks <zrodlo> [<zrodlo>...] [--katalog <plik>] [--nazwa <paczka>] [--gra <folder>]
 //   duble kalibruj [--katalog <plik>]
 //   duble porownaj [--katalog <plik>] [--duble <plik>]
-//   duble raport   [--katalog <plik>] [--duble <plik>] [--out <plik.html>]
+//   duble raport   [--katalog <plik>] [--duble <plik>] [--out <plik.html>] [--lang pl|en]
 //   duble zastosuj [--decyzje <plik.tsv>]     — przenosi odrzucone do _odrzucone\
 //   duble cofnij   [--cofka <plik.json>]      — przywraca wszystko z powrotem
 //   duble lista    [--katalog <plik>]
@@ -54,6 +54,7 @@ string sciezkaCofki = Opcja("--cofka", Path.Combine(korzenProjektu, "staging", "
 string nazwaPaczki = Opcja("--nazwa", null);
 string folderGry = Opcja("--gra", Environment.GetEnvironmentVariable("GTAV_ENHANCED"));
 string wyjscie = Opcja("--out", null);
+string jezyk = Opcja("--lang", "pl");    // jezyk raportu i tekstow powodow: pl | en
 
 string cmd = argv[0].ToLowerInvariant();
 argv.RemoveAt(0);
@@ -366,7 +367,7 @@ switch (cmd)
             var wynik = WynikPorownania.Wczytaj(sciezkaDubli);
             if (wynik.Grupy.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");
-            Raport.Zbuduj(katalog, wynik, plik, Log);
+            Raport.Zbuduj(katalog, wynik, plik, Log, jezyk);
             Log($"raport: {plik}");
             return 0;
         }

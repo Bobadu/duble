@@ -23,7 +23,7 @@ public static class Raport
     static readonly Dictionary<string, string> CacheMiniatur = new();
     static int bezPodgladu, bezPliku;
 
-    public static void Zbuduj(Katalog katalog, WynikPorownania wynik, string plik, Action<string> log)
+    public static void Zbuduj(Katalog katalog, WynikPorownania wynik, string plik, Action<string> log, string jezyk = "pl")
     {
         var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
         var kolejnosc = new Dictionary<string, int>
@@ -48,7 +48,7 @@ public static class Raport
         int zrobione = 0;
         foreach (var g in grupy)
         {
-            sb.Append(Karta(g, wgId));
+            sb.Append(Karta(g, wgId, jezyk));
             if (++zrobione % 10 == 0) log($"  grup: {zrobione}/{grupy.Count}");
         }
 
@@ -147,7 +147,7 @@ public static class Raport
 
     // ===================== karta grupy =====================
 
-    static string Karta(Grupa g, Dictionary<string, Pozycja> wgId)
+    static string Karta(Grupa g, Dictionary<string, Pozycja> wgId, string jezyk)
     {
         var czlonkowie = g.Pozycje.OrderByDescending(id => id == g.Zwyciezca ? 1 : 0)
                                    .ThenByDescending(id => g.Punkty.TryGetValue(id, out var p) ? p : 0)
@@ -163,7 +163,7 @@ public static class Raport
         sb.Append("<header class=\"glowa\">");
         sb.Append($"<span class=\"odznaka {Klasa(g.Werdykt)}\">{E(g.Werdykt)}</span>");
         sb.Append($"<h2>{string.Join(" <span class=\"rowna\">=</span> ", czlonkowie.Select(id => $"<span class=\"tytul\">{E(wgId[id].Opis)}<sub>{E(wgId[id].Sufiks)}</sub></span>"))}</h2>");
-        sb.Append($"<p class=\"powod\">{E(g.Pary.FirstOrDefault()?.Powod ?? g.Powod ?? "")}</p>");
+        sb.Append($"<p class=\"powod\">{E(Teksty.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod, jezyk))}</p>");
         sb.Append("</header>");
 
         // --- panele pozycji ---
@@ -183,7 +183,7 @@ public static class Raport
             {
                 sb.Append($"<div class=\"punkty\"><b>{pkt:F0}</b><span>/100 pkt jakosci</span></div>");
                 if (g.Rozpiska.TryGetValue(id, out var r))
-                    sb.Append($"<div class=\"rozpiska\">{E(r)}</div>");
+                    sb.Append($"<div class=\"rozpiska\">{E(r.Tekst(jezyk))}</div>");
             }
             var med = p.Tekstury.Count > 0
                 ? p.Tekstury.OrderBy(t => (long)t.W * t.H).ElementAt(p.Tekstury.Count / 2)
