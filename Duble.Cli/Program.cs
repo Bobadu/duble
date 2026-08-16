@@ -13,6 +13,7 @@
 //   duble pusty    <we.ydd> <wy.ydd>            — model niewidzialny (wierzcholki zwiniete do zera), gen9
 //   duble tekstura <plik.ytd> [--out folder]     — kazda tekstura z ytd do PNG w pelnej rozdzielczosci
 //   duble ytd      <wy.ytd> <a.dds> [b.dds ...]  — buduje ytd (gen9) z DDS; nazwa tekstury = nazwa pliku
+//   duble glb      <plik.ydd> [--ytd plik.ytd] [--out plik.glb]  — model + tekstura do glTF-Binary (podglad 3D)
 //
 // Zrodlem moze byc folder rozpakowanej paczki albo archiwum .rpf.
 // Katalog jest TRWALY — kazda nowa paczka porownuje sie z calym dotychczasowym dorobkiem.
@@ -38,7 +39,7 @@ string Opcja(string nazwa, string domyslnie)
 
 if (argv.Count == 0)
 {
-    Console.Error.WriteLine("uzycie: duble <indeks|kalibruj|porownaj|raport|lista> [opcje]");
+    Console.Error.WriteLine("uzycie: duble <indeks|odswiez|lista|kalibruj|porownaj|raport|zastosuj|cofnij|podglad|obj|pusty|tekstura|ytd|glb> [opcje]  (szczegoly w naglowku Program.cs)");
     return 2;
 }
 
@@ -55,6 +56,7 @@ string nazwaPaczki = Opcja("--nazwa", null);
 string folderGry = Opcja("--gra", Environment.GetEnvironmentVariable("GTAV_ENHANCED"));
 string wyjscie = Opcja("--out", null);
 string jezyk = Opcja("--lang", "pl");    // jezyk raportu i tekstow powodow: pl | en
+string ytdOpc = Opcja("--ytd", null);           // glb: tekstura diffuse
 string miniatury = Opcja("--miniatury", null);   // indeks/odswiez: folder na miniatury <sha>.png (128 px)
 bool wymus = argv.Remove("--wymus");              // indeks/odswiez: przelicz wszystko, ignoruj poprzedni katalog
 
@@ -310,6 +312,17 @@ switch (cmd)
             var dane = ytdNew.Save();
             File.WriteAllBytes(argv[0], dane);
             Log($"YTD: {argv[0]} ({dane.Length} B, gen9, tekstur {lista.Count})");
+            return 0;
+        }
+
+    case "glb":
+        {
+            // model + tekstura do glTF-Binary 2.0 (podglad 3D w aplikacji / Blenderze / three.js)
+            if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble glb <plik.ydd> [--ytd plik.ytd] [--out plik.glb]"); return 2; }
+            var glb = Podglad3D.Glb(File.ReadAllBytes(argv[0]), ytdOpc != null ? File.ReadAllBytes(ytdOpc) : null, null, Log);
+            var glbOut = wyjscie ?? Path.ChangeExtension(argv[0], ".glb");
+            File.WriteAllBytes(glbOut, glb);
+            Log($"GLB: {glbOut} ({glb.Length} B)");
             return 0;
         }
 
