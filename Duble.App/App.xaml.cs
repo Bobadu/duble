@@ -13,6 +13,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
         Argumenty = Argumenty.Parsuj(e.Args);
+        if (!string.IsNullOrEmpty(Argumenty.DevIcon)) { Komendy.Ikona.Zapisz(Argumenty.DevIcon); Shutdown(0); return; }
         Ustawienia = Ustawienia.Wczytaj();
         if (!string.IsNullOrEmpty(Argumenty.Jezyk)) Ustawienia.Jezyk = Argumenty.Jezyk;
         if (!string.IsNullOrEmpty(Argumenty.Motyw)) Ustawienia.Motyw = Argumenty.Motyw;

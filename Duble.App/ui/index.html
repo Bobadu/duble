@@ -1,36 +1,27 @@
 <!doctype html>
-<html lang="pl">
+<html lang="pl" data-theme="dark">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Duble</title>
-<style>
-  html,body{margin:0;height:100%;background:#1B1A1F;color:#F3EFEA;font:15px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;overflow:hidden}
-  .pasek{height:40px;display:flex;align-items:center;padding:0 0 0 14px;gap:10px;app-region:drag;-webkit-app-region:drag;user-select:none}
-  .pasek .btns{margin-left:auto;display:flex;height:100%;app-region:no-drag;-webkit-app-region:no-drag}
-  .pasek .btns button{width:46px;height:100%;border:0;background:transparent;color:#F3EFEA;font-size:14px;cursor:default}
-  .pasek .btns button:hover{background:rgba(255,255,255,.08)}
-  .pasek .btns button.close:hover{background:#E81123}
-  main{padding:40px}
-  h1{margin:0;font-weight:600}
-  .by{color:#FF6F61}
-</style>
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
-<div class="pasek"><b>Duble</b><span class="by">by Bobadu</span>
-  <div class="btns"><button id="min" title="Minimalizuj">&#x2015;</button><button id="max" title="Maksymalizuj">&#x2610;</button><button id="close" class="close" title="Zamknij">&#x2715;</button></div>
-</div>
-<main><h1 data-i18n="app.name">Duble</h1><p id="stan">…</p><p id="info"></p></main>
-<script type="module">
-import { bridge } from './bridge.js';
-document.getElementById('min').onclick = () => bridge.call('window.minimize');
-document.getElementById('max').onclick = () => bridge.call('window.maximize');
-document.getElementById('close').onclick = () => bridge.call('window.close');
-const s = await (await fetch('https://duble.data/i18n/pl.json')).json();
-document.getElementById('stan').textContent = s['app.tagline'] || 'brak i18n';
-const info = await bridge.call('app.info');
-document.getElementById('info').textContent = `${info.nazwa} ${info.wersja} — ${info.by}${info.dev ? ' (dev)' : ''}`;
-bridge.on('files.dropped', d => { document.getElementById('info').textContent = 'upuszczono: ' + d.sciezki.join(', '); });
-bridge.emit('ui.ready');
-</script>
+  <header class="titlebar" id="titlebar">
+    <div class="brand" id="brand"></div>
+    <div class="project" id="titlebar-project" hidden></div>
+    <div class="spacer"></div>
+    <div class="win">
+      <button id="win-min" data-i18n-title="win.minimize"></button>
+      <button id="win-max" data-i18n-title="win.maximize"></button>
+      <button id="win-close" class="close" data-i18n-title="win.close"></button>
+    </div>
+  </header>
+  <nav class="rail" id="rail" aria-label="Duble"></nav>
+  <main class="main" id="main"><div class="wrap" id="wrap"></div></main>
+  <footer class="statusbar" id="status"></footer>
+  <div id="warstwa-dialog"></div>
+  <div id="warstwa-toast"></div>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -8,6 +8,7 @@
     <RootNamespace>Duble.App</RootNamespace>
     <AssemblyName>Duble</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets\duble.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Version>0.2.0</Version>
     <Company>Bobadu</Company>
@@ -23,5 +24,6 @@
   <ItemGroup>
     <!-- interfejs osadzony w exe; w trybie -dev czytany z folderu ui\ (edycja na zywo) -->
     <EmbeddedResource Include="ui\**\*" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Resource Include="assets\duble.ico" />
   </ItemGroup>
 </Project>
