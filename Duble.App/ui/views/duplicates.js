@@ -37,15 +37,14 @@ export async function render(root, ctx) {
     <div class="view-head">
       <div class="titles"><h1>${t('dup.title')}</h1><p class="sub" id="dup-podsum">${t('dup.subtitle')}</p></div>
       <div class="actions">
-        <button class="chip" id="dup-ign" aria-pressed="${filtry.zignorowane}">${icon('history')}${t('dup.showIgnored')}</button>
+        <span id="dup-ign-slot"></span>
         <button class="btn" id="dup-recompare">${icon('refresh')}${t('dup.recompare')}</button>
       </div>
     </div>`);
   head.querySelector('#dup-recompare').onclick = () => porownaj(ctx);
-  head.querySelector('#dup-ign').onclick = (e) => { filtry.zignorowane = !filtry.zignorowane; e.currentTarget.setAttribute('aria-pressed', filtry.zignorowane); zapiszFiltry(); odswiez(); };
   root.append(head);
   podsumEl = head.querySelector('#dup-podsum');
-  filtryEl = el('<div class="dup-filtry" id="dup-filtry"></div>');
+  filtryEl = el('<div class="filterbar" id="dup-filtry"></div>');
   root.append(filtryEl);
   listaEl = el('<div id="dup-lista"></div>');
   root.append(listaEl);
@@ -82,33 +81,43 @@ async function odswiez() {
   if (pod.grup == null) podsumEl.textContent = t('dup.subtitle');
   else podsumEl.textContent = t('dup.summary', { grup: fmt.liczba(pod.grup), duplikat: fmt.liczba(pod.duplikat), nadzbior: fmt.liczba(pod.nadzbior), wglad: fmt.liczba(pod.wglad), przemalowanie: fmt.liczba(pod.przemalowanie) });
 
-  // filtry
+  // filtry: jeden pasek — werdykt (segment), slot i zrodlo (listy), szukajka, przelacznik zignorowanych, wyczysc
   filtryEl.innerHTML = '';
   if (pod.grup != null) {
     const licz = { 'DUPLIKAT': pod.duplikat, 'DUPLIKAT-NADZBIOR': pod.nadzbior, 'DO WGLADU': pod.wglad, 'PRZEMALOWANIE': pod.przemalowanie };
-    const rzad1 = el(`<div class="filtr-rzad"><span class="filtr-etyk">${t('dup.verdicts')}</span></div>`);
-    for (const w of WERDYKTY) {
-      const b = el(`<button class="chip ${KLASA_WERDYKTU[w]}" aria-pressed="${filtry.werdykty.includes(w)}">${t('werdykt.' + w)} <span class="n">${licz[w] ?? 0}</span></button>`);
-      b.onclick = () => { przelacz(filtry.werdykty, w); odswiez(); };
-      rzad1.append(b);
+    const seg = el('<div class="seg seg-werdykt" role="radiogroup"></div>');
+    const wybrany = filtry.werdykty.length === 1 ? filtry.werdykty[0] : '';
+    const opcje = [['', t('dup.allVerdicts'), pod.grup]].concat(WERDYKTY.map(w => [w, t('werdykt.' + w), licz[w] ?? 0]));
+    for (const [w, nazwa, n] of opcje) {
+      const b = el(`<button role="radio" aria-checked="${wybrany === w}" class="${wybrany === w ? 'on' : ''} ${w ? KLASA_WERDYKTU[w] : ''}">${w ? '<i class="dot"></i>' : ''}${esc(nazwa)} <span class="n">${fmt.liczba(n)}</span></button>`);
+      b.onclick = () => { filtry.werdykty = w ? [w] : []; zapiszFiltry(); odswiez(); };
+      seg.append(b);
+    }
+    filtryEl.append(seg);
+    const sloty = r.filtry?.sloty || []; const zrodla = r.filtry?.zrodla || [];
+    if (sloty.length > 1) {
+      const sel = el(`<select class="input sm select" id="dup-slot" aria-label="${esc(t('dup.slots'))}"><option value="">${esc(t('dup.slotAll'))}</option>${sloty.map(s => `<option value="${esc(s.typ)}" ${filtry.sloty[0] === s.typ ? 'selected' : ''}>${esc(t('slot.' + s.typ))} (${s.n})</option>`).join('')}</select>`);
+      sel.onchange = () => { filtry.sloty = sel.value ? [sel.value] : []; zapiszFiltry(); odswiez(); };
+      filtryEl.append(sel);
+    }
+    if (zrodla.length > 1) {
+      const sel = el(`<select class="input sm select" id="dup-zrodlo" aria-label="${esc(t('dup.sourcesFilter'))}"><option value="">${esc(t('dup.sourceAll'))}</option>${zrodla.map(z => `<option value="${esc(z.id)}" ${filtry.zrodla[0] === z.id ? 'selected' : ''}>${esc(z.nazwa)} (${z.n})</option>`).join('')}</select>`);
+      sel.onchange = () => { filtry.zrodla = sel.value ? [sel.value] : []; zapiszFiltry(); odswiez(); };
+      filtryEl.append(sel);
     }
     const szuk = el(`<div class="filtr-szukaj"><span class="ico-wrap">${icon('search')}</span><input class="input" id="dup-szukaj" placeholder="${esc(t('dup.searchPlaceholder'))}" value="${esc(filtry.szukaj || '')}" aria-label="${esc(t('dup.search'))}"></div>`);
     szuk.querySelector('input').addEventListener('input', (e) => { clearTimeout(debounce); debounce = setTimeout(() => { filtry.szukaj = e.target.value; zapiszFiltry(); odswiez(); }, 220); });
-    rzad1.append(szuk);
-    filtryEl.append(rzad1);
-    const sloty = r.filtry?.sloty || []; const zrodla = r.filtry?.zrodla || [];
-    if (sloty.length > 1) {
-      const rz = el(`<div class="filtr-rzad"><span class="filtr-etyk">${t('dup.slots')}</span></div>`);
-      for (const s of sloty) { const b = el(`<button class="chip" aria-pressed="${filtry.sloty.includes(s.typ)}">${esc(t('slot.' + s.typ))} <span class="n">${s.n}</span></button>`); b.onclick = () => { przelacz(filtry.sloty, s.typ); odswiez(); }; rz.append(b); }
-      filtryEl.append(rz);
-    }
-    if (zrodla.length > 1) {
-      const rz = el(`<div class="filtr-rzad"><span class="filtr-etyk">${t('dup.sourcesFilter')}</span></div>`);
-      for (const s of zrodla) { const b = el(`<button class="chip" aria-pressed="${filtry.zrodla.includes(s.id)}">${esc(s.nazwa)} <span class="n">${s.n}</span></button>`); b.onclick = () => { przelacz(filtry.zrodla, s.id); odswiez(); }; rz.append(b); }
-      filtryEl.append(rz);
+    filtryEl.append(szuk);
+    // przelacznik zignorowanych — w naglowku obok „Porownaj ponownie", taki sam jak w Zrodlach
+    const slot = document.getElementById('dup-ign-slot');
+    if (slot) {
+      slot.innerHTML = '';
+      const ign = el(`<button class="switch ${filtry.zignorowane ? 'on' : ''}" id="dup-ign" title="${esc(t('dup.showIgnoredHint', { n: fmt.liczba(pod.zignorowane || 0) }))}"><span>${t('dup.showIgnored')}${pod.zignorowane ? ` <span class="n">${fmt.liczba(pod.zignorowane)}</span>` : ''}</span>${icon(filtry.zignorowane ? 'toggleOn' : 'toggleOff')}</button>`);
+      ign.onclick = () => { filtry.zignorowane = !filtry.zignorowane; zapiszFiltry(); odswiez(); };
+      slot.append(ign);
     }
     if (filtry.werdykty.length || filtry.sloty.length || filtry.zrodla.length || filtry.szukaj) {
-      const c = el(`<button class="btn ghost sm" id="dup-clear">${icon('x')}${t('dup.clearFilters')}</button>`);
+      const c = el(`<button class="btn ghost sm" id="dup-clear" title="${esc(t('dup.clearFilters'))}">${icon('x')}${t('dup.clear')}</button>`);
       c.onclick = () => { filtry = { werdykty: [], sloty: [], zrodla: [], szukaj: '', zignorowane: filtry.zignorowane }; zapiszFiltry(); odswiez(); };
       filtryEl.append(c);
     }
