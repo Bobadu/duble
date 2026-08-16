@@ -51,6 +51,10 @@ public class Tekstura
     /// dla wpisu w archiwum: "sciezka\do\archiwum.rpf|sciezka\wewnetrzna".</summary>
     public string Sciezka { get; set; }
 
+    /// <summary>Znacznik zmiany pliku (rozmiar|data; dla wpisu z archiwum takze rozmiar i data archiwum) —
+    /// indeksowanie przyrostowe pomija pliki, ktorych znacznik sie nie zmienil.</summary>
+    public string Znacznik { get; set; }
+
     public string Nazwa { get; set; }       // nazwa tekstury w srodku slownika
     public string Sha { get; set; }         // SHA-256 calego pliku .ytd
     public long Bajty { get; set; }
@@ -105,6 +109,10 @@ public class Pozycja
     public bool Gen9 { get; set; }
 
     public string SciezkaYdd { get; set; }
+    /// <summary>Znacznik zmiany pliku ydd (jak Tekstura.Znacznik).</summary>
+    public string Znacznik { get; set; }
+    /// <summary>Id zrodla w projekcie aplikacji (ZrodloProjektu.Id); CLI zostawia null.</summary>
+    public string ZrodloId { get; set; }
     public long BajtyYdd { get; set; }
     public string ShaYdd { get; set; }
     public Geo Geo { get; set; }
@@ -116,7 +124,7 @@ public class Pozycja
 
 public class Katalog
 {
-    public int Wersja { get; set; } = 1;
+    public int Wersja { get; set; } = 2;   // 2 = znaczniki plikow + ZrodloId (16.08)
     public string Zbudowany { get; set; }
 
     /// <summary>Nazwa paczki -> folder albo archiwum, z ktorego ja wzielismy.

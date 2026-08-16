@@ -32,11 +32,18 @@ public static class Indeks
         public string Sciezka;      // sciezka logiczna do raportu
         public Func<byte[]> Dane;
         public long Dlugosc;
+        public string Znacznik;     // rozmiar|data (przyrostowosc)
     }
 
     public static List<Pozycja> Zrodlo(string sciezka, string nazwaPaczki, Action<string> log)
+        => Zrodlo(sciezka, nazwaPaczki, new OpcjeIndeksu { Log = log ?? (_ => { }) });
+
+    public static List<Pozycja> Zrodlo(string sciezka, string nazwaPaczki, OpcjeIndeksu opcje)
     {
+        opcje ??= new OpcjeIndeksu();
+        var log = opcje.Log ?? (_ => { });
         sciezka = Path.GetFullPath(sciezka);
+        opcje.Anuluj.ThrowIfCancellationRequested();
         var wpisy = Directory.Exists(sciezka) ? ZFolderu(sciezka) : ZArchiwum(sciezka, log);
         if (wpisy.Count == 0) { log($"[uwaga] {sciezka}: nie znalazlam zadnych .ydd/.ytd"); return new List<Pozycja>(); }
 
@@ -46,6 +53,18 @@ public static class Indeks
         // wiec tryb ustawiamy raz i nie dotykamy; etykieta Legacy/Enhanced per pozycja z naglowka (Rsc7.Gen9).
         Format.Przygotuj();
 
+        // PRZYROSTOWOSC: pliki o tej samej sciezce i znaczniku (rozmiar|data) bierzemy z poprzedniego katalogu.
+        var stareModele = new Dictionary<string, Pozycja>(StringComparer.OrdinalIgnoreCase);
+        var stareTekstury = new Dictionary<string, Tekstura>(StringComparer.OrdinalIgnoreCase);
+        if (opcje.Poprzedni != null && !opcje.Wymus)
+            foreach (var p in opcje.Poprzedni.Pozycje)
+            {
+                if (p.SciezkaYdd != null && p.Znacznik != null) stareModele[p.SciezkaYdd] = p;
+                foreach (var t in p.Tekstury) if (t.Sciezka != null && t.Znacznik != null) stareTekstury[t.Sciezka] = t;
+            }
+        int bezZmianModeli = 0, bezZmianTekstur = 0;
+        int porcja = Math.Max(1, opcje.Porcja);
+
         // Pliki o nazwie spoza konwencji NIE moga zniknac po cichu — to zwykle wlasnie
         // one sa smieciem po eksporcie i kandydatem na duplikat. Zbieramy je i wypisujemy.
         var pominiete = new ConcurrentBag<string>();
@@ -54,27 +73,54 @@ public static class Indeks
         var modele = new ConcurrentBag<Pozycja>();
         var pliki = wpisy.Where(w => w.Nazwa.EndsWith(".ydd", StringComparison.OrdinalIgnoreCase)).ToList();
         int zrobione = 0;
-        Parallel.ForEach(pliki, w =>
+        foreach (var kawalek in pliki.Chunk(porcja))
         {
-            var p = Model(w, paczka);
-            if (p != null) modele.Add(p); else pominiete.Add(w.Nazwa);
-            int n = Interlocked.Increment(ref zrobione);
-            if (n % 200 == 0) log($"  modele: {n}/{pliki.Count}");
-        });
+            opcje.Anuluj.ThrowIfCancellationRequested();
+            Parallel.ForEach(kawalek, w =>
+            {
+                Pozycja p;
+                if (stareModele.TryGetValue(w.Sciezka, out var stary) && stary.Znacznik == w.Znacznik)
+                { p = ModelBezCzytania(w, paczka, stary); Interlocked.Increment(ref bezZmianModeli); }
+                else p = Model(w, paczka);
+                if (p != null) modele.Add(p); else pominiete.Add(w.Nazwa);
+                int n = Interlocked.Increment(ref zrobione);
+                if (n % 200 == 0) log($"  modele: {n}/{pliki.Count}");
+            });
+            opcje.Postep?.Invoke(new Postep("modele", zrobione, pliki.Count, paczka));
+        }
 
         // --- tekstury ---
         var teksturyWg = new ConcurrentDictionary<string, ConcurrentBag<(Tekstura t, string rasa)>>();
         var tpliki = wpisy.Where(w => w.Nazwa.EndsWith(".ytd", StringComparison.OrdinalIgnoreCase)).ToList();
         zrobione = 0;
-        Parallel.ForEach(tpliki, w =>
+        foreach (var kawalek in tpliki.Chunk(porcja))
         {
-            var wynik = TeksturaZ(w, out string klucz, out string rasa);
-            if (wynik != null)
-                teksturyWg.GetOrAdd(klucz, _ => new ConcurrentBag<(Tekstura, string)>()).Add((wynik, rasa));
-            else pominiete.Add(w.Nazwa);
-            int n = Interlocked.Increment(ref zrobione);
-            if (n % 500 == 0) log($"  tekstury: {n}/{tpliki.Count}");
-        });
+            opcje.Anuluj.ThrowIfCancellationRequested();
+            Parallel.ForEach(kawalek, w =>
+            {
+                Tekstura wynik; string klucz = null, rasa = "uni";
+                if (stareTekstury.TryGetValue(w.Sciezka, out var st) && st.Znacznik == w.Znacznik
+                    && (opcje.FolderMiniatur == null || st.Sha == null || !st.Zdekodowana || File.Exists(Path.Combine(opcje.FolderMiniatur, st.Sha + ".png"))))
+                {
+                    var n = Nazwy.Tekstura(w.Nazwa);
+                    if (n != null)
+                    {
+                        string kontener = !string.IsNullOrEmpty(w.Kontener) ? w.Kontener : (n.Kontener ?? "");
+                        klucz = $"{kontener}|{n.Typ}|{n.Numer}|{n.Props}"; rasa = n.Rasa;
+                        wynik = st; Interlocked.Increment(ref bezZmianTekstur);
+                    }
+                    else wynik = null;
+                }
+                else wynik = TeksturaZ(w, opcje, out klucz, out rasa);
+                if (wynik != null) teksturyWg.GetOrAdd(klucz, _ => new ConcurrentBag<(Tekstura, string)>()).Add((wynik, rasa));
+                else pominiete.Add(w.Nazwa);
+                int nz = Interlocked.Increment(ref zrobione);
+                if (nz % 500 == 0) log($"  tekstury: {nz}/{tpliki.Count}");
+            });
+            opcje.Postep?.Invoke(new Postep("tekstury", zrobione, tpliki.Count, paczka));
+        }
+        if (bezZmianModeli + bezZmianTekstur > 0)
+            log($"  bez zmian (z poprzedniego katalogu): {bezZmianModeli} modeli, {bezZmianTekstur} tekstur");
 
         if (!pominiete.IsEmpty)
         {
@@ -140,7 +186,8 @@ public static class Indeks
             }
             var fi = new FileInfo(f);
             var sciezka = f;
-            wy.Add(new Wpis { Nazwa = Path.GetFileName(f), Kontener = kont, Sciezka = sciezka, Dlugosc = fi.Length, Dane = () => File.ReadAllBytes(sciezka) });
+            wy.Add(new Wpis { Nazwa = Path.GetFileName(f), Kontener = kont, Sciezka = sciezka, Dlugosc = fi.Length, Dane = () => File.ReadAllBytes(sciezka),
+                              Znacznik = fi.Length + "|" + fi.LastWriteTimeUtc.Ticks });
         }
         return wy;
     }
@@ -149,6 +196,7 @@ public static class Indeks
     {
         var wy = new List<Wpis>();
         if (!File.Exists(plik)) return wy;
+        var rpfInfo = new FileInfo(plik);
         var rpf = new RpfFile(plik, Path.GetFileName(plik));
         rpf.ScanStructure(s => { }, m => log("[scan] " + m));
         void Chodz(RpfFile f)
@@ -169,7 +217,8 @@ public static class Indeks
                         Sciezka = plik + "|" + e.Path,
                         Dlugosc = e.GetFileSize(),
                         // ExtractFile oddaje zasob bez naglowka RSC7 — doklejamy go (Rsc7.Owin), zeby LoadResourceFile czytal poprawnie
-                        Dane = () => Rsc7.Owin(e, wlasciciel.ExtractFile(e))
+                        Dane = () => Rsc7.Owin(e, wlasciciel.ExtractFile(e)),
+                        Znacznik = e.GetFileSize() + "|" + rpfInfo.Length + "|" + rpfInfo.LastWriteTimeUtc.Ticks
                     });
                 }
             if (f.Children != null) foreach (var c in f.Children) Chodz(c);
@@ -202,6 +251,7 @@ public static class Indeks
             Props = props,
             Gen9 = Rsc7.Gen9(dane, ".ydd") ?? false,   // etykieta formatu z naglowka pliku
             SciezkaYdd = w.Sciezka,
+            Znacznik = w.Znacznik,
             BajtyYdd = dane.Length,
             ShaYdd = Convert.ToHexString(SHA256.HashData(dane))
         };
@@ -215,7 +265,33 @@ public static class Indeks
         return poz;
     }
 
-    static Tekstura TeksturaZ(Wpis w, out string klucz, out string rasa)
+    /// <summary>Pozycja z poprzedniego katalogu: nazwa/kontener liczone na nowo (tanie), odcisk kopiowany bez czytania pliku.</summary>
+    static Pozycja ModelBezCzytania(Wpis w, string paczka, Pozycja stary)
+    {
+        var n = Nazwy.Model(w.Nazwa);
+        if (n == null) return null;
+        string kontener = !string.IsNullOrEmpty(w.Kontener) ? w.Kontener : (n.Kontener ?? "");
+        return new Pozycja
+        {
+            Id = $"{paczka}|{kontener}|{n.Typ}|{n.Numer}|{n.Sufiks}", Paczka = paczka, Kontener = kontener,
+            Typ = n.Typ, Numer = n.Numer, Sufiks = n.Sufiks, Props = n.Props, Gen9 = stary.Gen9,
+            SciezkaYdd = w.Sciezka, Znacznik = w.Znacznik,
+            BajtyYdd = stary.BajtyYdd, ShaYdd = stary.ShaYdd, Geo = stary.Geo,
+        };
+    }
+
+    static void ZapiszMiniature(string folder, string sha, byte[] px, int w, int h)
+    {
+        if (string.IsNullOrEmpty(folder) || sha == null) return;
+        var plik = Path.Combine(folder, sha + ".png");
+        if (File.Exists(plik)) return;
+        Directory.CreateDirectory(folder);
+        var rgb = Odciski.MiniaturaZPikseli(px, w, h, 128);
+        try { File.WriteAllBytes(plik, Png.Rgb(rgb, 128, 128)); }
+        catch (IOException) { /* wyscig dwoch watkow o ten sam sha — drugi przegrywa, plik i tak jest */ }
+    }
+
+    static Tekstura TeksturaZ(Wpis w, OpcjeIndeksu opcje, out string klucz, out string rasa)
     {
         klucz = null; rasa = "uni";
         var n = Nazwy.Tekstura(w.Nazwa);
@@ -226,13 +302,13 @@ public static class Indeks
 
         byte[] dane;
         try { dane = w.Dane(); } catch { return null; }
-        var wy = new Tekstura { Plik = w.Nazwa, Sciezka = w.Sciezka, Bajty = dane.Length, Sha = Convert.ToHexString(SHA256.HashData(dane)) };
+        var wy = new Tekstura { Plik = w.Nazwa, Sciezka = w.Sciezka, Bajty = dane.Length, Sha = Convert.ToHexString(SHA256.HashData(dane)), Znacznik = w.Znacznik };
         try
         {
             var ytd = new YtdFile();
             RpfFile.LoadResourceFile(ytd, dane, 13);
             var t = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
-            if (t != null) Odciski.Tekstura(t, wy);
+            if (t != null) Odciski.Tekstura(t, wy, 128, (px, pw, ph) => ZapiszMiniature(opcje.FolderMiniatur, wy.Sha, px, pw, ph));
         }
         catch { }
         return wy;
