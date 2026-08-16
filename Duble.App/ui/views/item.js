@@ -1,7 +1,7 @@
 // views/item.js — karta jednej pozycji z Katalogu: naglowek, zakladki Tekstury (2D: jakosc, fakty, tekstury) / Model (3D), grupy z ta pozycja.
 import { el, esc, toast, fmt } from '../ui.js';
 import { wipe } from '../wipe.js';
-import { KLASA_WERDYKTU, powodTekst, nazwaPozycji } from './duplicates.js';
+import { KLASA_WERDYKTU, powodTekst, nazwaPozycji, znaczekWerdyktu } from './duplicates.js';
 import { blokJakosci, kafelekTekstury, sciezkaKrotka } from './parts.js';
 import * as group3d from './group3d.js';
 
@@ -98,7 +98,7 @@ function karta2d(r, ctx) {
     const row = el(`
       <div class="card item-group clickable" tabindex="0">
         <div class="card-body">
-          <div class="dup-card-head"><span class="badge ${KLASA_WERDYKTU[g.werdykt] || ''}">${esc(t('werdykt.' + g.werdykt))}</span><span class="dup-powod">${esc(powodTekst(t, g.powod))}</span><span class="badge ${g.stan === 'zostaje' ? 'ok' : g.stan === 'odrzucona' ? 'err' : 'unknown'}">${esc(stan)}</span></div>
+          <div class="dup-card-head">${znaczekWerdyktu(t, icon, g.werdykt)}<span class="dup-powod">${esc(powodTekst(t, g.powod))}</span><span class="badge ${g.stan === 'zostaje' ? 'ok' : g.stan === 'odrzucona' ? 'err' : 'unknown'}">${esc(stan)}</span></div>
           <div class="item-group-with"><span class="faint">${t('item.with')}</span> ${(g.inni || []).map(i => `<span class="mono">${esc(i.nazwa)}<sub>${esc(i.sufiks || '')}</sub></span> <span class="faint">(${esc(i.zrodlo)})</span>`).join(', ')}</div>
           <div class="btn-row"><button class="btn sm">${icon('duplicates')}${t('item.openGroup')}</button></div>
         </div>

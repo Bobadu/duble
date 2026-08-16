@@ -33,6 +33,9 @@ const P = {
   toggleOn: '<rect x="2" y="7" width="20" height="10" rx="5" fill="currentColor" stroke="none"/><circle cx="17" cy="12" r="3.5" fill="var(--panel,#fff)" stroke="none"/>',
   toggleOff: '<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
   cube: '<path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/>',
+  eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  layers: '<path d="M12 4 3.5 8.5 12 13l8.5-4.5z"/><path d="M3.5 13.5 12 18l8.5-4.5"/>',
+  palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2.1-.8 2.1-1.8 0-.9-.6-1.2-.6-2 0-.9.7-1.6 1.6-1.6h1.8a3.6 3.6 0 0 0 3.6-3.6C20.5 7 16.7 3.5 12 3.5z"/><circle cx="7.6" cy="11.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="7.8" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.4" cy="7.8" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="11.2" r="1.1" fill="currentColor" stroke="none"/>',
 };
 export function icon(name, cls = '') {
   const p = P[name] || P.info;

@@ -1,7 +1,7 @@
 // views/group.js — karta porownania jednej grupy: kolumny czlonkow, jakosc (slupki), tekstury z dopasowaniami, decyzje, notatka.
 import { el, esc, toast, fmt, confirm } from '../ui.js';
 import { wipe } from '../wipe.js';
-import { KLASA_WERDYKTU, powodTekst, nazwaPozycji } from './duplicates.js';
+import { KLASA_WERDYKTU, powodTekst, nazwaPozycji, znaczekWerdyktu } from './duplicates.js';
 import * as group3d from './group3d.js';
 import { blokJakosci, kafelekTekstury, sciezkaKrotka } from './parts.js';
 
@@ -54,7 +54,7 @@ function naglowek(g, ctx) {
     <div class="group-head">
       <button class="btn ghost" id="g-back">${icon('chevron', 'rot90')}${t('group.back')}</button>
       <div class="group-title">
-        <span class="badge ${KLASA_WERDYKTU[g.werdykt] || ''}">${esc(t('werdykt.' + g.werdykt))}</span>
+        ${znaczekWerdyktu(t, icon, g.werdykt)}
         <span class="group-powod">${esc(powodTekst(t, g.powod))}</span>
       </div>
       <div class="group-actions">

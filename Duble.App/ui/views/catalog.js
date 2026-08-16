@@ -1,7 +1,7 @@
 // views/catalog.js — Katalog: wszystkie zaindeksowane pozycje jako siatka miniatur (wirtualizowana), filtry (zrodlo/slot/format/problemy/w grupach), szukajka.
 import { el, esc, toast, fmt } from '../ui.js';
 import { SiatkaWirtualna } from '../siatka.js';
-import { KLASA_WERDYKTU, nazwaPozycji } from './duplicates.js';
+import { KLASA_WERDYKTU, IKONA_WERDYKTU, nazwaPozycji } from './duplicates.js';
 
 const KLUCZ_FILTROW = 'cat.filtry';
 const KLUCZ_SCROLL = 'cat.scroll';
@@ -99,7 +99,9 @@ async function odswiez(pierwszy = false) {
   const bg = el(`<button class="switch ${filtry.wGrupie ? 'on' : ''}"><span>${t('catalog.inGroups')}</span>${icon(filtry.wGrupie ? 'toggleOn' : 'toggleOff')}</button>`);
   bg.onclick = () => { filtry.wGrupie = !filtry.wGrupie; zapiszFiltry(); odswiez(); };
   filtryEl.append(bp, bg);
-  if (czyFiltr()) { const c = el(`<button class="btn ghost sm" title="${esc(t('dup.clearFilters'))}">${icon('x')}${t('dup.clear')}</button>`); c.onclick = () => { filtry = { zrodla: [], sloty: [], formaty: [], problemy: false, wGrupie: false, szukaj: '' }; zapiszFiltry(); const inp = document.getElementById('cat-szukaj'); if (inp) inp.value = ''; odswiez(); }; filtryEl.append(c); }
+  const c = el(`<button class="btn ghost icon clear" title="${esc(t('dup.clearFilters'))}" ${czyFiltr() ? '' : 'style="visibility:hidden"'}>${icon('x')}</button>`);
+  c.onclick = () => { filtry = { zrodla: [], sloty: [], formaty: [], problemy: false, wGrupie: false, szukaj: '' }; zapiszFiltry(); const inp = document.getElementById('cat-szukaj'); if (inp) inp.value = ''; odswiez(); };
+  filtryEl.append(c);
   if (bylFokus) { const inp = document.getElementById('cat-szukaj'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
 
   siatka.ustaw(r.pozycje || []);
@@ -115,7 +117,7 @@ function kafelek(p, ctx) {
   if (p.bc1Alfa) problemy.push(`<span class="badge err" title="${esc(t('catalog.problemBc1'))}">BC1α</span>`);
   const k = el(`
     <button class="cat-tile ${p.grupa ? 'in-group' : ''}" data-id="${esc(p.id)}" title="${esc(nazwaPozycji(p))} ${esc(p.sufiks || '')} · ${esc(p.zrodlo)} · ${esc(p.kontener || '')}${p.grupa ? ' · ' + esc(t('werdykt.' + p.grupa)) : ''}">
-      <div class="thumb">${p.thumb ? `<img src="https://duble.data/thumb/${esc(p.thumb)}.png" alt="" loading="lazy">` : icon('cube')}${p.grupa ? `<span class="dot ${KLASA_WERDYKTU[p.grupa] || ''}" title="${esc(t('werdykt.' + p.grupa))}"></span>` : ''}${p.wArchiwum ? `<span class="arch" title="${esc(t('group.inArchive'))}">${icon('archive')}</span>` : ''}</div>
+      <div class="thumb">${p.thumb ? `<img src="https://duble.data/thumb/${esc(p.thumb)}.png" alt="" loading="lazy">` : icon('cube')}${p.grupa ? `<span class="vico ${KLASA_WERDYKTU[p.grupa] || ''}" title="${esc(t('werdykt.' + p.grupa))}">${icon(IKONA_WERDYKTU[p.grupa] || 'duplicates')}</span>` : ''}${p.wArchiwum ? `<span class="arch" title="${esc(t('group.inArchive'))}">${icon('archive')}</span>` : ''}</div>
       <div class="nm">${esc(nazwaPozycji(p))}<sub>${esc(p.sufiks || '')}</sub></div>
       <div class="src" title="${esc(p.zrodlo)}">${esc(p.zrodlo)}</div>
       <div class="tile-badges"><span class="badge ${p.gen9 ? 'gen9' : 'legacy'}">${p.gen9 ? t('sources.formatGen9') : t('sources.formatLegacy')}</span><span class="faint">${t('dup.textures', { n: p.tekstur })}</span>${problemy.join('')}</div>
