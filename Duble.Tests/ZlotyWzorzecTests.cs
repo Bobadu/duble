@@ -71,7 +71,48 @@ public class ZlotyWzorzecTests
         }
     }
 
-    static ZWynik WczytajZloty(string plik) => JsonSerializer.Deserialize<ZWynik>(File.ReadAllText(Sciezki.Golden(plik)));
+    /// <summary>
+    /// Zloty plik moze byc w STARYM ksztalcie (Powod/Rozpiska = polski tekst; legacy4, zapisany CLI sprzed refaktoru)
+    /// albo w NOWYM (Powod = {Kod,P}, Rozpiska = Punktacja; gen9, zapisany po Zadaniu 6, bo stare CLI nie czytalo .rpf).
+    /// Oba sprowadzamy do tekstu PL — dzieki temu jedna procedura porownania obsluguje oba.
+    /// </summary>
+    static ZWynik WczytajZloty(string plik)
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Sciezki.Golden(plik)));
+        var root = doc.RootElement;
+        string Tekst(JsonElement e)
+        {
+            if (e.ValueKind == JsonValueKind.String) return e.GetString();
+            if (e.ValueKind == JsonValueKind.Null || e.ValueKind == JsonValueKind.Undefined) return null;
+            if (e.TryGetProperty("Kod", out _)) return Teksty.Powod(JsonSerializer.Deserialize<Powod>(e.GetRawText()), "pl");
+            if (e.TryGetProperty("Razem", out _)) return JsonSerializer.Deserialize<Punktacja>(e.GetRawText()).Tekst("pl");
+            throw new InvalidDataException("nieznany ksztalt: " + e.GetRawText());
+        }
+        JsonElement Pole(JsonElement e, string nazwa) => e.TryGetProperty(nazwa, out var v) ? v : default;
+        var wynik = new ZWynik { Grupy = new(), Podsumowanie = Pole(root, "Podsumowanie").EnumerateArray().Select(x => x.GetString()).ToList() };
+        foreach (var g in Pole(root, "Grupy").EnumerateArray())
+        {
+            var zg = new ZGrupa
+            {
+                Pozycje = Pole(g, "Pozycje").EnumerateArray().Select(x => x.GetString()).ToList(),
+                Werdykt = Pole(g, "Werdykt").GetString(), Zwyciezca = Pole(g, "Zwyciezca").GetString(),
+                Powod = Tekst(Pole(g, "Powod")),
+                Pary = new(), Punkty = new(), Rozpiska = new(),
+            };
+            foreach (var p in Pole(g, "Pary").EnumerateArray())
+                zg.Pary.Add(new ZPara
+                {
+                    A = Pole(p, "A").GetString(), B = Pole(p, "B").GetString(), Werdykt = Pole(p, "Werdykt").GetString(),
+                    Powod = Tekst(Pole(p, "Powod")), DistGeo = Pole(p, "DistGeo").GetDouble(),
+                    PokrycieA = Pole(p, "PokrycieA").GetDouble(), PokrycieB = Pole(p, "PokrycieB").GetDouble(),
+                    WspolnychTekstur = Pole(p, "WspolnychTekstur").GetInt32(),
+                });
+            foreach (var kv in Pole(g, "Punkty").EnumerateObject()) zg.Punkty[kv.Name] = kv.Value.GetDouble();
+            foreach (var kv in Pole(g, "Rozpiska").EnumerateObject()) zg.Rozpiska[kv.Name] = Tekst(kv.Value);
+            wynik.Grupy.Add(zg);
+        }
+        return wynik;
+    }
 
     [Fact, Trait("Kategoria", "Wolny")]
     public void Legacy4_z_downloads_daje_zloty_wynik()

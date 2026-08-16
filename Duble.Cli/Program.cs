@@ -120,23 +120,19 @@ switch (cmd)
         {
             // narzedzie kontrolne: eksportuje najwyzszy LOD modelu .ydd (legacy albo gen9) do OBJ
             // z normalnymi i UV — do ogladania/porownywania geometrii w Blenderze (np. ciala:
-            // waniliowe vs Killstore). Format wykrywany sam: probuje gen9, potem legacy.
+            // waniliowe vs Killstore). Format (legacy/gen9) z naglowka RSC7; tryb gen9 czyta oba (Format.cs).
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble obj <plik.ydd> [--out plik.obj]"); return 2; }
             var bajty = File.ReadAllBytes(argv[0]);
-            YddFile ydd = null; string fmt = "?";
-            foreach (var g9 in new[] { true, false })
+            YddFile ydd = null; string fmt = Format.Nazwa(Rsc7.Gen9(bajty, ".ydd"));
+            try
             {
-                try
-                {
-                    RpfManager.IsGen9 = g9;
-                    var y = new YddFile();
-                    RpfFile.LoadResourceFile(y, bajty, 165);
-                    var d0 = y.Drawables?.FirstOrDefault();
-                    var n0 = d0?.DrawableModels?.High?.FirstOrDefault()?.Geometries?.FirstOrDefault()?.VertexBuffer?.VertexCount ?? 0;
-                    if (n0 > 0 && n0 < 5_000_000) { ydd = y; fmt = g9 ? "gen9" : "legacy"; break; }
-                }
-                catch { }
+                var y = new YddFile();
+                RpfFile.LoadResourceFile(y, bajty, 165);
+                var d0 = y.Drawables?.FirstOrDefault();
+                var n0 = d0?.DrawableModels?.High?.FirstOrDefault()?.Geometries?.FirstOrDefault()?.VertexBuffer?.VertexCount ?? 0;
+                if (n0 > 0 && n0 < 5_000_000) ydd = y;
             }
+            catch { }
             if (ydd == null) { Console.Error.WriteLine("[blad] nie udalo sie wczytac modelu"); return 1; }
             var dr = ydd.Drawables.First();
             var sb = new System.Text.StringBuilder();
@@ -229,18 +225,14 @@ switch (cmd)
             if (argv.Count < 2) { Console.Error.WriteLine("uzycie: duble pusty <wejscie.ydd> <wyjscie.ydd>"); return 2; }
             var bajtyP = File.ReadAllBytes(argv[0]);
             YddFile yddP = null;
-            foreach (var g9 in new[] { true, false })
+            try
             {
-                try
-                {
-                    RpfManager.IsGen9 = g9;
-                    var y = new YddFile();
-                    RpfFile.LoadResourceFile(y, bajtyP, 165);
-                    var n0 = y.Drawables?.FirstOrDefault()?.DrawableModels?.High?.FirstOrDefault()?.Geometries?.FirstOrDefault()?.VertexBuffer?.VertexCount ?? 0;
-                    if (n0 > 0) { yddP = y; break; }
-                }
-                catch { }
+                var y = new YddFile();
+                RpfFile.LoadResourceFile(y, bajtyP, 165);   // tryb gen9 czyta oba formaty po naglowku (Format.cs)
+                var n0 = y.Drawables?.FirstOrDefault()?.DrawableModels?.High?.FirstOrDefault()?.Geometries?.FirstOrDefault()?.VertexBuffer?.VertexCount ?? 0;
+                if (n0 > 0) yddP = y;
             }
+            catch { }
             if (yddP == null) { Console.Error.WriteLine("[blad] nie udalo sie wczytac modelu"); return 1; }
             int zwiniete = 0;
             foreach (var dr in yddP.Drawables)
@@ -260,7 +252,7 @@ switch (cmd)
                 dr.BoundingBoxMin = new SharpDX.Vector3(-0.001f, -0.001f, -0.001f); dr.BoundingBoxMax = new SharpDX.Vector3(0.001f, 0.001f, 0.001f);
                 dr.BoundingCenter = SharpDX.Vector3.Zero; dr.BoundingSphereRadius = 0.001f;
             }
-            RpfManager.IsGen9 = true;
+            RpfManager.IsGen9 = true;   // zapis: gen9 (Save() patrzy na flage)
             var wyj = yddP.Save();
             File.WriteAllBytes(argv[1], wyj);
             Log($"pusty: zwinieto {zwiniete} wierzcholkow -> {argv[1]} ({wyj.Length} B, gen9)");
@@ -273,13 +265,10 @@ switch (cmd)
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble tekstura <plik.ytd> [--out folder]"); return 2; }
             var bajtyT = File.ReadAllBytes(argv[0]);
             YtdFile ytdT = null;
-            foreach (var g9 in new[] { true, false })
-            {
-                try { RpfManager.IsGen9 = g9; var y = new YtdFile(); RpfFile.LoadResourceFile(y, bajtyT, 13);
-                      var t0 = y.TextureDict?.Textures?.data_items?.FirstOrDefault();
-                      if (t0 != null && t0.Width > 0 && t0.Width <= 16384 && t0.Levels >= 1 && t0.Levels <= 16) { ytdT = y; break; } }
-                catch { }
-            }
+            try { var y = new YtdFile(); RpfFile.LoadResourceFile(y, bajtyT, 13);   // tryb gen9 czyta oba formaty po naglowku
+                  var t0 = y.TextureDict?.Textures?.data_items?.FirstOrDefault();
+                  if (t0 != null && t0.Width > 0 && t0.Width <= 16384 && t0.Levels >= 1 && t0.Levels <= 16) ytdT = y; }
+            catch { }
             if (ytdT == null) { Console.Error.WriteLine("[blad] nie udalo sie wczytac ytd"); return 1; }
             var folder = wyjscie ?? Path.GetDirectoryName(Path.GetFullPath(argv[0]));
             Directory.CreateDirectory(folder);
@@ -314,7 +303,7 @@ switch (cmd)
             var tdNew = new TextureDictionary();
             tdNew.BuildFromTextureList(lista);
             var ytdNew = new YtdFile { TextureDict = tdNew };
-            RpfManager.IsGen9 = true;
+            RpfManager.IsGen9 = true;   // zapis: gen9 (Save() patrzy na flage)
             var dane = ytdNew.Save();
             File.WriteAllBytes(argv[0], dane);
             Log($"YTD: {argv[0]} ({dane.Length} B, gen9, tekstur {lista.Count})");
@@ -327,9 +316,8 @@ switch (cmd)
             // Sluzy do sprawdzenia, czy kolejnosc kanalow (DDSIO oddaje BGRA) jest dobra —
             // przy pomylce skora wychodzi niebieska, a tego na liczbach nie widac.
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble podglad <plik.ytd> [--out plik.png]"); return 2; }
-            RpfManager.IsGen9 = true;
             var ytd = new YtdFile();
-            RpfFile.LoadResourceFile(ytd, File.ReadAllBytes(argv[0]), 13);
+            RpfFile.LoadResourceFile(ytd, File.ReadAllBytes(argv[0]), 13);   // tryb gen9 czyta oba formaty po naglowku
             var tx = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
             if (tx == null) { Console.Error.WriteLine("[blad] brak tekstury w pliku"); return 1; }
             var odc = new Tekstura();

@@ -4,7 +4,9 @@
 //  - pozycja wierzcholka to zawsze skladowa 0 (Float3, offset 0) — sprawdzone przez
 //    porownanie min/max z wierzcholkow z BoundingBox drawable'a: zgadza sie co do 0,001
 //  - pliki gen9 wymagaja RpfManager.IsGen9 = true; bez tego blok Texture czyta sie
-//    po staremu i zwraca smieci (Format = 0x406B77D8, wymiary 0x0)
+//    po staremu i zwraca smieci (Format = 0x406B77D8, wymiary 0x0). W trybie gen9 CodeWalker
+//    czyta TAKZE legacy poprawnie (po wersji z naglowka RSC7) — dlatego Format.cs ustawia
+//    tryb gen9 raz na zawsze (pomiar 16.08).
 //  - CodeWalker dekoduje BC1/BC2/BC3/BC4/BC5 i formaty nieskompresowane, ale NIE BC7
 //    (`case BC7: //TODO`, zwraca null). U nas BC7 to 2,9% tekstur — takie pozycje
 //    dostaja Zdekodowana=false i porownuja sie wylacznie po SHA i nagl0wku.

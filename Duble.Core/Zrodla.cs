@@ -35,7 +35,8 @@ public static class Zrodla
         var wpis = Wszystkie(rpf).FirstOrDefault(e =>
             string.Equals(e.Path, wewnatrz, StringComparison.OrdinalIgnoreCase));
         if (wpis == null) return null;
-        try { return wpis.File.ExtractFile(wpis); } catch { return null; }
+        // ExtractFile oddaje zasob bez naglowka RSC7 — doklejamy go, zeby LoadResourceFile czytal jak plik z dysku
+        try { return Rsc7.Owin(wpis, wpis.File.ExtractFile(wpis)); } catch { return null; }
     }
 
     static IEnumerable<RpfFileEntry> Wszystkie(RpfFile f)
