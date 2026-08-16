@@ -99,7 +99,8 @@ async function montuj(wymus = false) {
   store.widok = nazwa;
   const wrap = document.getElementById('wrap');
   wrap.innerHTML = '';
-  wrap.dataset.view = nazwa;
+  // data-view: karta grupy/pozycji dostaje wlasna nazwe (inny uklad niz lista z wewnetrznym przewijaniem)
+  wrap.dataset.view = nazwa === 'duplicates' && param ? 'group' : nazwa === 'catalog' && param ? 'item' : nazwa;
   biezacy = { nazwa, modul, param };
   renderujRail();
   try { await modul.render(wrap, { ...ctx, nazwa, param }); } catch (e) { console.error(e); wrap.append(el(`<div class="empty"><h3>${t('common.error')}</h3><p class="mono select-text">${String(e?.message || e)}</p></div>`)); }
