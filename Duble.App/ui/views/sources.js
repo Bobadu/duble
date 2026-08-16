@@ -110,9 +110,12 @@ function karta(s, wToku, ctx) {
   if (s.format) pigulki.push(`<span class="pill fmt ${fmtKlasa}"><i class="dot"></i>${esc(fmtTekst)}</span>`);
   pigulki.push(`<span class="pill">${esc(typTekst)}</span>`);
   if (s.typ === 'rpf') pigulki.push(`<span class="pill" title="${esc(t('sources.archiveOnly'))}">${esc(t('sources.readOnly'))}</span>`);
-  else if (s.archiwa) pigulki.push(`<span class="pill" title="${esc(t('sources.hasArchives'))}">${fmt.liczba(s.archiwa)} ${esc(t('sources.inArchives'))}</span>`);
-  const slotyHtml = pokaz.map(([typ, n]) => `<span class="pill">${esc(t('slot.' + typ))} <b>${fmt.liczba(n)}</b></span>`).join('')
-    + (reszta > 0 ? `<span class="pill" title="${esc(sloty.slice(8).map(([typ, n]) => t('slot.' + typ) + ' ' + n).join(', '))}">+${reszta}</span>` : '');
+  // sloty: najliczniejsze pierwsze, max 6 + reszta w dymku — jedna spokojna linia tekstu, nie trzeci rzad kapsulek
+  const slotyWgLiczby = sloty.slice().sort((a, b) => b[1] - a[1]);
+  const pokazSl = slotyWgLiczby.slice(0, 6); const resztaSl = slotyWgLiczby.slice(6);
+  const slotyHtml = pokazSl.map(([typ, n]) => `<span>${esc(t('slot.' + typ))} <b>${fmt.liczba(n)}</b></span>`).join('<i>·</i>')
+    + (resztaSl.length ? `<i>·</i><span title="${esc(resztaSl.map(([typ, n]) => t('slot.' + typ) + ' ' + n).join(', '))}">+${resztaSl.length}</span>` : '');
+  const wArch = s.typ !== 'rpf' && s.archiwa ? `<i>·</i><span class="faint" title="${esc(t('sources.hasArchives'))}">${fmt.liczba(s.archiwa)} ${esc(t('sources.inArchives'))}</span>` : '';
   const k = el(`
     <div class="card src-card ${s.wlaczone ? '' : 'disabled'} ${s.istnieje ? '' : 'missing'}" data-id="${esc(s.id)}">
       <div class="card-body">
@@ -126,11 +129,11 @@ function karta(s, wToku, ctx) {
         </div>
         <div class="pills">${pigulki.join('')}</div>
         ${s.istnieje ? '' : `<div class="missing-text">${icon('warn')} ${t('sources.missing')}</div>`}
-        <div class="stats"><b>${fmt.liczba(s.pozycje)}</b> ${t('sources.items')}<i>·</i><b>${fmt.liczba(s.tekstury)}</b> ${t('sources.textures')}</div>
-        ${sloty.length ? `<div class="pills slots">${slotyHtml}</div>` : ''}
+        <div class="stats"><b>${fmt.liczba(s.pozycje)}</b> ${t('sources.items')}<i>·</i><b>${fmt.liczba(s.tekstury)}</b> ${t('sources.textures')}${wArch}</div>
+        ${sloty.length ? `<div class="slots">${slotyHtml}</div>` : ''}
         ${indeksowane ? `<div class="indexing"><span>${wToku.stan === 'postep' && wToku.wszystkie ? esc(t('sources.indexingOf', { etap: wToku.etap, zrobione: fmt.liczba(wToku.zrobione), wszystkie: fmt.liczba(wToku.wszystkie) })) : t('sources.indexing')}</span><div class="progress ${wToku.stan === 'postep' && wToku.wszystkie ? '' : 'indeterminate'}"><i style="width:${wToku.procent || 0}%"></i></div></div>` : ''}
         <div class="foot">
-          <span>${s.zaindeksowano ? t('sources.indexed', { d: fmt.data(s.zaindeksowano) }) : t('sources.never')}</span>
+          <span class="when" title="${esc(s.zaindeksowano ? t('sources.indexed', { d: fmt.data(s.zaindeksowano) }) : t('sources.never'))}">${s.zaindeksowano ? `${icon('history')} ${esc(fmt.data(s.zaindeksowano))}` : esc(t('sources.never'))}</span>
           <span class="grow"></span>
           <button class="switch ${s.wlaczone ? 'on' : ''}" title="${s.wlaczone ? t('sources.enabled') : t('sources.disabled')}"><span>${s.wlaczone ? t('sources.enabled') : t('sources.disabled')}</span>${icon(s.wlaczone ? 'toggleOn' : 'toggleOff')}</button>
         </div>
