@@ -79,11 +79,74 @@ public sealed class Sesja
         var wynik = Porownanie.Znajdz(kopia, null, progi, postep, ct);
         lock (klucz)
         {
+            // decyzje uzytkownika przechodza na nowe (mniejsze) grupy — po Zastosuj / ponownym indeksowaniu nic nie wraca do "do odrzucenia"
+            if (Wynik != null && projekt.Decyzje.Count > 0 && Rozstrzygniecie.PrzeniesDecyzje(projekt.Decyzje, Wynik.Grupy, wynik.Grupy) > 0)
+                projekt.Zapisz();
             Wynik = wynik;
             Directory.CreateDirectory(projekt.FolderCache);
             wynik.Zapisz(projekt.PlikDubli);
         }
         Zmiana?.Invoke();
+    }
+
+    // ---------------- zastosowanie: zrodlo pozycji, kosz, plan ----------------
+
+    /// <summary>Zrodlo projektu, z ktorego pochodzi pozycja (po ZrodloId; starsze katalogi — po nazwie paczki).</summary>
+    public ZrodloProjektu ZrodloPozycji(Pozycja p)
+    {
+        var pr = Projekt; if (pr == null || p == null) return null;
+        return pr.Zrodla.Find(z => z.Id == p.ZrodloId) ?? pr.Zrodla.Find(z => string.Equals(z.Nazwa, p.Paczka, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Folder kosza dla zrodla: `Ustawienia.Kosz` (wskazany folder) albo `_odrzucone` obok zrodla — w obu przypadkach z podfolderem o nazwie zrodla.</summary>
+    public string KoszDla(ZrodloProjektu z)
+    {
+        var pr = Projekt; if (pr == null || z == null) return null;
+        var kosz = pr.Ustawienia?.Kosz;
+        if (string.IsNullOrWhiteSpace(kosz))
+        {
+            var sciezka = z.Sciezka.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var nad = Path.GetDirectoryName(sciezka) ?? sciezka;
+            kosz = Path.Combine(nad, Indeks.FolderOdrzuconych);
+        }
+        return Path.Combine(kosz, Bezpieczna(z.Nazwa));
+    }
+
+    static string Bezpieczna(string nazwa)
+    {
+        var zle = Path.GetInvalidFileNameChars();
+        var s = new string((nazwa ?? "zrodlo").Select(c => zle.Contains(c) ? '_' : c).ToArray()).Trim();
+        return s.Length == 0 ? "zrodlo" : s;
+    }
+
+    /// <summary>Cel przenosin dla pozycji (null = zrodla nie ma w projekcie albo na dysku).</summary>
+    public CelPozycji Cel(Pozycja p)
+    {
+        var z = ZrodloPozycji(p);
+        if (z == null || z.Sciezka == null || !(Directory.Exists(z.Sciezka) || File.Exists(z.Sciezka))) return null;
+        return new CelPozycji { Korzen = z.Sciezka, Kosz = KoszDla(z), Zrodlo = z.Nazwa, ZrodloId = z.Id };
+    }
+
+    public PlanZastosowania Zaplanuj(IEnumerable<string> odrzucone)
+    {
+        lock (klucz) return Zastosowanie.Zaplanuj(Katalog, odrzucone, Cel);
+    }
+
+    /// <summary>Pliki historii zastosowan (najnowsze pierwsze).</summary>
+    public List<string> PlikiHistorii()
+    {
+        var pr = Projekt; if (pr == null || !Directory.Exists(pr.FolderHistorii)) return new();
+        return Directory.GetFiles(pr.FolderHistorii, "*.json").OrderByDescending(f => Path.GetFileName(f), StringComparer.Ordinal).ToList();
+    }
+
+    public string NowyPlikHistorii()
+    {
+        var pr = Projekt ?? throw new InvalidOperationException("brak projektu");
+        Directory.CreateDirectory(pr.FolderHistorii);
+        var baza = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+        var plik = Path.Combine(pr.FolderHistorii, baza + ".json");
+        for (int i = 2; File.Exists(plik); i++) plik = Path.Combine(pr.FolderHistorii, $"{baza}-{i}.json");
+        return plik;
     }
 
     public object Podsumowanie()
@@ -102,8 +165,8 @@ public sealed class Sesja
         }
     }
 
-    /// <summary>Statystyki jednego zrodla z katalogu (po ZrodloId).</summary>
-    public (int pozycje, int tekstury, Dictionary<string, int> perSlot, int bc7, string format) Statystyki(string zrodloId)
+    /// <summary>Statystyki jednego zrodla z katalogu (po ZrodloId). wArchiwum = pozycje, ktorych ydd siedzi w .rpf (nieprzenoszalne).</summary>
+    public (int pozycje, int tekstury, Dictionary<string, int> perSlot, int bc7, string format, int wArchiwum) Statystyki(string zrodloId)
     {
         lock (klucz)
         {
@@ -112,7 +175,8 @@ public sealed class Sesja
             int tekstury = poz.Sum(p => p.Tekstury.Count);
             int bc7 = poz.Sum(p => p.Tekstury.Count(t => t.Format == "BC7"));
             string format = poz.Count == 0 ? null : poz.All(p => p.Gen9) ? "gen9" : poz.All(p => !p.Gen9) ? "legacy" : "mieszany";
-            return (poz.Count, tekstury, perSlot, bc7, format);
+            int wArchiwum = poz.Count(p => p.SciezkaYdd != null && p.SciezkaYdd.Contains('|'));
+            return (poz.Count, tekstury, perSlot, bc7, format, wArchiwum);
         }
     }
 

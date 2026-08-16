@@ -1,7 +1,9 @@
-// Komendy/Grupy.cs — compare.run, groups.list/get/decide/reset, apply.preview.
+// Komendy/Grupy.cs — compare.run, groups.list/get/decide/reset, apply.preview/run.
 //
 // Grupy pochodza z Sesja.Wynik (WynikPorownania z Duble.Core); "kto zostaje" liczy Rozstrzygniecie.Policz(grupa, decyzja z projektu).
 // Powody werdyktow ida do UI jako kody {kod, p} — UI formatuje je z i18n (slownik Core jest zlaczony ze slownikiem UI).
+// Zastosuj: plan z Sesja.Zaplanuj (Zastosowanie w Core), wykonanie w JobRunner "zastosuj", cofka do historia\<czas>.json,
+// potem ponowne indeksowanie dotknietych zrodel + porownanie (Zrodla.Indeksuj/PorownajIZapisz).
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,63 +21,64 @@ public static class Grupy
         [Porownanie.Duplikat] = 0, [Porownanie.Nadzbior] = 1, [Porownanie.DoWgladu] = 2, [Porownanie.Przemalowanie] = 3,
     };
 
+    /// <summary>Grupy z wyniku, ktorych wszyscy czlonkowie nadal sa w katalogu (usuniete zrodlo = grupa znika), z rozstrzygnieciami; posortowane.</summary>
+    public static List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)> Zywe(Sesja s)
+    {
+        var wynik = s.Wynik; if (wynik == null || s.Projekt == null) return new();
+        var wg = s.Katalog.Pozycje.ToDictionary(p => p.Id);
+        var wy = new List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)>();
+        foreach (var g in wynik.Grupy)
+        {
+            if (g.Pozycje == null || g.Pozycje.Count == 0 || !g.Pozycje.All(wg.ContainsKey)) continue;
+            if (string.IsNullOrEmpty(g.Id)) g.Id = Grupa.PoliczId(g.Pozycje);
+            wy.Add((g, g.Pozycje.Select(id => wg[id]).ToList(), Rozstrzygnij(s, g)));
+        }
+        return wy.OrderBy(x => KolejnoscWerdyktow.TryGetValue(x.g.Werdykt, out var k) ? k : 9).ThenByDescending(x => x.g.Pozycje.Count).ThenBy(x => x.g.Pozycje[0], StringComparer.Ordinal).ToList();
+    }
+
+    public static Rozstrzygniecie Rozstrzygnij(Sesja s, Grupa g)
+        => Rozstrzygniecie.Policz(g, s.Projekt.Decyzje.TryGetValue(g.Id ?? "", out var d) ? d : null);
+
+    /// <summary>Id pozycji odrzuconych we wszystkich zywych grupach (bez zignorowanych).</summary>
+    public static HashSet<string> Odrzucone(List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)> zywe)
+        => new(zywe.Where(x => !x.r.Ignoruj).SelectMany(x => x.r.Odrzucone));
+
+    public static object PlanJson(Sesja s, PlanZastosowania plan, bool lista)
+    {
+        var wg = s.Katalog.Pozycje.ToDictionary(p => p.Id);
+        var o = new Dictionary<string, object>
+        {
+            ["pozycje"] = plan.Pozycje.Count, ["pliki"] = plan.Pliki, ["bajty"] = plan.Bajty,
+            ["wArchiwum"] = plan.WArchiwum, ["wspoldzielone"] = plan.Wspoldzielone, ["brakujace"] = plan.Brakujace,
+            ["brakujaceZrodla"] = plan.BrakujaceZrodla,
+            ["kosz"] = s.Projekt.Ustawienia?.Kosz,
+            ["kosze"] = plan.Kosze().Select(k => new { kosz = k.kosz, pliki = k.pliki, bajty = k.bajty }).ToList(),
+        };
+        if (lista)
+            o["lista"] = plan.Pozycje.Select(p => new
+            {
+                id = p.Id, nazwa = p.Nazwa, sufiks = p.Sufiks, zrodlo = p.Zrodlo, zrodloId = p.ZrodloId, kontener = p.Kontener, kosz = p.Kosz,
+                thumb = wg.TryGetValue(p.Id, out var poz) ? Widoki.Miniatura(poz) : null,
+                pliki = p.DoPrzeniesienia, bajty = p.Bajty, wspoldzielone = p.Wspoldzielone, wArchiwum = p.WArchiwum, brakujace = p.Brakujace,
+            }).ToList();
+        return o;
+    }
+
     public static void Zarejestruj(Mostek m, Sesja s, JobRunner jr)
     {
         Sesja Wymag() => s.Otwarty ? s : throw new BladMostka("no_project", "brak otwartego projektu");
-
-        Rozstrzygniecie Rozstrzygnij(Grupa g)
-            => Rozstrzygniecie.Policz(g, s.Projekt.Decyzje.TryGetValue(g.Id ?? "", out var d) ? d : null);
-
-        // grupy z wyniku, ktorych wszyscy czlonkowie nadal sa w katalogu (usuniete zrodlo = grupa znika)
-        List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)> Zywe()
-        {
-            var wynik = s.Wynik; if (wynik == null) return new();
-            var wg = s.Katalog.Pozycje.ToDictionary(p => p.Id);
-            var wy = new List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)>();
-            foreach (var g in wynik.Grupy)
-            {
-                if (g.Pozycje == null || g.Pozycje.Count == 0 || !g.Pozycje.All(wg.ContainsKey)) continue;
-                if (string.IsNullOrEmpty(g.Id)) g.Id = Grupa.PoliczId(g.Pozycje);
-                wy.Add((g, g.Pozycje.Select(id => wg[id]).ToList(), Rozstrzygnij(g)));
-            }
-            return wy.OrderBy(x => KolejnoscWerdyktow.TryGetValue(x.g.Werdykt, out var k) ? k : 9).ThenByDescending(x => x.g.Pozycje.Count).ThenBy(x => x.g.Pozycje[0], StringComparer.Ordinal).ToList();
-        }
-
-        object Powod(Powod p) => p == null ? null : new { kod = p.Kod, p = p.P };
-        object Rozstrz(Rozstrzygniecie r) => new { zwyciezca = r.Zwyciezca, odrzucone = r.Odrzucone, ignoruj = r.Ignoruj, domyslna = r.Domyslna, notatka = r.Notatka };
-        object Punkt(Punktacja p) => p == null ? null : new { razem = p.Razem, rozdz = p.Rozdz, mipy = p.Mipy, warianty = p.Warianty, format = p.Format, lod = p.Lod, rozdzPx = p.RozdzPx, udzialMipow = p.UdzialMipow, liczbaWariantow = p.LiczbaWariantow, zlyFormat = p.ZlyFormat, lody = p.Lody, brakTekstur = p.BrakTekstur };
         string Zrodlo(Pozycja p) => s.Projekt.Zrodla.Find(z => z.Id == p.ZrodloId)?.Nazwa ?? p.Paczka;
-
-        object Czlonek(Pozycja p, Grupa g, bool szczegoly)
-        {
-            var thumb = p.Tekstury.FirstOrDefault(t => t.Zdekodowana && t.Sha != null)?.Sha;
-            var podst = new Dictionary<string, object>
-            {
-                ["id"] = p.Id, ["zrodloId"] = p.ZrodloId, ["zrodlo"] = Zrodlo(p), ["kontener"] = p.Kontener, ["typ"] = p.Typ, ["numer"] = p.Numer, ["sufiks"] = p.Sufiks,
-                ["gen9"] = p.Gen9, ["props"] = p.Props, ["punkty"] = g.Punkty.TryGetValue(p.Id, out var pkt) ? pkt : 0.0, ["thumb"] = thumb,
-                ["tekstur"] = p.Tekstury.Count, ["wierzcholki"] = p.Geo?.Wierzcholki ?? 0, ["trojkaty"] = p.Geo?.Trojkaty ?? 0, ["lody"] = p.Geo?.Lody ?? 0,
-                ["bajty"] = p.BajtyYdd + p.Tekstury.Sum(t => t.Bajty), ["wArchiwum"] = p.SciezkaYdd != null && p.SciezkaYdd.Contains('|'),
-            };
-            if (szczegoly)
-            {
-                podst["rozpiska"] = g.Rozpiska.TryGetValue(p.Id, out var r) ? Punkt(r) : null;
-                podst["sciezkaYdd"] = p.SciezkaYdd;
-                podst["bajtyYdd"] = p.BajtyYdd;
-                podst["tekstury"] = p.Tekstury.Select(t => new { sha = t.Sha, plik = t.Plik, nazwa = t.Nazwa, w = t.W, h = t.H, format = t.Format, mipy = t.Mipy, alfa = t.Alfa, zdekodowana = t.Zdekodowana, bajty = t.Bajty }).ToList();
-            }
-            return podst;
-        }
 
         object Grupa1(Grupa g, List<Pozycja> czl, Rozstrzygniecie r, bool szczegoly)
         {
             var o = new Dictionary<string, object>
             {
-                ["id"] = g.Id, ["werdykt"] = g.Werdykt, ["powod"] = Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod), ["zwyciezca"] = g.Zwyciezca,
-                ["rozstrzygniecie"] = Rozstrz(r), ["czlonkowie"] = czl.Select(p => Czlonek(p, g, szczegoly)).ToList(),
+                ["id"] = g.Id, ["werdykt"] = g.Werdykt, ["powod"] = Widoki.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod), ["zwyciezca"] = g.Zwyciezca,
+                ["rozstrzygniecie"] = Widoki.Rozstrz(r), ["czlonkowie"] = czl.Select(p => Widoki.Czlonek(p, g, szczegoly, Zrodlo)).ToList(),
             };
             if (szczegoly)
             {
-                o["pary"] = g.Pary.Select(p => new { a = p.A, b = p.B, werdykt = p.Werdykt, powod = Powod(p.Powod), distGeo = p.DistGeo, pokrycieA = p.PokrycieA, pokrycieB = p.PokrycieB, wspolnychTekstur = p.WspolnychTekstur }).ToList();
+                o["pary"] = g.Pary.Select(p => new { a = p.A, b = p.B, werdykt = p.Werdykt, powod = Widoki.Powod(p.Powod), distGeo = p.DistGeo, pokrycieA = p.PokrycieA, pokrycieB = p.PokrycieB, wspolnychTekstur = p.WspolnychTekstur }).ToList();
                 var progi = s.Projekt.Ustawienia?.Progi ?? Progi.Domyslne;
                 var dop = new List<object>();
                 for (int i = 0; i < czl.Count; i++)
@@ -96,47 +99,13 @@ public static class Grupy
             return o;
         }
 
-        // odrzucone pozycje ze wszystkich grup (bez zignorowanych) -> pliki do przeniesienia (jak Zastosowanie: bez wspoldzielonych z tymi, ktore zostaja)
-        object PodgladZastosowania(List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)> zywe)
-        {
-            var odrzucone = new HashSet<string>(zywe.Where(x => !x.r.Ignoruj).SelectMany(x => x.r.Odrzucone));
-            var wg = s.Katalog.Pozycje.ToDictionary(p => p.Id);
-            var chronione = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var p in s.Katalog.Pozycje.Where(p => !odrzucone.Contains(p.Id)))
-            {
-                if (p.SciezkaYdd != null) chronione.Add(p.SciezkaYdd);
-                foreach (var t in p.Tekstury) if (t.Sciezka != null) chronione.Add(t.Sciezka);
-            }
-            int pliki = 0, wArchiwum = 0, wspoldzielone = 0; long bajty = 0;
-            var widziane = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var id in odrzucone)
-            {
-                if (!wg.TryGetValue(id, out var p)) continue;
-                var lista = new List<(string sciezka, long bajty)>();
-                if (p.SciezkaYdd != null) lista.Add((p.SciezkaYdd, p.BajtyYdd));
-                lista.AddRange(p.Tekstury.Where(t => t.Sciezka != null).Select(t => (t.Sciezka, t.Bajty)));
-                foreach (var (sc, b) in lista)
-                {
-                    if (!widziane.Add(sc)) continue;
-                    if (sc.Contains('|')) { wArchiwum++; continue; }
-                    if (chronione.Contains(sc)) { wspoldzielone++; continue; }
-                    pliki++; bajty += b;
-                }
-            }
-            return new { pozycje = odrzucone.Count, pliki, bajty, wArchiwum, wspoldzielone };
-        }
-
         m.Rejestruj("compare.run", _ =>
         {
             Wymag();
             bool ok = jr.SprobujUruchom("porownaj", s.Projekt.Nazwa, async (ct, postep) =>
             {
                 await Task.Yield();
-                postep(new Postep("porownaj", 0, 0, null));
-                s.Porownaj(ct, postep);
-                s.Zapisz();
-                m.Zdarzenie("compare.done", new { podsumowanie = s.Podsumowanie() });
-                m.Zdarzenie("project.changed", new { projekt = s.Podsumowanie() });
+                Zrodla.PorownajIZapisz(s, m, ct, postep);
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
             return new { uruchomiono = true };
@@ -148,7 +117,7 @@ public static class Grupy
             var werdykty = Mostek.Lista(a, "werdykty"); var sloty = Mostek.Lista(a, "sloty"); var zrodla = Mostek.Lista(a, "zrodla");
             var szukaj = (Mostek.Tekst(a, "szukaj") ?? "").Trim().ToLowerInvariant();
             bool zignorowane = Mostek.Flaga(a, "zignorowane");
-            var zywe = Zywe();
+            var zywe = Zywe(s);
             var wynik = s.Wynik;
             var podsumowanie = new
             {
@@ -156,7 +125,7 @@ public static class Grupy
                 duplikat = zywe.Count(x => x.g.Werdykt == Porownanie.Duplikat), nadzbior = zywe.Count(x => x.g.Werdykt == Porownanie.Nadzbior),
                 wglad = zywe.Count(x => x.g.Werdykt == Porownanie.DoWgladu), przemalowanie = zywe.Count(x => x.g.Werdykt == Porownanie.Przemalowanie),
                 zignorowane = zywe.Count(x => x.r.Ignoruj), porownano = wynik?.Zbudowany,
-                doOdrzucenia = PodgladZastosowania(zywe),
+                doOdrzucenia = PlanJson(s, s.Zaplanuj(Odrzucone(zywe)), false),
             };
             var filtrySloty = zywe.SelectMany(x => x.czl.Select(p => p.Typ)).GroupBy(t => t).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
             var filtryZrodla = zywe.SelectMany(x => x.czl.Select(p => p.ZrodloId ?? "")).GroupBy(t => t).Select(g => new { id = g.Key, nazwa = s.Projekt.Zrodla.Find(z => z.Id == g.Key)?.Nazwa ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
@@ -174,7 +143,7 @@ public static class Grupy
         {
             Wymag();
             var id = Mostek.Tekst(a, "id", true);
-            var x = Zywe().FirstOrDefault(y => y.g.Id == id);
+            var x = Zywe(s).FirstOrDefault(y => y.g.Id == id);
             if (x.g == null) throw new BladMostka("not_found", id);
             return new { grupa = Grupa1(x.g, x.czl, x.r, true) };
         });
@@ -183,7 +152,7 @@ public static class Grupy
         {
             Wymag();
             var id = Mostek.Tekst(a, "id", true);
-            var x = Zywe().FirstOrDefault(y => y.g.Id == id);
+            var x = Zywe(s).FirstOrDefault(y => y.g.Id == id);
             if (x.g == null) throw new BladMostka("not_found", id);
             var czlonkowie = x.g.Pozycje;
             if (!s.Projekt.Decyzje.TryGetValue(id, out var d))
@@ -204,25 +173,63 @@ public static class Grupy
             var notatka = Mostek.Tekst(a, "notatka");
             if (notatka != null) d.Notatka = notatka.Length == 0 ? null : notatka;
             s.Projekt.Zapisz();
-            var r = Rozstrzygnij(x.g);
+            var r = Rozstrzygnij(s, x.g);
             m.Zdarzenie("groups.changed", new { id });
             m.Zdarzenie("project.changed", new { projekt = s.Podsumowanie() });
-            return new { rozstrzygniecie = Rozstrz(r) };
+            return new { rozstrzygniecie = Widoki.Rozstrz(r) };
         });
 
         m.Rejestruj("groups.reset", a =>
         {
             Wymag();
             var id = Mostek.Tekst(a, "id", true);
-            var x = Zywe().FirstOrDefault(y => y.g.Id == id);
+            var x = Zywe(s).FirstOrDefault(y => y.g.Id == id);
             if (x.g == null) throw new BladMostka("not_found", id);
             s.Projekt.Decyzje.Remove(id);
             s.Projekt.Zapisz();
             m.Zdarzenie("groups.changed", new { id });
             m.Zdarzenie("project.changed", new { projekt = s.Podsumowanie() });
-            return new { rozstrzygniecie = Rozstrz(Rozstrzygnij(x.g)) };
+            return new { rozstrzygniecie = Widoki.Rozstrz(Rozstrzygnij(s, x.g)) };
         });
 
-        m.Rejestruj("apply.preview", _ => { Wymag(); return PodgladZastosowania(Zywe()); });
+        m.Rejestruj("apply.preview", _ => { Wymag(); return PlanJson(s, s.Zaplanuj(Odrzucone(Zywe(s))), true); });
+
+        // apply.run {kosz?: string|null, ustawKosz?: bool} — przenosi wszystko, co odrzucone (plan liczony na swiezo), zapisuje cofke,
+        // ponownie indeksuje dotkniete zrodla, porownuje; zdarzenia: job (typ "zastosuj"), apply.done, history.changed
+        m.Rejestruj("apply.run", a =>
+        {
+            Wymag();
+            if (Mostek.Flaga(a, "ustawKosz"))
+            {
+                var kosz = Mostek.Tekst(a, "kosz");
+                s.Projekt.Ustawienia ??= new UstawieniaProjektu();
+                s.Projekt.Ustawienia.Kosz = string.IsNullOrWhiteSpace(kosz) ? null : kosz;
+                s.Projekt.Zapisz();
+            }
+            var plan = s.Zaplanuj(Odrzucone(Zywe(s)));
+            if (plan.Pliki == 0) return new { uruchomiono = false, plan = PlanJson(s, plan, false) };
+            bool ok = jr.SprobujUruchom("zastosuj", s.Projekt.Nazwa, async (ct, postep) =>
+            {
+                await Task.Yield();
+                var cofka = Zastosowanie.Wykonaj(plan, s.Projekt.Nazwa, postep, ct);
+                var plik = s.NowyPlikHistorii();
+                cofka.Zapisz(plik);   // ZAWSZE — takze po przerwaniu (to, co juz sie przenioslo, musi dac sie cofnac)
+                m.Zdarzenie("history.changed", new { plik });
+                // po przerwaniu (anulowanie) i tak porzadkujemy katalog — inaczej zostalby nieaktualny (przeniesione pliki nadal w katalogu)
+                var ct2 = cofka.Przerwano ? System.Threading.CancellationToken.None : ct;
+                var dotkniete = s.Projekt.Zrodla.Where(z => cofka.Pozycje.Any(p => p.ZrodloId == z.Id)).ToList();
+                if (dotkniete.Count > 0) Zrodla.Indeksuj(s, m, dotkniete, false, ct2, postep);
+                Zrodla.PorownajIZapisz(s, m, ct2, postep);
+                m.Zdarzenie("apply.done", new
+                {
+                    plik, przeniesione = cofka.Ruchy.Count, pozycje = cofka.Pozycje.Count, bajty = cofka.Bajty,
+                    wspoldzielone = cofka.Wspoldzielone, wArchiwum = cofka.WArchiwum, brakujace = cofka.Brakujace,
+                    kosze = cofka.Pozycje.Select(p => p.Kosz).Where(k => k != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    przerwano = cofka.Przerwano, blad = cofka.Blad,
+                });
+            });
+            if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
+            return new { uruchomiono = true, plan = PlanJson(s, plan, false) };
+        });
     }
 }
