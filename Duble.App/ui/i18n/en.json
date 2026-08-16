@@ -304,5 +304,21 @@
   "unpack.failed": "Unpacking failed: {blad}",
   "sources.readOnly": "preview only",
   "sources.archiveOnly": "archive: preview only — unpack to a folder to be able to move files",
-  "sources.hasArchives": "contains .rpf archives (their items are preview only)"
+  "sources.hasArchives": "contains .rpf archives (their items are preview only)",
+  "catalog.title": "Catalog",
+  "catalog.subtitle": "Everything indexed. Click an item to see its textures and model.",
+  "catalog.count": "{n} items · {t} textures",
+  "catalog.shown": "showing {n} of {m}",
+  "catalog.more": "More",
+  "catalog.problems": "only with problems",
+  "catalog.inGroups": "in duplicate groups",
+  "catalog.empty": "No items — add and index sources.",
+  "catalog.emptyFiltered": "Nothing matches the filters.",
+  "catalog.problemMips": "texture without mipmaps",
+  "catalog.problemBc1": "BC1 with alpha (1-bit transparency)",
+  "item.back": "Back to catalog",
+  "item.groups": "Groups with this item",
+  "item.noGroups": "Not a duplicate of anything.",
+  "item.with": "together with",
+  "item.openGroup": "Open comparison"
 }

@@ -11,9 +11,11 @@ import * as wip from './views/wip.js';
 import * as duplicates from './views/duplicates.js';
 import * as group from './views/group.js';
 import * as history from './views/history.js';
+import * as catalog from './views/catalog.js';
+import * as item from './views/item.js';
 import * as powiadomienia from './powiadomienia.js';
 
-const WIDOKI = { start, sources, duplicates, catalog: wip, history, settings, about };
+const WIDOKI = { start, sources, duplicates, catalog, history, settings, about };
 const RAIL = [
   { id: 'start', ikona: 'home' }, { id: 'sources', ikona: 'sources' }, { id: 'duplicates', ikona: 'duplicates' },
   { id: 'catalog', ikona: 'catalog' }, { id: 'history', ikona: 'history' }, { grow: true },
@@ -90,8 +92,8 @@ async function montuj(wymus = false) {
   const sciezka = (location.hash || '#/start').replace(/^#\/?/, '').split('?')[0] || 'start';
   const [nazwa, ...reszta] = sciezka.split('/');
   const param = reszta.length ? decodeURIComponent(reszta.join('/')) : null;
-  // #/duplicates/<id grupy> = karta porownania jednej grupy
-  const modul = nazwa === 'duplicates' && param ? group : (WIDOKI[nazwa] || wip);
+  // #/duplicates/<id grupy> = karta porownania jednej grupy; #/catalog/<id pozycji> = karta pozycji
+  const modul = nazwa === 'duplicates' && param ? group : nazwa === 'catalog' && param ? item : (WIDOKI[nazwa] || wip);
   if (!wymus && biezacy?.nazwa === nazwa && biezacy?.param === param) return;
   try { biezacy?.modul?.unmount?.(); } catch (e) { console.error(e); }
   store.widok = nazwa;
