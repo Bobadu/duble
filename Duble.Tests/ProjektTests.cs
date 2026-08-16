@@ -21,7 +21,8 @@ public class ProjektTests
             var z2 = pr.DodajZrodlo(Path.Combine(tmp, "dlc.rpf"));
             var z3 = pr.DodajZrodlo(tmp);
             Assert.Equal("fivem", z1.Typ); Assert.Equal("rpf", z2.Typ); Assert.Equal("folder", z3.Typ);
-            Assert.Equal("dlc", z2.Nazwa); Assert.Equal("paczka", z1.Nazwa);
+            Assert.Equal(Path.GetFileName(tmp), z2.Nazwa);   // dlc.rpf -> nazwa folderu paczki
+            Assert.Equal("paczka", z1.Nazwa);
             Assert.NotEqual(z1.Id, z2.Id);
             pr.Decyzje["abc123"] = new Decyzja { Zwyciezca = "p|k|jbib|1|u", Odrzucone = { "p|k|jbib|2|u" }, Notatka = "ta jest lepsza" };
             pr.Decyzje["ign"] = new Decyzja { Ignoruj = true };

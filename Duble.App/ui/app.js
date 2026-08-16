@@ -29,7 +29,7 @@ export const store = {
 
 let biezacy = null;   // { nazwa, modul }
 
-export const ctx = { store, bridge, t, icon, toast, fmt, navigate, ustawMotyw, zmienJezyk };
+export const ctx = { store, bridge, t, icon, toast, fmt, navigate, ustawMotyw, zmienJezyk, remount: () => montuj(true) };
 
 // ---------- motyw / jezyk ----------
 export function ustawMotyw(m) {
@@ -117,8 +117,9 @@ async function boot() {
   document.getElementById('titlebar').addEventListener('dblclick', e => { if (!e.target.closest('.win')) bridge.call('window.maximize'); });
 
   bridge.on('window.state', d => { store.oknoMaks = !!d.maks; renderujPasek(); });
-  bridge.on('project.opened', d => { store.projekt = d.projekt; renderujPasek(); renderujStatus(); store.emit(); });
-  bridge.on('project.closed', () => { store.projekt = null; renderujPasek(); renderujStatus(); store.emit(); });
+  // otwarcie/zamkniecie projektu zmienia niemal kazdy widok — montujemy biezacy od nowa
+  bridge.on('project.opened', d => { store.projekt = d.projekt; renderujPasek(); renderujStatus(); store.emit(); montuj(true); });
+  bridge.on('project.closed', () => { store.projekt = null; renderujPasek(); renderujStatus(); store.emit(); montuj(true); });
   bridge.on('project.changed', d => { store.projekt = d.projekt; renderujPasek(); renderujStatus(); store.emit(); });
   bridge.on('job', d => { store.zadanie = d; renderujStatus(); store.emit(); });
   bridge.on('nav', d => navigate(d.widok));
