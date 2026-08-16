@@ -8,8 +8,8 @@
 //    czyta TAKZE legacy poprawnie (po wersji z naglowka RSC7) — dlatego Format.cs ustawia
 //    tryb gen9 raz na zawsze (pomiar 16.08).
 //  - CodeWalker dekoduje BC1/BC2/BC3/BC4/BC5 i formaty nieskompresowane, ale NIE BC7
-//    (`case BC7: //TODO`, zwraca null). U nas BC7 to 2,9% tekstur — takie pozycje
-//    dostaja Zdekodowana=false i porownuja sie wylacznie po SHA i nagl0wku.
+//    (`case BC7: //TODO`, zwraca null). BC7 (ok. 5% tekstur w paczkach z internetu) dekodujemy
+//    przez BCnEncoder.Net — Tekstury.cs (od 16.08); wczesniej takie tekstury nie mialy odcisku.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -322,12 +322,10 @@ public static class Odciski
         }
         for (; mip >= 0; mip--)   // przy bledzie schodzimy na coraz wiekszy mip, az do 0
         {
-            int mw = Math.Max(1, t.Width >> mip), mh = Math.Max(1, t.Height >> mip);
             try
             {
-                var px = DDSIO.GetPixels(t, mip);
-                if (px == null) return null;                 // BC7 — brak dekodera
-                if (px.Length != mw * mh * 4) continue;      // niespojne wymiary, sprobuj innego mipa
+                var px = Tekstury.Piksele(t, mip, out int mw, out int mh);   // DDSIO + BC7 (BCnEncoder.Net)
+                if (px == null) return null;                                 // format bez dekodera
                 w = mw; h = mh;
                 return px;
             }
