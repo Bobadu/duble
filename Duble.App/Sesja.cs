@@ -65,16 +65,58 @@ public sealed class Sesja
     /// <summary>Wykonaj zmiane katalogu pod blokada (indeksowanie z watku roboczego).</summary>
     public void ZmienKatalog(Action<Katalog> akcja) { lock (klucz) { akcja(Katalog); teksturyWgSha = null; } }
 
+    /// <summary>Kopia katalogu z pozycjami WLACZONYCH zrodel (to porownujemy i kalibrujemy).</summary>
+    public Katalog KatalogWlaczony()
+    {
+        lock (klucz)
+        {
+            var projekt = Projekt ?? throw new InvalidOperationException("brak projektu");
+            var wlaczone = new HashSet<string>(projekt.Zrodla.Where(z => z.Wlaczone).Select(z => z.Id));
+            return new Katalog { Pozycje = Katalog.Pozycje.Where(p => p.ZrodloId == null || wlaczone.Contains(p.ZrodloId)).ToList() };
+        }
+    }
+
+    /// <summary>Progi projektu (albo domyslne).</summary>
+    public Progi ProgiProjektu => Projekt?.Ustawienia?.Progi ?? Progi.Domyslne;
+
+    /// <summary>Rozmiar cache projektu: (pliki, bajty) per folder + razem.</summary>
+    public Dictionary<string, (int pliki, long bajty)> RozmiarCache()
+    {
+        var wy = new Dictionary<string, (int, long)>();
+        var p = Projekt; if (p == null) return wy;
+        long razem = 0; int razemN = 0;
+        foreach (var (nazwa, folder) in new[] { ("thumbs", p.FolderMiniatur), ("tex", p.FolderTekstur), ("mesh", p.FolderSiatek), ("historia", p.FolderHistorii) })
+        {
+            int n = 0; long b = 0;
+            if (Directory.Exists(folder))
+                foreach (var f in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)) { n++; try { b += new FileInfo(f).Length; } catch { } }
+            wy[nazwa] = (n, b); razem += b; razemN += n;
+        }
+        wy["razem"] = (razemN, razem);
+        return wy;
+    }
+
+    /// <summary>Usuwa pliki podgladow odtwarzanych na zadanie (tex\ i/lub mesh\). Zwraca (usuniete, bajty).</summary>
+    public (int pliki, long bajty) WyczyscCache(bool tex, bool mesh)
+    {
+        var p = Projekt; if (p == null) return (0, 0);
+        int n = 0; long b = 0;
+        foreach (var folder in new[] { tex ? p.FolderTekstur : null, mesh ? p.FolderSiatek : null })
+        {
+            if (folder == null || !Directory.Exists(folder)) continue;
+            foreach (var f in Directory.EnumerateFiles(folder))
+            {
+                try { var dl = new FileInfo(f).Length; File.Delete(f); n++; b += dl; } catch { }
+            }
+        }
+        return (n, b);
+    }
+
     /// <summary>Porownanie pozycji WLACZONYCH zrodel progami projektu; wynik zapamietany i zapisany do duble.json.</summary>
     public void Porownaj(CancellationToken ct, Action<Postep> postep)
     {
-        Projekt projekt; Katalog kopia;
-        lock (klucz)
-        {
-            projekt = Projekt ?? throw new InvalidOperationException("brak projektu");
-            var wlaczone = new HashSet<string>(projekt.Zrodla.Where(z => z.Wlaczone).Select(z => z.Id));
-            kopia = new Katalog { Pozycje = Katalog.Pozycje.Where(p => p.ZrodloId == null || wlaczone.Contains(p.ZrodloId)).ToList() };
-        }
+        var projekt = Projekt ?? throw new InvalidOperationException("brak projektu");
+        var kopia = KatalogWlaczony();
         var progi = projekt.Ustawienia?.Progi ?? Progi.Domyslne;
         var wynik = Porownanie.Znajdz(kopia, null, progi, postep, ct);
         lock (klucz)
