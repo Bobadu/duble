@@ -35,4 +35,39 @@ public class RozstrzygniecieTests
         r = Rozstrzygniecie.Policz(g, new Decyzja { Zwyciezca = "a", Odrzucone = { "a", "x", "b" } });
         Assert.Equal(new[] { "b" }, r.Odrzucone);
     }
+
+    static Grupa Gid(string werdykt, string zw, params string[] ids) { var g = G(werdykt, zw, ids); g.Id = Grupa.PoliczId(g.Pozycje); return g; }
+
+    [Fact]
+    public void Migracja_decyzji_na_podgrupy_po_ponownym_porownaniu()
+    {
+        var abc = Gid(Porownanie.Duplikat, "a", "a", "b", "c");
+        var xy = Gid(Porownanie.Duplikat, "x", "x", "y");
+        var decyzje = new Dictionary<string, Decyzja>
+        {
+            [abc.Id] = new Decyzja { Zwyciezca = "a", Odrzucone = { "b" }, Notatka = "c zostaje" },   // c zachowane recznie
+            [xy.Id] = new Decyzja { Ignoruj = true, Notatka = "inne buty" },
+        };
+        // po Zastosuj: b zniknelo -> nowa grupa {a,c}; xy: y zniknelo z innego powodu -> {x, w} nie jest podzbiorem -> bez decyzji; {y} pojedyncze nie wystepuje
+        var ac = Gid(Porownanie.Duplikat, "a", "a", "c");
+        var xw = Gid(Porownanie.Duplikat, "x", "x", "w");
+        var yx = Gid(Porownanie.Duplikat, "y", "y", "x");   // ta sama para w innej kolejnosci = ten sam id (PoliczId sortuje) -> juz ma decyzje
+        int dodane = Rozstrzygniecie.PrzeniesDecyzje(decyzje, new[] { abc, xy }, new[] { ac, xw, yx });
+        Assert.Equal(1, dodane);
+        var d = decyzje[ac.Id];
+        Assert.Equal("a", d.Zwyciezca); Assert.Empty(d.Odrzucone); Assert.Equal("c zostaje", d.Notatka);
+        var r = Rozstrzygniecie.Policz(ac, d);
+        Assert.False(r.Domyslna); Assert.Empty(r.Odrzucone);          // c NIE wraca do "do odrzucenia"
+        Assert.False(decyzje.ContainsKey(xw.Id));
+        Assert.True(decyzje.ContainsKey(yx.Id));                       // = xy.Id
+        // ignorowana nadgrupa -> podgrupa tez ignorowana; zwyciezca spoza podgrupy -> null (domyslny z grupy)
+        var bc = Gid(Porownanie.Duplikat, "b", "b", "c");
+        var abcd = Gid(Porownanie.Duplikat, "d", "a", "b", "c", "d");
+        var dec2 = new Dictionary<string, Decyzja> { [abcd.Id] = new Decyzja { Zwyciezca = "d", Odrzucone = { "a", "b" }, Ignoruj = true } };
+        Assert.Equal(1, Rozstrzygniecie.PrzeniesDecyzje(dec2, new[] { abcd }, new[] { bc }));
+        Assert.True(dec2[bc.Id].Ignoruj); Assert.Null(dec2[bc.Id].Zwyciezca); Assert.Equal(new[] { "b" }, dec2[bc.Id].Odrzucone);
+        // brak decyzji / brak starych grup -> nic
+        Assert.Equal(0, Rozstrzygniecie.PrzeniesDecyzje(new Dictionary<string, Decyzja>(), new[] { abc }, new[] { ac }));
+        Assert.Equal(0, Rozstrzygniecie.PrzeniesDecyzje(decyzje, null, new[] { ac }));
+    }
 }

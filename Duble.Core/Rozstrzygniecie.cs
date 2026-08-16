@@ -32,4 +32,36 @@ public sealed class Rozstrzygniecie
             r.Odrzucone = d.Odrzucone.Where(x => x != r.Zwyciezca && czlonkowie.Contains(x)).Distinct().ToList();
         return r;
     }
+
+    /// <summary>Po ponownym porownaniu (Zastosuj, ponowne indeksowanie, wylaczenie zrodla) grupy zmieniaja sklad i id — decyzja
+    /// uzytkownika zostalaby w slowniku pod martwym id, a nowa (mniejsza) grupa wrocilaby do domyslnego "do odrzucenia".
+    /// Dlatego nowa grupa BEZ decyzji dziedziczy decyzje najmniejszej starej grupy, ktorej jest podzbiorem: zwyciezca (jesli nadal
+    /// w grupie), odrzuceni (czesc wspolna), Ignoruj, notatka. Zwraca liczbe dodanych decyzji.</summary>
+    public static int PrzeniesDecyzje(Dictionary<string, Decyzja> decyzje, IEnumerable<Grupa> stare, IEnumerable<Grupa> nowe)
+    {
+        if (decyzje == null || decyzje.Count == 0 || stare == null || nowe == null) return 0;
+        string IdGrupy(Grupa g) => g.Id ?? Grupa.PoliczId(g.Pozycje ?? new List<string>());
+        var stareZDecyzja = stare.Where(g => g.Pozycje != null && g.Pozycje.Count > 0)
+                                 .Select(g => (id: IdGrupy(g), czl: new HashSet<string>(g.Pozycje)))
+                                 .Where(x => decyzje.ContainsKey(x.id)).ToList();
+        if (stareZDecyzja.Count == 0) return 0;
+        int dodane = 0;
+        foreach (var g in nowe)
+        {
+            if (g.Pozycje == null || g.Pozycje.Count == 0) continue;
+            var id = IdGrupy(g);
+            if (decyzje.ContainsKey(id)) continue;
+            var nadgrupa = stareZDecyzja.Where(x => x.id != id && g.Pozycje.All(x.czl.Contains)).OrderBy(x => x.czl.Count).FirstOrDefault();
+            if (nadgrupa.id == null) continue;
+            var d = decyzje[nadgrupa.id];
+            decyzje[id] = new Decyzja
+            {
+                Zwyciezca = d.Zwyciezca != null && g.Pozycje.Contains(d.Zwyciezca) ? d.Zwyciezca : null,
+                Odrzucone = (d.Odrzucone ?? new List<string>()).Where(g.Pozycje.Contains).ToList(),
+                Ignoruj = d.Ignoruj, Notatka = d.Notatka,
+            };
+            dodane++;
+        }
+        return dodane;
+    }
 }
