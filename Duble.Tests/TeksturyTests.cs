@@ -45,6 +45,19 @@ public class TeksturyTests
         wyj.WriteLine("PNG: " + png);
     }
 
+    [Fact]
+    public void PngRgba_ma_bok_najwyzej_256_i_typ_koloru_6()
+    {
+        if (!Sciezki.SaLegacy4) { wyj.WriteLine("POMINIETY"); return; }
+        var f = Directory.EnumerateFiles(Sciezki.Downloads("vrp_clothes_f_civil03"), "*.ytd", SearchOption.AllDirectories).First();
+        var ytd = new YtdFile(); RpfFile.LoadResourceFile(ytd, File.ReadAllBytes(f), 13);
+        var t = ytd.TextureDict.Textures.data_items.First();
+        var png = Tekstury.PngRgba(t, 256);
+        Assert.NotNull(png); Assert.Equal(6, png[25]);
+        int w = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+        Assert.True(w <= 256 && w > 0, "bok " + w);
+    }
+
     /// <summary>To samo dla gen9 (uklad FullData w Enhanced) — pierwsza tekstura BC7 z naszego studio_wardrobe.</summary>
     [Fact, Trait("Kategoria", "Wolny")]
     public void Bc7_gen9_dekoduje_sie_do_pikseli()

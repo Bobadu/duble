@@ -61,15 +61,6 @@ public static class Podglad3D
         return Duble.Glb.Zapisz(geos, pngi);
     }
 
-    /// <summary>PNG RGBA z najwiekszego mipa o boku &lt;= MaksBok.</summary>
-    static byte[] PngZTekstury(Texture t)
-    {
-        int mip = 0;
-        while ((t.Width >> mip) > MaksBok && (t.Height >> mip) > MaksBok && mip < t.Levels - 1) mip++;
-        var px = Tekstury.Piksele(t, mip, out int w, out int h);
-        if (px == null) return null;
-        var rgba = new byte[px.Length];
-        for (int i = 0; i < px.Length; i += 4) { rgba[i] = px[i + 2]; rgba[i + 1] = px[i + 1]; rgba[i + 2] = px[i]; rgba[i + 3] = px[i + 3]; }
-        return Png.Rgba(rgba, w, h);
-    }
+    static byte[] PngZTekstury(Texture t) => Tekstury.PngRgba(t, MaksBok);
+
 }

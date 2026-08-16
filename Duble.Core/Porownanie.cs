@@ -114,8 +114,13 @@ public static class Porownanie
     public const string Przemalowanie = "PRZEMALOWANIE";
 
     public static WynikPorownania Znajdz(Katalog katalog, Action<string> log, Progi progi = null)
+        => Znajdz(katalog, log, progi, null, default);
+
+    /// <summary>Jak wyzej, z postepem (Etap "porownaj") i anulowaniem — dla aplikacji okienkowej.</summary>
+    public static WynikPorownania Znajdz(Katalog katalog, Action<string> log, Progi progi, Action<Postep> postep, System.Threading.CancellationToken anuluj)
     {
         progi ??= Progi.Domyslne;
+        log ??= _ => { };
         var poz = katalog.Pozycje.Where(p => p.Geo?.Hist != null && p.Geo.Wierzcholki > 0).ToList();
         log($"pozycji do porownania: {poz.Count}");
 
@@ -123,6 +128,8 @@ public static class Porownanie
         int kandydatow = 0;
         for (int i = 0; i < poz.Count; i++)
         {
+            anuluj.ThrowIfCancellationRequested();
+            if ((i + 1) % 50 == 0 || i + 1 == poz.Count) postep?.Invoke(new Postep("porownaj", i + 1, poz.Count, null));
             for (int j = i + 1; j < poz.Count; j++)
             {
                 var a = poz[i]; var b = poz[j];
