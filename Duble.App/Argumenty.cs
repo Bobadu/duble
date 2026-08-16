@@ -18,6 +18,7 @@ public sealed class Argumenty
     public string Zrzut { get; set; }
     public string Exec { get; set; }      // --exec <js>: JavaScript do wykonania po ui.ready (testy UI), przed zrzutem
     public string DevIcon { get; set; }   // --dev-icon <plik.ico>: wygeneruj ikone i zakoncz
+    public int ZrzutOpoznienie { get; set; } = 700;   // --screenshot-delay <ms>: ile czekac po ui.ready/exec przed zrzutem
 
     public static Argumenty Parsuj(string[] args)
     {
@@ -32,6 +33,7 @@ public sealed class Argumenty
         a.Dev = l.Remove("--dev");
         a.UiFolder = Wartosc("--ui-folder"); a.Projekt = Wartosc("--project"); a.Widok = Wartosc("--view");
         a.Jezyk = Wartosc("--lang"); a.Motyw = Wartosc("--theme"); a.Zrzut = Wartosc("--screenshot"); a.Exec = Wartosc("--exec"); a.DevIcon = Wartosc("--dev-icon");
+        var op = Wartosc("--screenshot-delay"); if (op != null && int.TryParse(op, out var ms)) a.ZrzutOpoznienie = ms;
         foreach (var reszta in l)
             if (reszta.EndsWith(".duble", StringComparison.OrdinalIgnoreCase)) a.Projekt ??= reszta;   // dwuklik na pliku projektu
         return a;

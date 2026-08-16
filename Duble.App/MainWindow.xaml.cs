@@ -168,7 +168,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
 
     public async Task ZrobZrzutIZamknij(string plik)
     {
-        await Task.Delay(700);
+        await Task.Delay(App.Argumenty?.ZrzutOpoznienie ?? 700);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(plik)));
         using (var fs = new FileStream(plik, FileMode.Create, FileAccess.Write))
             await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, fs);

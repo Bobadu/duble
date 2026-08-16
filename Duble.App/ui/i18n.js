@@ -14,7 +14,8 @@ export const i18n = {
   t(k, p) {
     let s = slownik[k];
     if (s === undefined) return `[${k}]`;
-    if (p) for (const [a, b] of Object.entries(p)) s = s.replaceAll(`{${a}}`, String(b));
+    // wartosc zaczynajaca sie od '@' = klucz do przetlumaczenia (jak Teksty w Core: {geo:'@geo.identyczna'})
+    if (p) for (const [a, b] of Object.entries(p)) { const v = typeof b === 'string' && b.startsWith('@') ? i18n.t(b.slice(1)) : String(b); s = s.replaceAll(`{${a}}`, v); }
     return s;
   },
   applyDom(root = document) {
