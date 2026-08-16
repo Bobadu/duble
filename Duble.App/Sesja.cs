@@ -132,22 +132,62 @@ public sealed class Sesja
         }
     }
 
-    /// <summary>Dane binarne dla https://duble.data/&lt;kategoria&gt;/&lt;klucz&gt;: thumb (cache), tex (cache albo generuj), mesh (etap 4).</summary>
-    public Stream Zasob(string kategoria, string klucz)
+    /// <summary>Dane binarne dla https://duble.data/&lt;kategoria&gt;/&lt;klucz&gt;[?query]: thumb (cache), tex (cache albo generuj),
+    /// mesh (klucz = id pozycji, query "w=&lt;litera&gt;" = wariant tekstury; GLB generowany do cache mesh\).</summary>
+    public Stream Zasob(string kategoria, string klucz, string query = null)
     {
         var p = Projekt;
         if (p == null || string.IsNullOrEmpty(klucz) || klucz.Contains("..") || klucz.Contains('/') || klucz.Contains('\\')) return null;
-        string plik = kategoria switch
+        string plik;
+        switch (kategoria)
         {
-            "thumb" => Path.Combine(p.FolderMiniatur, klucz + ".png"),
-            "tex" => Path.Combine(p.FolderTekstur, klucz + ".png"),
-            "mesh" => Path.Combine(p.FolderSiatek, klucz + ".glb"),
-            _ => null,
-        };
-        if (plik == null) return null;
-        if (!File.Exists(plik) && kategoria == "tex" && !GenerujTeksture(klucz, plik)) return null;
+            case "thumb": plik = Path.Combine(p.FolderMiniatur, klucz + ".png"); break;
+            case "tex":
+                plik = Path.Combine(p.FolderTekstur, klucz + ".png");
+                if (!File.Exists(plik) && !GenerujTeksture(klucz, plik)) return null;
+                break;
+            case "mesh":
+                plik = GenerujSiatke(klucz, Parametr(query, "w"));
+                if (plik == null) return null;
+                break;
+            default: return null;
+        }
         if (!File.Exists(plik)) return null;
         return new FileStream(plik, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    }
+
+    static string Parametr(string query, string nazwa)
+    {
+        if (string.IsNullOrEmpty(query)) return null;
+        foreach (var czesc in query.Split('&'))
+        {
+            var i = czesc.IndexOf('=');
+            if (i > 0 && czesc.Substring(0, i) == nazwa) return Uri.UnescapeDataString(czesc.Substring(i + 1));
+        }
+        return null;
+    }
+
+    /// <summary>GLB pozycji (najwyzszy LOD + tekstura wariantu) w cache mesh\&lt;ShaYdd16&gt;_&lt;ShaTex16&gt;.glb — nazwa zalezy od zawartosci,
+    /// wiec po ponownym indeksowaniu innych plikow cache sam sie uniewaznia. Zwraca sciezke pliku albo null.</summary>
+    string GenerujSiatke(string idPozycji, string litera)
+    {
+        try
+        {
+            var poz = ZnajdzPozycje(idPozycji);
+            if (poz == null || string.IsNullOrEmpty(poz.SciezkaYdd)) return null;
+            var tex = poz.Tekstury.FirstOrDefault(t => litera != null && string.Equals(Nazwy.Tekstura(t.Plik)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
+                      ?? poz.Tekstury.FirstOrDefault();
+            string Krotki(string sha) => string.IsNullOrEmpty(sha) ? "brak" : sha.Length > 16 ? sha.Substring(0, 16) : sha;
+            var plik = Path.Combine(Projekt.FolderSiatek, $"{Krotki(poz.ShaYdd)}_{Krotki(tex?.Sha)}.glb");
+            if (File.Exists(plik)) return plik;
+            var glb = Podglad3D.Glb(poz, tex != null ? Nazwy.Tekstura(tex.Plik)?.Litera : null);
+            Directory.CreateDirectory(Projekt.FolderSiatek);
+            var tmp = plik + "." + Guid.NewGuid().ToString("N").Substring(0, 6) + ".tmp";
+            File.WriteAllBytes(tmp, glb);
+            try { File.Move(tmp, plik, true); } catch { try { File.Delete(tmp); } catch { } }
+            return File.Exists(plik) ? plik : null;
+        }
+        catch { return null; }
     }
 
     /// <summary>Pelna tekstura (bok &lt;= 1024) z pliku zrodlowego -> PNG w cache tex\. false = nie ma takiej / nie da sie zdekodowac.</summary>

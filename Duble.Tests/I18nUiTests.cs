@@ -28,7 +28,7 @@ public class I18nUiTests
         // t('klucz') albo t('klucz', {...}); klucze skladane dynamicznie (t('nav.' + id)) sprawdzaja testy slotow/nazw
         var re = new Regex(@"(?:\bt\(\s*'([a-zA-Z0-9_.]+)'\s*[,)]|data-i18n(?:-title|-placeholder|-aria)?=""([a-zA-Z0-9_.]+)"")");
         var brak = new List<string>();
-        foreach (var f in Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories).Where(f => f.EndsWith(".js") || f.EndsWith(".html")))
+        foreach (var f in Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories).Where(f => (f.EndsWith(".js") || f.EndsWith(".html")) && !f.Contains(Path.DirectorySeparatorChar + "vendor" + Path.DirectorySeparatorChar)))
             foreach (Match m in re.Matches(File.ReadAllText(f)))
             {
                 var k = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value;
