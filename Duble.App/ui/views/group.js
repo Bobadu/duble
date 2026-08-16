@@ -2,8 +2,11 @@
 import { el, esc, toast, fmt, confirm } from '../ui.js';
 import { wipe } from '../wipe.js';
 import { KLASA_WERDYKTU, powodTekst, nazwaPozycji } from './duplicates.js';
+import * as group3d from './group3d.js';
 
 let odpisz = null, ctxRef = null, rootEl = null, idGrupy = null, debounceNotatki = null;
+let uchwyt3d = null;   // { zniszcz } biezacej zakladki 3D
+function zakladka() { return sessionStorage.getItem('group.tab') || '2d'; }
 
 export async function render(root, ctx) {
   ctxRef = ctx; rootEl = root; idGrupy = ctx.param;
@@ -13,7 +16,7 @@ export async function render(root, ctx) {
   odpisz = store.on(() => odswiez(true));
 }
 
-export function unmount() { odpisz?.(); odpisz = null; rootEl = null; clearTimeout(debounceNotatki); }
+export function unmount() { odpisz?.(); odpisz = null; rootEl = null; clearTimeout(debounceNotatki); uchwyt3d?.zniszcz(); uchwyt3d = null; }
 
 async function odswiez(tylkoStan = false) {
   const ctx = ctxRef; if (!ctx || !rootEl) return;
@@ -27,9 +30,20 @@ async function odswiez(tylkoStan = false) {
   }
   // notatka w trakcie pisania: nie przerysowuj calej karty przy zdarzeniach w tle
   if (tylkoStan && document.activeElement?.id === 'group-note') return;
+  uchwyt3d?.zniszcz(); uchwyt3d = null;
   rootEl.innerHTML = '';
   rootEl.append(naglowek(g, ctx));
-  rootEl.append(kolumny(g, ctx));
+  const panel = el('<div id="group-panel"></div>');
+  rootEl.append(panel);
+  await pokazZakladke(g, ctx, panel);
+}
+
+async function pokazZakladke(g, ctx, panel) {
+  uchwyt3d?.zniszcz(); uchwyt3d = null;
+  panel.innerHTML = '';
+  rootEl?.querySelectorAll('.tab[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === zakladka()));
+  if (zakladka() === '3d') uchwyt3d = await group3d.render(panel, g, ctx);
+  else panel.append(kolumny(g, ctx));
 }
 
 function naglowek(g, ctx) {
@@ -54,8 +68,9 @@ function naglowek(g, ctx) {
   });
   const pasek = el(`<div class="group-sub">${r.ignoruj ? `<div class="banner">${icon('info')} ${t('group.ignoredBanner')}</div>` : ''}
     <div class="group-note"><label for="group-note">${icon('file')} ${t('group.note')}</label><input class="input" id="group-note" placeholder="${esc(t('group.notePlaceholder'))}" value="${esc(r.notatka || '')}"></div>
-    <div class="tabs"><button class="tab on">${icon('catalog')}${t('group.tab2d')}</button><button class="tab" disabled title="${esc(t('wip.title'))}">${icon('cube')}${t('group.tab3d')} <span class="faint">· ${t('wip.title')}</span></button></div>
+    <div class="tabs"><button class="tab ${zakladka() === '2d' ? 'on' : ''}" data-tab="2d">${icon('catalog')}${t('group.tab2d')}</button><button class="tab ${zakladka() === '3d' ? 'on' : ''}" data-tab="3d">${icon('cube')}${t('group.tab3d')}</button></div>
   </div>`);
+  pasek.querySelectorAll('.tab[data-tab]').forEach(b => b.onclick = async () => { sessionStorage.setItem('group.tab', b.dataset.tab); const panel = document.getElementById('group-panel'); if (panel) await pokazZakladke(g, ctx, panel); });
   pasek.querySelector('#group-note').addEventListener('input', (e) => {
     clearTimeout(debounceNotatki);
     debounceNotatki = setTimeout(() => decyduj(ctx, { notatka: e.target.value }, true), 600);

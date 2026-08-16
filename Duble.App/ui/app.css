@@ -413,3 +413,27 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .wipe-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-2); background: rgba(0,0,0,.25); font-size: 13px; }
 .wipe-loading.err { color: var(--warn); }
 .wipe-range { width: 100%; accent-color: var(--accent); }
+
+/* ---------- 3D ---------- */
+.v3d-root { display: grid; gap: 12px; }
+.v3d-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.v3d-tools .seg button { display: inline-flex; align-items: center; gap: 6px; }
+.v3d-hint { margin-left: auto; font-size: 12px; }
+.v3d-grid { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(320px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: start; }
+.v3d-grid.single { grid-template-columns: 1fr; }
+.v3d-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px 14px; display: grid; gap: 10px; }
+.v3d-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.v3d-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.v3d-title .nm { font-family: var(--mono); font-weight: 700; font-size: 15px; }
+.v3d-title .nm sub { font-size: 10px; color: var(--text-3); margin-left: 2px; }
+.v3d-ctl { display: flex; align-items: center; gap: 12px; font-size: 12.5px; }
+.v3d-ctl label { display: inline-flex; align-items: center; gap: 6px; }
+.input.sm { width: auto; padding: 4px 8px; font-size: 12.5px; }
+.v3d { position: relative; height: 560px; border-radius: 10px; overflow: hidden; background: radial-gradient(ellipse at 50% 35%, #2b2a31 0%, #1B1A1F 70%); border: 1px solid var(--border); }
+.v3d.light { background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, #E9E3DA 75%); }
+.v3d canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; }
+.v3d-overlay { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-2); font-size: 13px; background: rgba(0,0,0,.15); pointer-events: none; z-index: 2; }
+.v3d.light .v3d-overlay { color: #444; }
+.v3d-overlay.err { color: var(--warn); }
+.v3d-stats { font-variant-numeric: tabular-nums; }
+.v3d-ab-nazwa { font-size: 12.5px; }
