@@ -54,7 +54,10 @@ if (-not $BezTestow) {
 if ($Publish) {
     $out = Join-Path $tu 'publish'
     Krok "publish -> $out\Duble.exe"
-    dotnet publish (Join-Path $tu 'Duble.App') -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -o $out --nologo -v q
+    # IncludeAllContentForSelfExtract: CodeWalker.Core czyta ShadersGen9Conversion.xml i strings.txt z folderu SWOJEJ dll
+    # (Assembly.Location) — w zwyklym single-file to pusta sciezka i pliki Enhanced (gen9) traca geometrie; z pelna
+    # ekstrakcja bundle rozpakowuje sie do %TEMP%\.net\Duble\ i wszystko dziala. Kompresja: ~132 MB -> mniej.
+    dotnet publish (Join-Path $tu 'Duble.App') -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o $out --nologo -v q
     if ($LASTEXITCODE -ne 0) { throw 'publish nie powiodl sie' }
     $exe = Get-Item (Join-Path $out 'Duble.exe')
     Write-Host ("   {0}  {1:N1} MB  wersja {2}" -f $exe.FullName, ($exe.Length / 1MB), $exe.VersionInfo.ProductVersion) -ForegroundColor Green

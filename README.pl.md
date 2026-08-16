@@ -21,8 +21,9 @@ Nic nie znika bez Twojej decyzji: odrzucone pliki są **przenoszone** do kosza o
 
 ## Pobranie i uruchomienie
 
-1. Pobierz `Duble.exe` (jeden plik, ok. 90 MB — zawiera .NET) z zakładki **Releases** repozytorium.
+1. Pobierz `Duble.exe` (jeden plik, ok. 60 MB — zawiera .NET) z zakładki **Releases** repozytorium.
 2. Uruchom. Windows SmartScreen może ostrzec, że aplikacja jest niepodpisana: „Więcej informacji → Uruchom mimo to".
+   Pierwsze uruchomienie trwa kilka sekund dłużej (plik rozpakowuje się do `%TEMP%\.net\Duble\`), kolejne są szybkie.
 3. Ustawienia programu trafiają do `%AppData%\Bobadu\Duble\`, projekty domyślnie do `Dokumenty\Duble\`.
 
 ## Jak używać (krok po kroku)
