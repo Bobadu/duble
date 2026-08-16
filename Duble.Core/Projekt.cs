@@ -71,11 +71,19 @@ public class Projekt
         File.WriteAllText(Sciezka, JsonSerializer.Serialize(this, Opcje));
     }
 
+    /// <summary>Dodaje zrodlo (albo zwraca juz istniejace o tej samej sciezce). Nazwa = nazwa folderu/pliku,
+    /// unikalna w projekcie (kolejne "stream" dostaja " (2)", " (3)"…) — bo Katalog grupuje pozycje po nazwie paczki.</summary>
     public ZrodloProjektu DodajZrodlo(string sciezka)
     {
-        sciezka = Path.GetFullPath(sciezka);
+        sciezka = Path.GetFullPath(sciezka).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var juz = Zrodla.Find(x => string.Equals(x.Sciezka?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), sciezka, StringComparison.OrdinalIgnoreCase));
+        if (juz != null) return juz;
         var z = new ZrodloProjektu { Id = Guid.NewGuid().ToString("N").Substring(0, 8), Sciezka = sciezka, Typ = RozpoznajTyp(sciezka) };
-        z.Nazwa = z.Typ == "rpf" ? Path.GetFileNameWithoutExtension(sciezka) : Path.GetFileName(sciezka.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        var baza = z.Typ == "rpf" ? Path.GetFileNameWithoutExtension(sciezka) : Path.GetFileName(sciezka);
+        if (string.IsNullOrEmpty(baza)) baza = sciezka;
+        var nazwa = baza; int n = 2;
+        while (Zrodla.Exists(x => string.Equals(x.Nazwa, nazwa, StringComparison.OrdinalIgnoreCase))) nazwa = $"{baza} ({n++})";
+        z.Nazwa = nazwa;
         Zrodla.Add(z);
         return z;
     }
