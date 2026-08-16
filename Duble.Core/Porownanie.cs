@@ -27,6 +27,7 @@
 //   I wierzcholkow. Bez tego warunku deduplikacja skasowalaby rozne rekawiczki.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -54,7 +55,8 @@ public class Para
     public string A { get; set; }
     public string B { get; set; }
     public string Werdykt { get; set; }
-    public string Powod { get; set; }
+    /// <summary>Kod + parametry; tekst PL/EN daje Teksty.Powod(powod, jezyk).</summary>
+    public Powod Powod { get; set; }
     public double DistGeo { get; set; }
     public double PokrycieA { get; set; }
     public double PokrycieB { get; set; }
@@ -66,10 +68,11 @@ public class Grupa
     public List<string> Pozycje { get; set; } = new();
     public string Werdykt { get; set; }
     public string Zwyciezca { get; set; }
-    public string Powod { get; set; }
+    public Powod Powod { get; set; }
     public List<Para> Pary { get; set; } = new();
     public Dictionary<string, double> Punkty { get; set; } = new();
-    public Dictionary<string, string> Rozpiska { get; set; } = new();
+    /// <summary>Skladniki oceny jakosci per pozycja (tekst: Punktacja.Tekst(jezyk)).</summary>
+    public Dictionary<string, Punktacja> Rozpiska { get; set; } = new();
 }
 
 public class WynikPorownania
@@ -144,15 +147,17 @@ public static class Porownanie
             };
             foreach (var id in ids)
             {
-                grupa.Punkty[id] = Jakosc(wgId[id], out string rozpiska);
-                grupa.Rozpiska[id] = rozpiska;
+                var pkt = Jakosc(wgId[id]);
+                grupa.Punkty[id] = pkt.Razem;
+                grupa.Rozpiska[id] = pkt;
             }
             grupa.Zwyciezca = ids.OrderByDescending(x => grupa.Punkty[x])
                                  .ThenByDescending(x => wgId[x].Tekstury.Count)
                                  .ThenBy(x => x, StringComparer.Ordinal).First();
             var przegrani = ids.Where(x => x != grupa.Zwyciezca).ToList();
-            grupa.Powod = $"zwyciezca {grupa.Punkty[grupa.Zwyciezca]:F0} pkt, "
-                        + $"przegrani {string.Join(", ", przegrani.Select(x => $"{grupa.Punkty[x]:F0}"))} pkt";
+            grupa.Powod = new Powod("WINNER",
+                ("zw", grupa.Punkty[grupa.Zwyciezca].ToString("F0", CultureInfo.InvariantCulture)),
+                ("przegrani", string.Join(", ", przegrani.Select(x => grupa.Punkty[x].ToString("F0", CultureInfo.InvariantCulture)))));
             wynik.Grupy.Add(grupa);
         }
 
@@ -160,7 +165,7 @@ public static class Porownanie
         foreach (var p in pary.Where(p => p.Werdykt == DoWgladu || p.Werdykt == Przemalowanie))
         {
             var grupa = new Grupa { Pozycje = new List<string> { p.A, p.B }, Pary = new List<Para> { p }, Werdykt = p.Werdykt, Powod = p.Powod };
-            foreach (var id in grupa.Pozycje) { grupa.Punkty[id] = Jakosc(wgId[id], out string r); grupa.Rozpiska[id] = r; }
+            foreach (var id in grupa.Pozycje) { var pkt = Jakosc(wgId[id]); grupa.Punkty[id] = pkt.Razem; grupa.Rozpiska[id] = pkt; }
             grupa.Zwyciezca = grupa.Pozycje.OrderByDescending(x => grupa.Punkty[x]).First();
             wynik.Grupy.Add(grupa);
         }
@@ -228,7 +233,7 @@ public static class Porownanie
         if (ta.Count == 0 || tb.Count == 0)
         {
             para.Werdykt = DoWgladu;
-            para.Powod = $"geometria {geo}, ale brak tekstur do porownania";
+            para.Powod = new Powod("NO_TEXTURES", ("geo", "@geo." + geo));
             return para;
         }
 
@@ -250,31 +255,38 @@ public static class Porownanie
         bool pelneA = para.PokrycieA >= Progi.PelnePokrycie;
         bool pelneB = para.PokrycieB >= Progi.PelnePokrycie;
 
-        string opisTex = $"{dopasowaneA}/{ta.Count} i {dopasowaneB}/{tb.Count} tekstur wspolnych";
+        // parametry wspolne wszystkich powodow: ile tekstur wspolnych po obu stronach ({a}/{na} i {b}/{nb})
+        (string, object)[] Tex(params (string, object)[] extra)
+        {
+            var w = new List<(string, object)> { ("a", dopasowaneA), ("na", ta.Count), ("b", dopasowaneB), ("nb", tb.Count) };
+            w.AddRange(extra);
+            return w.ToArray();
+        }
+        string distTekst = dist.ToString("F3", CultureInfo.InvariantCulture);
 
         if (geo == "identyczna")
         {
             if (pelneA && pelneB)
             {
                 para.Werdykt = Duplikat;
-                para.Powod = $"ten sam model, te same tekstury ({opisTex})";
+                para.Powod = new Powod("SAME_MODEL_SAME_TEX", Tex());
             }
             else if (pelneA || pelneB)
             {
                 para.Werdykt = Nadzbior;
-                para.Powod = $"ten sam model; jeden zestaw tekstur zawiera sie w drugim ({opisTex})";
+                para.Powod = new Powod("SAME_MODEL_SUBSET", Tex());
             }
             else if (maxPokrycie >= Progi.CzesciowePokrycie)
             {
                 para.Werdykt = DoWgladu;
-                para.Powod = $"ten sam model, tekstury czesciowo wspolne ({opisTex})";
+                para.Powod = new Powod("SAME_MODEL_PARTIAL", Tex());
             }
             else
             {
                 // TEN SAM MESH, INNE TEKSTURY = przemalowanie. To NIE jest duplikat —
                 // w paczkach do GTA to norma i skasowanie takiej pozycji zabiera ciuch.
                 para.Werdykt = Przemalowanie;
-                para.Powod = $"ten sam model, ale inne tekstury — to przemalowanie, nie duplikat ({opisTex})";
+                para.Powod = new Powod("SAME_MODEL_OTHER_TEX", Tex());
             }
         }
         else
@@ -282,12 +294,12 @@ public static class Porownanie
             if (pelneA && pelneB)
             {
                 para.Werdykt = DoWgladu;
-                para.Powod = $"model tylko PODOBNY (odleglosc {dist:F3}), ale tekstury te same ({opisTex})";
+                para.Powod = new Powod("SIMILAR_MODEL_SAME_TEX", Tex(("dist", distTekst)));
             }
             else if (maxPokrycie >= Progi.CzesciowePokrycie)
             {
                 para.Werdykt = DoWgladu;
-                para.Powod = $"model podobny (odleglosc {dist:F3}), tekstury czesciowo wspolne ({opisTex})";
+                para.Powod = new Powod("SIMILAR_MODEL_PARTIAL", Tex(("dist", distTekst)));
             }
             else return null;    // podobny model + inne tekstury = po prostu inny ciuch
         }
@@ -295,13 +307,13 @@ public static class Porownanie
     }
 
     /// <summary>
-    /// Punktacja jakosci 0..100. Rozpiska wraca tekstem, zeby w raporcie bylo widac,
+    /// Punktacja jakosci 0..100 ze skladnikami — zeby w raporcie i aplikacji bylo widac,
     /// DLACZEGO cos wygralo, a nie tylko ze wygralo.
     /// </summary>
-    public static double Jakosc(Pozycja p, out string rozpiska)
+    public static Punktacja Jakosc(Pozycja p)
     {
         var t = p.Tekstury ?? new List<Tekstura>();
-        if (t.Count == 0) { rozpiska = "brak tekstur"; return 0; }
+        if (t.Count == 0) return new Punktacja { BrakTekstur = true, Razem = 0 };
 
         // rozdzielczosc: mediana liczby pikseli, odniesiona do 1024x1024 = komplet punktow
         var piksele = t.Select(x => (double)x.W * x.H).Where(x => x > 0).OrderBy(x => x).ToArray();
@@ -321,12 +333,20 @@ public static class Porownanie
 
         double pktLod = Math.Clamp((p.Geo?.Lody ?? 0) / 3.0, 0, 1) * 10;
 
-        double razem = pktRozdz + pktMipy + pktWarianty + pktFormat + pktLod;
-        rozpiska = $"rozdzielczosc {Math.Sqrt(medPx):F0}px:{pktRozdz:F0} | "
-                 + $"mipy {udzialMipow:P0}:{pktMipy:F0} | "
-                 + $"wariantow {t.Count}:{pktWarianty:F0} | "
-                 + $"format:{pktFormat:F0}" + (zlyFormat > 0 ? $" ({zlyFormat} BC1 z alfa)" : "") + " | "
-                 + $"LOD {p.Geo?.Lody ?? 0}:{pktLod:F0}";
-        return razem;
+        return new Punktacja
+        {
+            Razem = pktRozdz + pktMipy + pktWarianty + pktFormat + pktLod,
+            Rozdz = pktRozdz, Mipy = pktMipy, Warianty = pktWarianty, Format = pktFormat, Lod = pktLod,
+            RozdzPx = Math.Sqrt(medPx), UdzialMipow = udzialMipow, LiczbaWariantow = t.Count, ZlyFormat = zlyFormat,
+            Lody = p.Geo?.Lody ?? 0
+        };
+    }
+
+    /// <summary>Zgodnosc wstecz: suma punktow + rozpiska po polsku.</summary>
+    public static double Jakosc(Pozycja p, out string rozpiska)
+    {
+        var pkt = Jakosc(p);
+        rozpiska = pkt.Tekst("pl");
+        return pkt.Razem;
     }
 }

@@ -11,4 +11,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- slowniki PL/EN: powody werdyktow, nazwy werdyktow, rozpiska jakosci (Powody.cs / Teksty) -->
+    <EmbeddedResource Include="i18n\pl.json" LogicalName="Duble.i18n.pl.json" />
+    <EmbeddedResource Include="i18n\en.json" LogicalName="Duble.i18n.en.json" />
+  </ItemGroup>
 </Project>
