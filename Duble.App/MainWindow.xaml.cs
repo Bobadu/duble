@@ -1,17 +1,19 @@
-// MainWindow.xaml.cs — okno bez systemowego paska (pasek tytulu rysuje UI w HTML), WebView2 na caly obszar.
+// MainWindow.xaml.cs — okno bez systemowego paska (pasek tytulu rysuje UI w HTML), WebView2 na caly obszar,
+// mostek UI<->C# (Mostek), dialogi systemowe (IDialogi), przeciaganie plikow z Eksploratora.
 using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Win32;
 
 namespace Duble.App;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IOkno, IDialogi
 {
     public Zasoby Zasoby { get; private set; }
+    public Mostek Mostek { get; private set; }
     public bool UiGotowe { get; private set; }
-    public event Action<string[]> Upuszczono;
 
     /// <summary>Dziennik trybu dev: %TEMP%\duble-app\duble-log.txt (diagnostyka startu WebView2 i mostka).</summary>
     public static void Log(string s)
@@ -42,6 +44,7 @@ public partial class MainWindow : Window
             var st = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
             if (App.Ustawienia != null) App.Ustawienia.Okno = new OknoStan { X = st.X, Y = st.Y, W = st.Width, H = st.Height, Maks = WindowState == WindowState.Maximized };
         };
+        StateChanged += (s, e) => Mostek?.Zdarzenie("window.state", new { maks = WindowState == WindowState.Maximized });
     }
 
     async Task Start()
@@ -79,9 +82,21 @@ public partial class MainWindow : Window
                 }
                 catch (Exception ex) { Log("zasob BLAD " + e.Request.Uri + ": " + ex.Message); }
             };
-            core.WebMessageReceived += (s, e) => { Log("msg " + e.WebMessageAsJson); OdebranoWiadomosc(e.WebMessageAsJson); };
+
+            Mostek = new Mostek(this, this, App.Ustawienia, json => Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(json))) { Dev = arg.Dev };
+            Komendy.Okno.Zarejestruj(Mostek);
+            Komendy.Okno.UiGotowe += UiJestGotowe;
+            Upuszczono += sciezki => Mostek.Zdarzenie("files.dropped", new { sciezki });
+            ZarejestrujKomendy();
+
+            core.WebMessageReceived += (s, e) =>
+            {
+                var json = e.WebMessageAsJson;
+                Log("msg " + (json.Length > 300 ? json.Substring(0, 300) + "…" : json));
+                // handlery bywaja dlugie (dialogi, dysk) — nie blokujemy watku UI; odpowiedz wraca przez Dispatcher w wyslij()
+                _ = Task.Run(async () => { var odp = await Mostek.Obsluz(json); await Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(odp)); });
+            };
             core.NavigationCompleted += (s, e) => Log($"navigation completed ok={e.IsSuccess} status={e.HttpStatusCode} err={e.WebErrorStatus}");
-            PoInicjalizacji();
             Log("navigate");
             core.Navigate("https://duble.app/index.html");
         }
@@ -93,24 +108,24 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Miejsce na podpiecie mostka (Zadanie 2).</summary>
-    partial void PoInicjalizacjiCzesc();
-    void PoInicjalizacji() => PoInicjalizacjiCzesc();
+    /// <summary>Komendy z danymi (projekt, zrodla) — dopinane w kolejnych zadaniach.</summary>
+    partial void ZarejestrujKomendyCzesc();
+    void ZarejestrujKomendy() => ZarejestrujKomendyCzesc();
 
-    /// <summary>Wiadomosc z UI. Do czasu podpiecia mostka obslugujemy tylko sygnal gotowosci (zrzut ekranu).</summary>
-    void OdebranoWiadomosc(string json)
-    {
-        if (ObslugaWiadomosci != null) { ObslugaWiadomosci(json); return; }
-        if (json.Contains("\"ui.ready\"")) UiJestGotowe();
-    }
-
-    /// <summary>Podpina Mostek (Zadanie 2). Gdy null, wiadomosci trafiaja do prostej obslugi powyzej.</summary>
-    public Action<string> ObslugaWiadomosci { get; set; }
-
-    public void UiJestGotowe()
+    void UiJestGotowe()
     {
         UiGotowe = true;
-        if (!string.IsNullOrEmpty(App.Argumenty.Zrzut)) _ = ZrobZrzutIZamknij(App.Argumenty.Zrzut);
+        Log("ui.ready");
+        _ = Dispatcher.InvokeAsync(async () =>
+        {
+            if (!string.IsNullOrEmpty(App.Argumenty.Exec))
+            {
+                await Task.Delay(300);
+                var wynik = await web.CoreWebView2.ExecuteScriptAsync(App.Argumenty.Exec);
+                Log("exec -> " + wynik);
+            }
+            if (!string.IsNullOrEmpty(App.Argumenty.Zrzut)) await ZrobZrzutIZamknij(App.Argumenty.Zrzut);
+        });
     }
 
     public async Task ZrobZrzutIZamknij(string plik)
@@ -119,6 +134,7 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(plik)));
         using (var fs = new FileStream(plik, FileMode.Create, FileAccess.Write))
             await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, fs);
+        Log("zrzut " + plik);
         Application.Current.Shutdown(0);
     }
 
@@ -134,6 +150,48 @@ public partial class MainWindow : Window
         return null;   // brak folderu -> Zasoby(null) = osadzone
     }
 
+    // ---------------- IOkno ----------------
+    public void Minimalizuj() => WindowState = WindowState.Minimized;
+    public void MaksymalizujAlboPrzywroc() => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    public void Zamknij() => Close();
+    public void RozpocznijPrzeciaganie() { try { DragMove(); } catch { /* DragMove wymaga wcisnietego przycisku myszy */ } }
+    public bool Zmaksymalizowane => Dispatcher.CheckAccess() ? WindowState == WindowState.Maximized : Dispatcher.Invoke(() => WindowState == WindowState.Maximized);
+    public void Uruchom(Action a) { if (Dispatcher.CheckAccess()) a(); else Dispatcher.Invoke(a); }
+
+    // ---------------- IDialogi (systemowe okna Windows; zawsze na watku UI) ----------------
+    static string Filtr(string klucz) => klucz switch
+    {
+        "rpf" => "Archiwa RPF (*.rpf)|*.rpf|Wszystkie pliki (*.*)|*.*",
+        "duble" => "Projekty Duble (*.duble)|*.duble|Wszystkie pliki (*.*)|*.*",
+        "png" => "Obrazy PNG (*.png)|*.png",
+        "html" => "Strony HTML (*.html)|*.html",
+        "csv" => "Pliki CSV (*.csv)|*.csv",
+        _ => "Wszystkie pliki (*.*)|*.*",
+    };
+
+    public string WybierzFolder(string tytul, string start) => Dispatcher.Invoke(() =>
+    {
+        var d = new OpenFolderDialog { Title = tytul ?? "Duble", Multiselect = false };
+        if (!string.IsNullOrEmpty(start) && Directory.Exists(start)) d.InitialDirectory = start;
+        return d.ShowDialog(this) == true ? d.FolderName : null;
+    });
+
+    public string[] WybierzPliki(string tytul, string filtr, bool wiele, string start) => Dispatcher.Invoke(() =>
+    {
+        var d = new OpenFileDialog { Title = tytul ?? "Duble", Filter = Filtr(filtr), Multiselect = wiele, CheckFileExists = true };
+        if (!string.IsNullOrEmpty(start) && Directory.Exists(start)) d.InitialDirectory = start;
+        return d.ShowDialog(this) == true ? d.FileNames : Array.Empty<string>();
+    });
+
+    public string ZapiszPlik(string tytul, string filtr, string domyslnaNazwa, string start) => Dispatcher.Invoke(() =>
+    {
+        var d = new SaveFileDialog { Title = tytul ?? "Duble", Filter = Filtr(filtr), FileName = domyslnaNazwa ?? "", OverwritePrompt = true };
+        if (!string.IsNullOrEmpty(start) && Directory.Exists(start)) d.InitialDirectory = start;
+        return d.ShowDialog(this) == true ? d.FileName : null;
+    });
+
+    // ---------------- drag & drop z Eksploratora (AllowExternalDrop=false w WebView2, wiec zdarzenia trafiaja do WPF) ----------------
+    public event Action<string[]> Upuszczono;
     void OknoDragOver(object s, DragEventArgs e) { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
     void OknoDrop(object s, DragEventArgs e)
     {

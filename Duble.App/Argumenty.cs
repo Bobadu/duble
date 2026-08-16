@@ -1,7 +1,7 @@
 // Argumenty.cs — przelaczniki wiersza polecen (tryb dev, zrzut ekranu, projekt na start).
 //
 //   Duble.exe [plik.duble] [--dev] [--ui-folder <folder>] [--project <plik.duble>] [--view <widok>]
-//             [--lang pl|en] [--theme dark|light|system] [--screenshot <plik.png>]
+//             [--lang pl|en] [--theme dark|light|system] [--screenshot <plik.png>] [--exec <js>]
 using System;
 using System.Collections.Generic;
 
@@ -16,6 +16,7 @@ public sealed class Argumenty
     public string Jezyk { get; set; }
     public string Motyw { get; set; }
     public string Zrzut { get; set; }
+    public string Exec { get; set; }      // --exec <js>: JavaScript do wykonania po ui.ready (testy UI), przed zrzutem
 
     public static Argumenty Parsuj(string[] args)
     {
@@ -29,7 +30,7 @@ public sealed class Argumenty
         }
         a.Dev = l.Remove("--dev");
         a.UiFolder = Wartosc("--ui-folder"); a.Projekt = Wartosc("--project"); a.Widok = Wartosc("--view");
-        a.Jezyk = Wartosc("--lang"); a.Motyw = Wartosc("--theme"); a.Zrzut = Wartosc("--screenshot");
+        a.Jezyk = Wartosc("--lang"); a.Motyw = Wartosc("--theme"); a.Zrzut = Wartosc("--screenshot"); a.Exec = Wartosc("--exec");
         foreach (var reszta in l)
             if (reszta.EndsWith(".duble", StringComparison.OrdinalIgnoreCase)) a.Projekt ??= reszta;   // dwuklik na pliku projektu
         return a;
