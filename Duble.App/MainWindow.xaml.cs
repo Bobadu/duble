@@ -134,13 +134,15 @@ public partial class MainWindow : Window, IOkno, IDialogi
         }
     }
 
-    /// <summary>Komendy z danymi: projekt (zad. 4), zrodla (zad. 5).</summary>
+    /// <summary>Komendy z danymi: projekt, zrodla (+rozpakuj), grupy (+zastosuj), historia (+eksport), katalog.</summary>
     void ZarejestrujKomendy()
     {
         Komendy.Projekty.Zarejestruj(Mostek, Sesja);
         Zadania = new JobRunner(Mostek.Zdarzenie);
         Komendy.Zrodla.Zarejestruj(Mostek, Sesja, Zadania);
         Komendy.Grupy.Zarejestruj(Mostek, Sesja, Zadania);
+        Komendy.Historia.Zarejestruj(Mostek, Sesja, Zadania);
+        Komendy.KatalogPozycji.Zarejestruj(Mostek, Sesja);
     }
     public JobRunner Zadania { get; private set; }
 

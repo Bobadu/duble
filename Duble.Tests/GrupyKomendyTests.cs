@@ -19,8 +19,7 @@ public class GrupyKomendyTests
         var wyslane = new List<string>();
         var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
         var s = new Sesja(); s.Nowy("G", Path.Combine(tmp, "G.duble"));
-        s.Projekt.Zrodla.Add(new ZrodloProjektu { Id = "z1", Nazwa = "z1", Sciezka = tmp, Typ = "folder", Wlaczone = true });
-        s.ZmienKatalog(k => k.Wstaw(Sztuczne.Siedem(tmp)));
+        Sztuczne.SiedemZeZrodlami(s, tmp);
         s.Porownaj(default, null);
         s.Zapisz();
         var jr = new JobRunner(m.Zdarzenie);

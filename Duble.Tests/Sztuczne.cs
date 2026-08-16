@@ -32,6 +32,21 @@ public static class Sztuczne
         return p;
     }
 
+    /// <summary>Projekt sesji z trzema zrodlami-folderami p1/p2/p3 (&lt;tmp&gt;\p1 …; Id "z-p1"…) i siedmioma pozycjami o pasujacych ZrodloId —
+    /// tak jak w aplikacji (Paczka == nazwa zrodla), zeby ponowne indeksowanie po Zastosuj podmienialo wlasciwe pozycje.</summary>
+    public static List<Pozycja> SiedemZeZrodlami(Duble.App.Sesja s, string tmp)
+    {
+        var poz = Siedem(tmp);
+        foreach (var paczka in new[] { "p1", "p2", "p3" })
+        {
+            Directory.CreateDirectory(Path.Combine(tmp, paczka));
+            s.Projekt.Zrodla.Add(new ZrodloProjektu { Id = "z-" + paczka, Nazwa = paczka, Sciezka = Path.Combine(tmp, paczka), Typ = "folder", Wlaczone = true });
+        }
+        foreach (var p in poz) p.ZrodloId = "z-" + p.Paczka;
+        s.ZmienKatalog(k => k.Wstaw(poz));
+        return poz;
+    }
+
     public static List<Pozycja> Siedem(string tmp, string zrodloId = "z1")
     {
         var a = Poz(tmp, "p1", "jbib", 1, "H1", Hist(10), zrodloId, "S1", "S2");
