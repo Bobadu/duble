@@ -141,7 +141,15 @@ async function boot() {
   document.addEventListener('dragenter', e => { licznikDrag++; document.body.classList.add('dragging'); e.preventDefault(); });
   document.addEventListener('dragleave', () => { if (--licznikDrag <= 0) { licznikDrag = 0; document.body.classList.remove('dragging'); } });
   document.addEventListener('dragover', e => e.preventDefault());
-  document.addEventListener('drop', e => { e.preventDefault(); licznikDrag = 0; document.body.classList.remove('dragging'); });
+  document.addEventListener('drop', e => {
+    e.preventDefault(); licznikDrag = 0; document.body.classList.remove('dragging');
+    // pliki/foldery z Eksploratora: obiekty File ida do C# jako CoreWebView2File (ze sciezkami) -> zdarzenie files.dropped
+    const pliki = e.dataTransfer?.files;
+    if (pliki && pliki.length && window.chrome?.webview?.postMessageWithAdditionalObjects) {
+      try { window.chrome.webview.postMessageWithAdditionalObjects({ id: 'drop', cmd: 'files.drop', args: null }, [...pliki]); }
+      catch (err) { console.error(err); toast(String(err?.message || err), { typ: 'error' }); }
+    }
+  });
 
   // skroty
   document.addEventListener('keydown', e => {

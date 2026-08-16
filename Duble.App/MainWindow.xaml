@@ -9,6 +9,6 @@
     <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="1" CornerRadius="0" UseAeroCaptionButtons="False" />
   </WindowChrome.WindowChrome>
   <Grid>
-    <wv2:WebView2 x:Name="web" DefaultBackgroundColor="#1B1A1F" AllowExternalDrop="False" />
+    <wv2:WebView2 x:Name="web" DefaultBackgroundColor="#1B1A1F" AllowExternalDrop="True" />
   </Grid>
 </Window>
