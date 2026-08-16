@@ -43,4 +43,21 @@ public class ProjektTests
         }
         finally { Directory.Delete(tmp, true); }
     }
+
+    [Fact]
+    public void Nazwy_zrodel_sa_unikalne()
+    {
+        var tmp = Sciezki.Tymczasowy("projekt-nazwy");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(tmp, "a", "stream")); Directory.CreateDirectory(Path.Combine(tmp, "b", "stream"));
+            var pr = Projekt.Nowy("X", Path.Combine(tmp, "X.duble"));
+            var z1 = pr.DodajZrodlo(Path.Combine(tmp, "a", "stream"));
+            var z2 = pr.DodajZrodlo(Path.Combine(tmp, "b", "stream"));
+            var z3 = pr.DodajZrodlo(Path.Combine(tmp, "b", "stream"));   // ten sam folder drugi raz -> ta sama pozycja, bez duplikatu
+            Assert.Equal("stream", z1.Nazwa); Assert.Equal("stream (2)", z2.Nazwa);
+            Assert.Same(z2, z3); Assert.Equal(2, pr.Zrodla.Count);
+        }
+        finally { Directory.Delete(tmp, true); }
+    }
 }

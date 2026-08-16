@@ -13,6 +13,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
 {
     public Zasoby Zasoby { get; private set; }
     public Mostek Mostek { get; private set; }
+    public Sesja Sesja { get; } = new Sesja();
     public bool UiGotowe { get; private set; }
 
     /// <summary>Dziennik trybu dev: %TEMP%\duble-app\duble-log.txt (diagnostyka startu WebView2 i mostka).</summary>
@@ -52,7 +53,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
         var arg = App.Argumenty;
         string uiFolder = null;
         if (arg.Dev) uiFolder = arg.UiFolder ?? ZnajdzFolderUi();
-        Zasoby = new Zasoby(uiFolder);
+        Zasoby = new Zasoby(uiFolder) { Dane = Sesja.Zasob };
         Log($"start dev={arg.Dev} ui={(uiFolder ?? "(osadzone)")} zrzut={arg.Zrzut}");
         try
         {
@@ -109,9 +110,13 @@ public partial class MainWindow : Window, IOkno, IDialogi
         }
     }
 
-    /// <summary>Komendy z danymi (projekt, zrodla) — dopinane w kolejnych zadaniach.</summary>
-    partial void ZarejestrujKomendyCzesc();
-    void ZarejestrujKomendy() => ZarejestrujKomendyCzesc();
+    /// <summary>Komendy z danymi: projekt (zad. 4), zrodla (zad. 5).</summary>
+    void ZarejestrujKomendy()
+    {
+        Komendy.Projekty.Zarejestruj(Mostek, Sesja);
+        ZarejestrujZrodla();
+    }
+    partial void ZarejestrujZrodla();
 
     void UiJestGotowe()
     {
@@ -119,6 +124,16 @@ public partial class MainWindow : Window, IOkno, IDialogi
         Log("ui.ready");
         _ = Dispatcher.InvokeAsync(async () =>
         {
+            // projekt z argumentow (dwuklik na .duble albo --project) — dopiero teraz, bo UI juz nasluchuje zdarzen
+            if (!string.IsNullOrEmpty(App.Argumenty.Projekt))
+            {
+                try
+                {
+                    var odp = await Mostek.Obsluz(System.Text.Json.JsonSerializer.Serialize(new { id = "start", cmd = "project.open", args = new { sciezka = App.Argumenty.Projekt } }));
+                    Log("projekt z argumentow: " + odp);
+                }
+                catch (Exception e) { Log("projekt z argumentow BLAD: " + e.Message); }
+            }
             if (!string.IsNullOrEmpty(App.Argumenty.Exec))
             {
                 await Task.Delay(300);
