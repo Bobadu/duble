@@ -38,7 +38,7 @@ export async function render(root, ctx) {
   head.querySelector('#cat-szukaj').addEventListener('input', (e) => { clearTimeout(debounce); debounce = setTimeout(() => { filtry.szukaj = e.target.value; zapiszFiltry(); odswiez(); }, 220); });
   root.append(head);
   podsumEl = head.querySelector('#cat-podsum');
-  filtryEl = el('<div class="dup-filtry cat-filtry" id="cat-filtry"></div>');
+  filtryEl = el('<div class="filterbar cat-filtry" id="cat-filtry"></div>');
   root.append(filtryEl);
   gridEl = el('<div class="cat-grid" id="cat-grid"></div>');
   root.append(gridEl);
@@ -69,30 +69,37 @@ async function odswiez(pierwszy = false) {
     ? t('catalog.count', { n: fmt.liczba(r.razem), t: fmt.liczba(r.tekstury) })
     : `${t('catalog.count', { n: fmt.liczba(r.razem), t: fmt.liczba(r.tekstury) })} · ${t('catalog.shown', { n: fmt.liczba(r.pokazane), m: fmt.liczba(r.razem) })}`;
 
-  // filtry
+  // filtry: jeden pasek — format (segment), zrodlo i slot (listy), przelaczniki problemy / w grupach, wyczysc (szukajka jest w naglowku)
   filtryEl.innerHTML = '';
   const zrodla = r.filtry?.zrodla || []; const sloty = (r.filtry?.sloty || []).slice().sort((a, b) => SLOTY_KOLEJNOSC.indexOf(a.typ) - SLOTY_KOLEJNOSC.indexOf(b.typ));
+  const fm = r.filtry?.formaty || {};
+  const seg = el('<div class="seg" role="radiogroup"></div>');
+  const wybranyFmt = filtry.formaty.length === 1 ? filtry.formaty[0] : '';
+  const opcje = [['', t('dup.allVerdicts'), r.razem]];
+  if (fm.legacy) opcje.push(['legacy', t('sources.formatLegacy'), fm.legacy]);
+  if (fm.gen9) opcje.push(['gen9', t('sources.formatGen9'), fm.gen9]);
+  for (const [k, nazwa, n] of opcje) {
+    const b = el(`<button role="radio" aria-checked="${wybranyFmt === k}" class="${wybranyFmt === k ? 'on' : ''}">${k ? `<i class="dot ${k}"></i>` : ''}${esc(nazwa)} <span class="n">${fmt.liczba(n)}</span></button>`);
+    b.onclick = () => { filtry.formaty = k ? [k] : []; zapiszFiltry(); odswiez(); };
+    seg.append(b);
+  }
+  if (opcje.length > 2) filtryEl.append(seg);
   if (zrodla.length > 1) {
-    const rz = el(`<div class="filtr-rzad"><span class="filtr-etyk">${t('dup.sourcesFilter')}</span></div>`);
-    for (const s of zrodla) { const b = el(`<button class="chip" aria-pressed="${filtry.zrodla.includes(s.id)}">${esc(s.nazwa)} <span class="n">${s.n}</span></button>`); b.onclick = () => { przelacz(filtry.zrodla, s.id); odswiez(); }; rz.append(b); }
-    filtryEl.append(rz);
+    const sel = el(`<select class="input sm select" aria-label="${esc(t('dup.sourcesFilter'))}"><option value="">${esc(t('dup.sourceAll'))}</option>${zrodla.map(z => `<option value="${esc(z.id)}" ${filtry.zrodla[0] === z.id ? 'selected' : ''}>${esc(z.nazwa)} (${z.n})</option>`).join('')}</select>`);
+    sel.onchange = () => { filtry.zrodla = sel.value ? [sel.value] : []; zapiszFiltry(); odswiez(); };
+    filtryEl.append(sel);
   }
   if (sloty.length > 1) {
-    const rz = el(`<div class="filtr-rzad"><span class="filtr-etyk">${t('dup.slots')}</span></div>`);
-    for (const s of sloty) { const b = el(`<button class="chip" aria-pressed="${filtry.sloty.includes(s.typ)}">${esc(t('slot.' + s.typ))} <span class="n">${s.n}</span></button>`); b.onclick = () => { przelacz(filtry.sloty, s.typ); odswiez(); }; rz.append(b); }
-    filtryEl.append(rz);
+    const sel = el(`<select class="input sm select" aria-label="${esc(t('dup.slots'))}"><option value="">${esc(t('dup.slotAll'))}</option>${sloty.map(s => `<option value="${esc(s.typ)}" ${filtry.sloty[0] === s.typ ? 'selected' : ''}>${esc(t('slot.' + s.typ))} (${s.n})</option>`).join('')}</select>`);
+    sel.onchange = () => { filtry.sloty = sel.value ? [sel.value] : []; zapiszFiltry(); odswiez(); };
+    filtryEl.append(sel);
   }
-  const rz3 = el(`<div class="filtr-rzad"><span class="filtr-etyk">${t('catalog.more')}</span></div>`);
-  const fm = r.filtry?.formaty || {};
-  if (fm.legacy && fm.gen9) {
-    for (const [k, n, tk] of [['legacy', fm.legacy, 'sources.formatLegacy'], ['gen9', fm.gen9, 'sources.formatGen9']]) {
-      const b = el(`<button class="chip" aria-pressed="${filtry.formaty.includes(k)}">${t(tk)} <span class="n">${n}</span></button>`); b.onclick = () => { przelacz(filtry.formaty, k); odswiez(); }; rz3.append(b);
-    }
-  }
-  const bp = el(`<button class="chip" aria-pressed="${filtry.problemy}">${icon('warn')}${t('catalog.problems')}</button>`); bp.onclick = () => { filtry.problemy = !filtry.problemy; zapiszFiltry(); odswiez(); }; rz3.append(bp);
-  const bg = el(`<button class="chip" aria-pressed="${filtry.wGrupie}">${icon('duplicates')}${t('catalog.inGroups')}</button>`); bg.onclick = () => { filtry.wGrupie = !filtry.wGrupie; zapiszFiltry(); odswiez(); }; rz3.append(bg);
-  if (czyFiltr()) { const c = el(`<button class="btn ghost sm">${icon('x')}${t('dup.clearFilters')}</button>`); c.onclick = () => { filtry = { zrodla: [], sloty: [], formaty: [], problemy: false, wGrupie: false, szukaj: '' }; zapiszFiltry(); const inp = document.getElementById('cat-szukaj'); if (inp) inp.value = ''; odswiez(); }; rz3.append(c); }
-  filtryEl.append(rz3);
+  const bp = el(`<button class="switch ${filtry.problemy ? 'on' : ''}"><span>${t('catalog.problems')}</span>${icon(filtry.problemy ? 'toggleOn' : 'toggleOff')}</button>`);
+  bp.onclick = () => { filtry.problemy = !filtry.problemy; zapiszFiltry(); odswiez(); };
+  const bg = el(`<button class="switch ${filtry.wGrupie ? 'on' : ''}"><span>${t('catalog.inGroups')}</span>${icon(filtry.wGrupie ? 'toggleOn' : 'toggleOff')}</button>`);
+  bg.onclick = () => { filtry.wGrupie = !filtry.wGrupie; zapiszFiltry(); odswiez(); };
+  filtryEl.append(bp, bg);
+  if (czyFiltr()) { const c = el(`<button class="btn ghost sm" title="${esc(t('dup.clearFilters'))}">${icon('x')}${t('dup.clear')}</button>`); c.onclick = () => { filtry = { zrodla: [], sloty: [], formaty: [], problemy: false, wGrupie: false, szukaj: '' }; zapiszFiltry(); const inp = document.getElementById('cat-szukaj'); if (inp) inp.value = ''; odswiez(); }; filtryEl.append(c); }
   if (bylFokus) { const inp = document.getElementById('cat-szukaj'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
 
   siatka.ustaw(r.pozycje || []);
