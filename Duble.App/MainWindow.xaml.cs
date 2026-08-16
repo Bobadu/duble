@@ -42,6 +42,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
         Loaded += async (s, e) => await Start();
         Closing += (s, e) =>
         {
+            Zadania?.Anuluj();   // indeksowanie w tle: przerwij, zeby proces nie wisial
             var st = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
             if (App.Ustawienia != null) App.Ustawienia.Okno = new OknoStan { X = st.X, Y = st.Y, W = st.Width, H = st.Height, Maks = WindowState == WindowState.Maximized };
         };
