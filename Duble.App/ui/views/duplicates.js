@@ -4,6 +4,9 @@ import { otworzZastosuj } from './apply.js';
 
 const WERDYKTY = ['DUPLIKAT', 'DUPLIKAT-NADZBIOR', 'DO WGLADU', 'PRZEMALOWANIE'];
 export const KLASA_WERDYKTU = { 'DUPLIKAT': 'w-dup', 'DUPLIKAT-NADZBIOR': 'w-nad', 'DO WGLADU': 'w-wgl', 'PRZEMALOWANIE': 'w-prz' };
+export const IKONA_WERDYKTU = { 'DUPLIKAT': 'duplicates', 'DUPLIKAT-NADZBIOR': 'layers', 'DO WGLADU': 'eye', 'PRZEMALOWANIE': 'palette' };
+/** Znaczek werdyktu: ikona + nazwa (kolor z klasy w-*). */
+export function znaczekWerdyktu(t, icon, werdykt) { return `<span class="badge ${KLASA_WERDYKTU[werdykt] || ''}">${IKONA_WERDYKTU[werdykt] ? icon(IKONA_WERDYKTU[werdykt]) : ''}${esc(t('werdykt.' + werdykt))}</span>`; }
 const KLUCZ_FILTROW = 'dup.filtry';
 
 let odpisz = null;
@@ -89,7 +92,7 @@ async function odswiez() {
     const wybrany = filtry.werdykty.length === 1 ? filtry.werdykty[0] : '';
     const opcje = [['', t('dup.allVerdicts'), pod.grup]].concat(WERDYKTY.map(w => [w, t('werdykt.' + w), licz[w] ?? 0]));
     for (const [w, nazwa, n] of opcje) {
-      const b = el(`<button role="radio" aria-checked="${wybrany === w}" class="${wybrany === w ? 'on' : ''} ${w ? KLASA_WERDYKTU[w] : ''}">${w ? '<i class="dot"></i>' : ''}${esc(nazwa)} <span class="n">${fmt.liczba(n)}</span></button>`);
+      const b = el(`<button role="radio" aria-checked="${wybrany === w}" class="${wybrany === w ? 'on' : ''} ${w ? KLASA_WERDYKTU[w] : ''}">${w ? icon(IKONA_WERDYKTU[w]) : ''}${esc(nazwa)} <span class="n">${fmt.liczba(n)}</span></button>`);
       b.onclick = () => { filtry.werdykty = w ? [w] : []; zapiszFiltry(); odswiez(); };
       seg.append(b);
     }
@@ -116,11 +119,10 @@ async function odswiez() {
       ign.onclick = () => { filtry.zignorowane = !filtry.zignorowane; zapiszFiltry(); odswiez(); };
       slot.append(ign);
     }
-    if (filtry.werdykty.length || filtry.sloty.length || filtry.zrodla.length || filtry.szukaj) {
-      const c = el(`<button class="btn ghost sm" id="dup-clear" title="${esc(t('dup.clearFilters'))}">${icon('x')}${t('dup.clear')}</button>`);
-      c.onclick = () => { filtry = { werdykty: [], sloty: [], zrodla: [], szukaj: '', zignorowane: filtry.zignorowane }; zapiszFiltry(); odswiez(); };
-      filtryEl.append(c);
-    }
+    const aktywne = filtry.werdykty.length || filtry.sloty.length || filtry.zrodla.length || filtry.szukaj;
+    const c = el(`<button class="btn ghost icon clear" id="dup-clear" title="${esc(t('dup.clearFilters'))}" ${aktywne ? '' : 'style="visibility:hidden"'}>${icon('x')}</button>`);
+    c.onclick = () => { filtry = { werdykty: [], sloty: [], zrodla: [], szukaj: '', zignorowane: filtry.zignorowane }; zapiszFiltry(); odswiez(); };
+    filtryEl.append(c);
     // uzytkownik pisal w polu szukania: po przerysowaniu oddaj fokus i kursor na koniec
     if (bylFokus) { const inp = filtryEl.querySelector('#dup-szukaj'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
   }
@@ -162,7 +164,7 @@ function kartaGrupy(g, ctx) {
   const k = el(`
     <div class="card dup-card clickable ${r.ignoruj ? 'ignored' : ''}" tabindex="0" data-id="${esc(g.id)}">
       <div class="dup-card-head">
-        <span class="badge ${KLASA_WERDYKTU[g.werdykt] || ''}">${esc(t('werdykt.' + g.werdykt))}</span>
+        ${znaczekWerdyktu(t, icon, g.werdykt)}
         <span class="dup-powod">${esc(powodTekst(t, g.powod))}</span>
         <span class="dup-meta">${r.ignoruj ? `<span class="badge unknown">${esc(t('dup.ignored'))}</span>` : ''}${!r.domyslna && !r.ignoruj ? `<span class="badge ok">${esc(t('dup.custom'))}</span>` : ''}${r.notatka ? `<span class="faint" title="${esc(r.notatka)}">${icon('file')}</span>` : ''}</span>
       </div>
