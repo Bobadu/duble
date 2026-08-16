@@ -38,11 +38,14 @@ export function confirm(tekst, { ok = t('common.ok'), anuluj = t('common.cancel'
   return dialog({ tytul, tresc: `<p class="lead">${esc(tekst)}</p>`, przyciski: [{ tekst: anuluj, wartosc: false }, { tekst: ok, rola: niebezpieczne ? 'danger' : 'primary', wartosc: true }] }).then(v => v === true);
 }
 
-export function toast(tekst, { typ = 'info', czas = 4200 } = {}) {
+/** Toast. akcja: {tekst, fn} = przycisk w toascie (np. „Cofnij", „Pokaż"); toast z akcja zyje dluzej (czas domyslnie 9 s). */
+export function toast(tekst, { typ = 'info', czas, akcja } = {}) {
   const warstwa = document.getElementById('warstwa-toast');
   const ik = typ === 'ok' ? 'ok' : typ === 'warn' ? 'warn' : typ === 'error' ? 'warn' : 'info';
-  const node = el(`<div class="toast ${typ}" role="status">${icon(ik)}<span>${esc(tekst)}</span><button class="close" aria-label="${esc(t('common.close'))}">${icon('x')}</button></div>`);
+  if (czas === undefined) czas = akcja ? 9000 : 4200;
+  const node = el(`<div class="toast ${typ}" role="status">${icon(ik)}<span class="txt">${esc(tekst)}</span>${akcja ? `<button class="act">${esc(akcja.tekst)}</button>` : ''}<button class="close" aria-label="${esc(t('common.close'))}">${icon('x')}</button></div>`);
   node.querySelector('.close').onclick = () => node.remove();
+  if (akcja) node.querySelector('.act').onclick = () => { node.remove(); try { akcja.fn?.(); } catch (e) { console.error(e); } };
   warstwa.append(node);
   if (czas > 0) setTimeout(() => node.remove(), czas);
   return node;

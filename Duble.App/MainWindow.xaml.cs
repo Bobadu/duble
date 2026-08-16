@@ -104,7 +104,12 @@ public partial class MainWindow : Window, IOkno, IDialogi
                 Odpowiedz(ok2, tresc2, mime2, status2);
             };
 
-            Mostek = new Mostek(this, this, App.Ustawienia, json => Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(json))) { Dev = arg.Dev };
+            Mostek = new Mostek(this, this, App.Ustawienia, json => Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(json)))
+            {
+                Dev = arg.Dev,
+                // tryb kontrolny (--screenshot): ustawienia (ostatnie projekty, jezyk) ida do pliku tymczasowego, nie do %AppData%
+                PlikUstawien = string.IsNullOrEmpty(arg.Zrzut) ? null : Path.Combine(Path.GetTempPath(), "duble-app", "settings-zrzut.json"),
+            };
             Komendy.Okno.Zarejestruj(Mostek);
             Komendy.Okno.UiGotowe += UiJestGotowe;
             Upuszczono += sciezki => Mostek.Zdarzenie("files.dropped", new { sciezki });

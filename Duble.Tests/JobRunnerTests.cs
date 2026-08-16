@@ -29,6 +29,24 @@ public class JobRunnerTests
     }
 
     [Fact]
+    public async Task Postep_jest_dlawiony_do_ok_10_na_sekunde_ale_koniec_etapu_i_nowy_etap_zawsze_ida()
+    {
+        var zd = new List<string>();
+        var jr = new JobRunner((n, d) => zd.Add(J(d)));
+        await jr.Uruchom("zastosuj", "A", (ct, postep) =>
+        {
+            for (int i = 0; i < 500; i++) postep(new Duble.Postep("zastosuj", i, 500, "x"));   // 500 zgloszen w ulamku sekundy
+            postep(new Duble.Postep("zastosuj", 500, 500, null));                              // koniec etapu
+            postep(new Duble.Postep("porownaj", 0, 0, null));                                  // nowy etap
+            return Task.CompletedTask;
+        });
+        int postepow = zd.FindAll(z => z.Contains("\"stan\":\"postep\"")).Count;
+        Assert.InRange(postepow, 3, 30);   // pierwszy + koniec etapu + nowy etap (+ ewentualne tiki co 100 ms)
+        Assert.Contains(zd, z => z.Contains("\"zrobione\":500") && z.Contains("\"procent\":100"));
+        Assert.Contains(zd, z => z.Contains("\"etap\":\"porownaj\""));
+    }
+
+    [Fact]
     public async Task Anulowanie_daje_stan_anulowano()
     {
         var zd = new List<string>();

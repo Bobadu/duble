@@ -28,13 +28,28 @@ public sealed class JobRunner
         }
         var ct = moj.Token;
         zdarzenie("job", new { typ, opis, stan = "start" });
-        try
+        // postep bywa zglaszany per plik (zastosuj/cofnij: setki razy na sekunde) — do UI idzie najwyzej co ~100 ms
+        // (plus zawsze: nowy etap i ostatni krok etapu), bo kazde zdarzenie odswieza widoki
+        long ostatniTik = 0; string ostatniEtap = null; var klucz2 = new object();
+        void Postep(Duble.Postep p)
         {
-            await Task.Run(() => praca(ct, p => zdarzenie("job", new
+            lock (klucz2)
+            {
+                var teraz = Environment.TickCount64;
+                bool koniecEtapu = p.Wszystkie > 0 && p.Zrobione >= p.Wszystkie;
+                bool nowyEtap = p.Etap != ostatniEtap;
+                if (!koniecEtapu && !nowyEtap && teraz - ostatniTik < 100) return;
+                ostatniTik = teraz; ostatniEtap = p.Etap;
+            }
+            zdarzenie("job", new
             {
                 typ, opis, stan = "postep", etap = p.Etap, zrobione = p.Zrobione, wszystkie = p.Wszystkie,
                 procent = p.Wszystkie > 0 ? (int)(100L * p.Zrobione / p.Wszystkie) : 0, tekst = p.Kontener,
-            })), ct).ConfigureAwait(false);
+            });
+        }
+        try
+        {
+            await Task.Run(() => praca(ct, Postep), ct).ConfigureAwait(false);
             zdarzenie("job", new { typ, opis, stan = "koniec" });
         }
         catch (OperationCanceledException) { zdarzenie("job", new { typ, opis, stan = "anulowano" }); }

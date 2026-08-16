@@ -23,7 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- interfejs osadzony w exe; w trybie -dev czytany z folderu ui\ (edycja na zywo) -->
-    <EmbeddedResource Include="ui\**\*" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="ui\**\*" Exclude="ui\_dev-*.js" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
     <Resource Include="assets\duble.ico" />
   </ItemGroup>
 </Project>

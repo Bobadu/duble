@@ -192,20 +192,24 @@ public static class Grupy
             return new { rozstrzygniecie = Widoki.Rozstrz(Rozstrzygnij(s, x.g)) };
         });
 
-        m.Rejestruj("apply.preview", _ => { Wymag(); return PlanJson(s, s.Zaplanuj(Odrzucone(Zywe(s))), true); });
+        // {kosz?: string|null, ustawKosz?: bool} — dialog Zastosuj zmienia kosz projektu (null = obok zrodla) i od razu widzi nowy plan
+        void UstawKosz(JsonElement a)
+        {
+            if (!Mostek.Flaga(a, "ustawKosz")) return;
+            var kosz = Mostek.Tekst(a, "kosz");
+            s.Projekt.Ustawienia ??= new UstawieniaProjektu();
+            s.Projekt.Ustawienia.Kosz = string.IsNullOrWhiteSpace(kosz) ? null : kosz;
+            s.Projekt.Zapisz();
+        }
+
+        m.Rejestruj("apply.preview", a => { Wymag(); UstawKosz(a); return PlanJson(s, s.Zaplanuj(Odrzucone(Zywe(s))), true); });
 
         // apply.run {kosz?: string|null, ustawKosz?: bool} — przenosi wszystko, co odrzucone (plan liczony na swiezo), zapisuje cofke,
         // ponownie indeksuje dotkniete zrodla, porownuje; zdarzenia: job (typ "zastosuj"), apply.done, history.changed
         m.Rejestruj("apply.run", a =>
         {
             Wymag();
-            if (Mostek.Flaga(a, "ustawKosz"))
-            {
-                var kosz = Mostek.Tekst(a, "kosz");
-                s.Projekt.Ustawienia ??= new UstawieniaProjektu();
-                s.Projekt.Ustawienia.Kosz = string.IsNullOrWhiteSpace(kosz) ? null : kosz;
-                s.Projekt.Zapisz();
-            }
+            UstawKosz(a);
             var plan = s.Zaplanuj(Odrzucone(Zywe(s)));
             if (plan.Pliki == 0) return new { uruchomiono = false, plan = PlanJson(s, plan, false) };
             bool ok = jr.SprobujUruchom("zastosuj", s.Projekt.Nazwa, async (ct, postep) =>

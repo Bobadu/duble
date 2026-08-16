@@ -10,8 +10,10 @@ import * as about from './views/about.js';
 import * as wip from './views/wip.js';
 import * as duplicates from './views/duplicates.js';
 import * as group from './views/group.js';
+import * as history from './views/history.js';
+import * as powiadomienia from './powiadomienia.js';
 
-const WIDOKI = { start, sources, duplicates, catalog: wip, history: wip, settings, about };
+const WIDOKI = { start, sources, duplicates, catalog: wip, history, settings, about };
 const RAIL = [
   { id: 'start', ikona: 'home' }, { id: 'sources', ikona: 'sources' }, { id: 'duplicates', ikona: 'duplicates' },
   { id: 'catalog', ikona: 'catalog' }, { id: 'history', ikona: 'history' }, { grow: true },
@@ -115,6 +117,8 @@ async function boot() {
   try { const st = await bridge.call('window.state'); store.oknoMaks = !!st.maks; } catch {}
   try { store.projekt = (await bridge.call('project.get'))?.projekt || null; } catch { store.projekt = null; }
   renderujPasek(); renderujRail(); renderujStatus();
+  powiadomienia.zarejestruj(ctx);
+  if (store.info?.dev) window.__ctx = ctx;   // tryb dev: --exec ma dostep do kontekstu (np. otwarcie dialogu Zastosuj do zrzutu)
 
   document.getElementById('win-min').onclick = () => bridge.call('window.minimize');
   document.getElementById('win-max').onclick = () => bridge.call('window.maximize');

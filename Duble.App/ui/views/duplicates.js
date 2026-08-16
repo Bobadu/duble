@@ -1,5 +1,6 @@
 // views/duplicates.js — lista grup duplikatow: filtry (werdykt / slot / zrodlo / szukaj / zignorowane), karty grup, pasek decyzji.
 import { el, esc, toast, fmt } from '../ui.js';
+import { otworzZastosuj } from './apply.js';
 
 const WERDYKTY = ['DUPLIKAT', 'DUPLIKAT-NADZBIOR', 'DO WGLADU', 'PRZEMALOWANIE'];
 export const KLASA_WERDYKTU = { 'DUPLIKAT': 'w-dup', 'DUPLIKAT-NADZBIOR': 'w-nad', 'DO WGLADU': 'w-wgl', 'PRZEMALOWANIE': 'w-prz' };
@@ -136,10 +137,12 @@ async function odswiez() {
 
   // pasek decyzji
   const d = pod.doOdrzucenia || {};
+  const zajety = z && (z.stan === 'start' || z.stan === 'postep');
   pasekEl.hidden = false;
   pasekEl.innerHTML = `
-    <div class="decision-text">${icon('trash')}<span>${d.pozycje ? esc(t('dup.toReject', { pozycje: fmt.liczba(d.pozycje), pliki: fmt.liczba(d.pliki), mb: fmt.rozmiar(d.bajty) })) : esc(t('dup.nothingToReject'))}</span>${d.wArchiwum ? `<span class="faint">· ${esc(t('dup.inArchive', { n: d.wArchiwum }))}</span>` : ''}</div>
-    <button class="btn primary" disabled title="${esc(t('dup.applySoon'))}">${icon('check')}${t('dup.apply')}</button>`;
+    <div class="decision-text">${icon('trash')}<span>${d.pozycje ? esc(t('dup.toReject', { pozycje: fmt.liczba(d.pozycje), pliki: fmt.liczba(d.pliki), mb: fmt.rozmiar(d.bajty) })) : esc(t('dup.nothingToReject'))}</span>${d.wArchiwum ? `<a href="#/sources" class="faint" title="${esc(t('apply.tooltipArchive'))}">· ${esc(t('dup.inArchive', { n: d.wArchiwum }))}</a>` : ''}${d.wspoldzielone ? `<span class="faint">· ${esc(t('apply.shared', { n: d.wspoldzielone }))}</span>` : ''}</div>
+    <button class="btn primary" id="dup-apply" ${!d.pliki || zajety ? 'disabled' : ''} title="${esc(d.pliki ? t('apply.title') : t('apply.nothing'))}">${icon('check')}${t('dup.apply')}</button>`;
+  pasekEl.querySelector('#dup-apply').onclick = () => otworzZastosuj(ctx);
 }
 
 function przelacz(lista, x) { const i = lista.indexOf(x); if (i >= 0) lista.splice(i, 1); else lista.push(x); zapiszFiltry(); }
