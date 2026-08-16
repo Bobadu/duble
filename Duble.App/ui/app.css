@@ -408,7 +408,9 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .q-desc { font-size: 11px; }
 .col-facts { display: grid; gap: 4px; font-size: 12.5px; color: var(--text-2); }
 .col-facts b { color: var(--text); }
-.col-path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.col-path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.col-path .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.group-col { min-width: 0; }
 .col-path .mono { font-size: 11px; }
 .col-tex-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-top: 2px; }
 .tex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
@@ -528,6 +530,11 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 /* ---------- katalog (siatka wirtualizowana) ---------- */
 .main:has(> .wrap[data-view="catalog"]) { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
 .wrap[data-view="catalog"] { flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; }
+/* Duplikaty: lista grup przewija sie sama; naglowek + filtry u gory i pasek decyzji na dole stoja w miejscu (jak Katalog) */
+.main:has(> .wrap[data-view="duplicates"]) { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0; }
+.wrap[data-view="duplicates"] { flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; }
+.wrap[data-view="duplicates"] #dup-lista { flex: 1; min-height: 0; overflow: auto; padding: 2px 2px 12px; margin: 0 -2px; }
+.wrap[data-view="duplicates"] .decision-bar { position: static; margin: 0 -30px; flex: none; }
 .cat-filtry { flex: none; }
 .cat-grid { flex: 1; min-height: 0; overflow: auto; position: relative; padding: 2px; }
 .vgrid-body { position: relative; }
