@@ -29,6 +29,19 @@ public static class Tekstury
         return null;
     }
 
+    /// <summary>PNG RGBA z najwiekszego mipa o boku &lt;= maksBok (podglad w aplikacji, tekstura do GLB); null gdy nie do zdekodowania.</summary>
+    public static byte[] PngRgba(Texture t, int maksBok = 1024)
+    {
+        if (t == null || t.Width <= 0 || t.Height <= 0) return null;
+        int mip = 0;
+        while ((t.Width >> mip) > maksBok && (t.Height >> mip) > maksBok && mip < t.Levels - 1) mip++;
+        var px = Piksele(t, mip, out int w, out int h);
+        if (px == null) return null;
+        var rgba = new byte[px.Length];
+        for (int i = 0; i < px.Length; i += 4) { rgba[i] = px[i + 2]; rgba[i + 1] = px[i + 1]; rgba[i + 2] = px[i]; rgba[i + 3] = px[i + 3]; }
+        return Png.Rgba(rgba, w, h);
+    }
+
     static byte[] Bc7(Texture t, int mip, int w, int h)
     {
         var dane = t.Data?.FullData;

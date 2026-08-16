@@ -85,6 +85,20 @@ public class PorownanieTests
     }
 
     [Fact]
+    public void Znajdz_zglasza_postep_i_da_sie_anulowac()
+    {
+        var a = Poz("p1", "jbib", 1, "H1", 1000, 600, Hist(10), "S1");
+        var b = Poz("p2", "jbib", 2, "H2", 1000, 600, Hist(20), "S2");
+        var c = Poz("p3", "jbib", 3, "H3", 1000, 600, Hist(30), "S3");
+        var k = new Katalog(); k.Wstaw(new[] { a, b, c });
+        var postepy = new List<Postep>();
+        Porownanie.Znajdz(k, null, null, postepy.Add, default);
+        Assert.Contains(postepy, p => p.Etap == "porownaj" && p.Zrobione == 3 && p.Wszystkie == 3);
+        var cts = new System.Threading.CancellationTokenSource(); cts.Cancel();
+        Assert.ThrowsAny<OperationCanceledException>(() => Porownanie.Znajdz(k, null, null, null, cts.Token));
+    }
+
+    [Fact]
     public void Id_grupy_nie_zalezy_od_kolejnosci_czlonkow()
     {
         Assert.Equal(Grupa.PoliczId(new[] { "b", "a", "c" }), Grupa.PoliczId(new[] { "c", "b", "a" }));
