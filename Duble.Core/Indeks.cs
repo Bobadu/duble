@@ -14,7 +14,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using CodeWalker.GameFiles;
@@ -23,13 +22,7 @@ namespace Duble;
 
 public static class Indeks
 {
-    // Ogonek "_1" na koncu nazwy dokladaja narzedzia eksportujace, gdy plik o tej nazwie
-    // juz istnieje (u nas: jbib_022_u_1.ydd). Musi wejsc do indeksu — to czesto wlasnie
-    // jest duplikat, ktorego szukamy. Trafia do Sufiksu, zeby nie zderzyc sie o Id.
-    static readonly Regex ReModel = new(@"^([a-z]{4})_(\d{3})_([ur])(_\d+)?\.ydd$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    static readonly Regex ReTekstura = new(@"^([a-z]{4})_diff_(\d{3})_([a-z])_([a-z]+)(_\d+)?\.ytd$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    static readonly Regex RePropModel = new(@"^p_([a-z]+)_(\d{3})(_\d+)?\.ydd$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    static readonly Regex RePropTekstura = new(@"^p_([a-z]+)_diff_(\d{3})_([a-z])(_\d+)?\.ytd$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    // Rozbior nazw (konwencja R*, ogonek "_1" eksporterow, prefiks FiveM "ped^") siedzi w Nazwy.cs.
 
     /// <summary>Jeden plik zrodlowy, niezaleznie od tego czy lezy w folderze, czy w archiwum.</summary>
     class Wpis
@@ -225,33 +218,20 @@ public static class Indeks
 
     static Pozycja Model(Wpis w, string paczka, bool gen9)
     {
-        string typ; int numer; bool props; string sufiks;
-        var m = ReModel.Match(w.Nazwa);
-        if (m.Success)
-        {
-            typ = m.Groups[1].Value.ToLowerInvariant();
-            numer = int.Parse(m.Groups[2].Value);
-            sufiks = (m.Groups[3].Value + m.Groups[4].Value).ToLowerInvariant();
-            props = false;
-        }
-        else
-        {
-            var pm = RePropModel.Match(w.Nazwa);
-            if (!pm.Success) return null;
-            typ = "p_" + pm.Groups[1].Value.ToLowerInvariant();
-            numer = int.Parse(pm.Groups[2].Value);
-            sufiks = "u" + pm.Groups[3].Value.ToLowerInvariant();
-            props = true;
-        }
+        var n = Nazwy.Model(w.Nazwa);
+        if (n == null) return null;
+        string typ = n.Typ; int numer = n.Numer; bool props = n.Props; string sufiks = n.Sufiks;
+        // kontener: folder/archiwum .rpf ma pierwszenstwo; przy luznych plikach FiveM bierzemy prefiks sprzed '^'
+        string kontener = !string.IsNullOrEmpty(w.Kontener) ? w.Kontener : (n.Kontener ?? "");
 
         byte[] dane;
         try { dane = w.Dane(); } catch { return null; }
 
         var poz = new Pozycja
         {
-            Id = $"{paczka}|{w.Kontener}|{typ}|{numer}|{sufiks}",
+            Id = $"{paczka}|{kontener}|{typ}|{numer}|{sufiks}",
             Paczka = paczka,
-            Kontener = w.Kontener,
+            Kontener = kontener,
             Typ = typ,
             Numer = numer,
             Sufiks = sufiks,
@@ -274,16 +254,11 @@ public static class Indeks
     static Tekstura TeksturaZ(Wpis w, out string klucz, out string rasa)
     {
         klucz = null; rasa = "uni";
-        string typ; int numer; bool props;
-        var m = ReTekstura.Match(w.Nazwa);
-        if (m.Success) { typ = m.Groups[1].Value.ToLowerInvariant(); numer = int.Parse(m.Groups[2].Value); rasa = m.Groups[4].Value.ToLowerInvariant(); props = false; }
-        else
-        {
-            var pm = RePropTekstura.Match(w.Nazwa);
-            if (!pm.Success) return null;
-            typ = "p_" + pm.Groups[1].Value.ToLowerInvariant(); numer = int.Parse(pm.Groups[2].Value); props = true;
-        }
-        klucz = $"{w.Kontener}|{typ}|{numer}|{props}";
+        var n = Nazwy.Tekstura(w.Nazwa);
+        if (n == null) return null;
+        string typ = n.Typ; int numer = n.Numer; bool props = n.Props; rasa = n.Rasa;
+        string kontener = !string.IsNullOrEmpty(w.Kontener) ? w.Kontener : (n.Kontener ?? "");
+        klucz = $"{kontener}|{typ}|{numer}|{props}";
 
         byte[] dane;
         try { dane = w.Dane(); } catch { return null; }
