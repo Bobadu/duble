@@ -262,8 +262,8 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .src-card .ico-box { width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); color: var(--text-2); display: grid; place-items: center; flex: none; }
 .src-card .ico-box .ico { width: 22px; height: 22px; }
 .src-card.disabled .ico-box { opacity: .5; }
-.src-card .name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; min-width: 0; }
-.src-card .name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.src-card .name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; row-gap: 4px; }
+.src-card .name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; max-width: 100%; }
 .src-card .name .badge { flex: none; }
 .src-card .path { color: var(--text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; user-select: text; }
 .src-card .info { flex: 1; min-width: 0; }
@@ -577,3 +577,6 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .lic-list.paths li { display: flex; align-items: center; gap: 10px; }
 .lic-list.paths li > span:first-child { min-width: 140px; color: var(--text-2); }
 .lic-list.paths li > span.mono { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apply-warn a { color: var(--accent); font-weight: 600; white-space: nowrap; }
+a.badge { text-decoration: none; }
+a.badge:hover { text-decoration: underline; }

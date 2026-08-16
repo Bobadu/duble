@@ -10,7 +10,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>assets\duble.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <Version>0.2.0</Version>
+    <Version>0.6.0</Version>
     <Company>Bobadu</Company>
     <Product>Duble</Product>
     <Authors>Bobadu</Authors>

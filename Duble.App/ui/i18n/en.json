@@ -41,7 +41,6 @@
   "start.exists": "A project with this name already exists in this folder.",
   "start.nameRequired": "Enter a project name.",
   "start.lastOpened": "last opened {d}",
-  "start.hint3d": "3D preview and duplicate comparison arrive in the next stages.",
   "sources.title": "Sources",
   "sources.subtitle": "Where to look for duplicates: folders with packs, .rpf archives, FiveM resources.",
   "sources.add": "Add",
