@@ -1,7 +1,7 @@
 // duble — wyszukiwanie duplikatow ubran w paczkach do GTA V (Legacy i Enhanced/gen9).
 // Cienka nakladka CLI na biblioteke Duble.Core (ten sam silnik ma aplikacja okienkowa Duble.App).
 //
-//   duble indeks <zrodlo> [<zrodlo>...] [--katalog <plik>] [--nazwa <paczka>] [--gra <folder>]
+//   duble indeks <zrodlo> [<zrodlo>...] [--katalog <plik>] [--nazwa <paczka>] [--gra <folder>] [--miniatury <folder>] [--wymus]
 //   duble kalibruj [--katalog <plik>]
 //   duble porownaj [--katalog <plik>] [--duble <plik>]
 //   duble raport   [--katalog <plik>] [--duble <plik>] [--out <plik.html>] [--lang pl|en]
@@ -55,6 +55,8 @@ string nazwaPaczki = Opcja("--nazwa", null);
 string folderGry = Opcja("--gra", Environment.GetEnvironmentVariable("GTAV_ENHANCED"));
 string wyjscie = Opcja("--out", null);
 string jezyk = Opcja("--lang", "pl");    // jezyk raportu i tekstow powodow: pl | en
+string miniatury = Opcja("--miniatury", null);   // indeks/odswiez: folder na miniatury <sha>.png (128 px)
+bool wymus = argv.Remove("--wymus");              // indeks/odswiez: przelicz wszystko, ignoruj poprzedni katalog
 
 string cmd = argv[0].ToLowerInvariant();
 argv.RemoveAt(0);
@@ -85,14 +87,15 @@ switch (cmd)
                 var nazwa = nazwaPaczki ?? Path.GetFileName(Path.GetFullPath(zrodlo).TrimEnd(Path.DirectorySeparatorChar));
                 if (nazwa.EndsWith(".rpf", StringComparison.OrdinalIgnoreCase)) nazwa = Path.GetFileNameWithoutExtension(nazwa);
                 var start = DateTime.Now;
-                var pozycje = Indeks.Zrodlo(zrodlo, nazwa, Log);
+                // przyrostowo: pliki bez zmian (rozmiar|data) biora odcisk z poprzedniego katalogu; --wymus liczy wszystko
+                var pozycje = Indeks.Zrodlo(zrodlo, nazwa, new OpcjeIndeksu { Log = Log, Poprzedni = katalog, Wymus = wymus, FolderMiniatur = miniatury });
                 katalog.UsunPaczke(nazwa);
                 katalog.Wstaw(pozycje);
                 katalog.Zrodla[nazwa] = Path.GetFullPath(zrodlo);
                 var tex = pozycje.Sum(p => p.Tekstury.Count);
                 var nieodczytane = pozycje.Sum(p => p.Tekstury.Count(t => !t.Zdekodowana));
                 Log($"  {pozycje.Count} pozycji, {tex} tekstur"
-                    + (nieodczytane > 0 ? $" ({nieodczytane} nie do zdekodowania — BC7)" : "")
+                    + (nieodczytane > 0 ? $" ({nieodczytane} nie do zdekodowania)" : "")
                     + $", {(DateTime.Now - start).TotalSeconds:F0} s");
             }
             katalog.Zbudowany = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");

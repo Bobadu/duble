@@ -186,7 +186,7 @@ public static class Odciski
     /// Dekoduje teksture i wypelnia odcisk: PHash, sygnature koloru, udzial alfy.
     /// Zwraca piksele RGB miniatury (do raportu) albo null, gdy sie nie udalo.
     /// </summary>
-    public static byte[] Tekstura(Texture t, Tekstura wy, int bokMiniatury = 128)
+    public static byte[] Tekstura(Texture t, Tekstura wy, int bokMiniatury = 128, Action<byte[], int, int> piksele = null)
     {
         wy.Nazwa = t.Name;
         wy.W = t.Width;
@@ -197,6 +197,7 @@ public static class Odciski
 
         var px = Dekoduj(t, out int w, out int h);
         if (px == null) return null;
+        piksele?.Invoke(px, w, h);   // np. miniatura do cache przy indeksowaniu (bez drugiego dekodowania)
 
         // --- PHash: 64x64 w skali szarosci -> DCT -> blok 16x16 -> mediana ---
         // DCT liczymy ROZDZIELNIE (najpierw wiersze, potem kolumny): 82 tys. mnozen
@@ -260,7 +261,12 @@ public static class Odciski
     public static byte[] Miniatura(Texture t, int bok)
     {
         var px = Dekoduj(t, out int w, out int h);
-        if (px == null) return null;
+        return px == null ? null : MiniaturaZPikseli(px, w, h, bok);
+    }
+
+    /// <summary>Jak Miniatura, ale z gotowych pikseli BGRA (uzywane przy indeksowaniu — dekodujemy raz).</summary>
+    public static byte[] MiniaturaZPikseli(byte[] px, int w, int h, int bok)
+    {
         var rgba = SkalujRgba(px, w, h, bok, bok);
         var wy = new byte[bok * bok * 3];
         for (int y = 0; y < bok; y++)
