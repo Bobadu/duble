@@ -185,7 +185,8 @@ p { margin: 0; }
 .input::placeholder { color: var(--text-3); }
 .help { font-size: 12px; color: var(--text-3); }
 .error-text { font-size: 12.5px; color: var(--err); }
-.switch { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12.5px; }
+.switch { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 12.5px; border: 0; background: transparent; padding: 2px 6px 2px 2px; border-radius: 8px; }
+.switch:hover { background: var(--panel-2); color: var(--text); }
 .switch .ico { width: 30px; height: 30px; }
 .switch.on { color: var(--accent); }
 .seg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 10px; padding: 3px; gap: 2px; }
@@ -202,7 +203,7 @@ p { margin: 0; }
 
 /* ---------- pusty stan ---------- */
 .empty { text-align: center; padding: 56px 24px; color: var(--text-2); border: 1px dashed var(--border-2); border-radius: var(--radius); background: var(--panel-2); }
-.empty .ico { width: 44px; height: 44px; color: var(--text-3); margin-bottom: 10px; }
+.empty > .ico { width: 44px; height: 44px; color: var(--text-3); margin-bottom: 10px; }
 .empty h3 { color: var(--text); margin-bottom: 6px; }
 .empty p { max-width: 52ch; margin: 0 auto 16px; }
 .dropzone { transition: border-color .12s, background .12s; }
@@ -256,18 +257,20 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 
 /* ---------- zrodla ---------- */
 .src-card { position: relative; }
-.src-card .card-body { display: grid; gap: 10px; }
-.src-card .top { display: flex; align-items: center; gap: 12px; }
+.src-card .card-body { display: grid; gap: 10px; min-width: 0; }
+.src-card .top { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .src-card .ico-box { width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); color: var(--text-2); display: grid; place-items: center; flex: none; }
 .src-card .ico-box .ico { width: 22px; height: 22px; }
 .src-card.disabled .ico-box { opacity: .5; }
 .src-card .name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; min-width: 0; }
-.src-card .name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-card .name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.src-card .name .badge { flex: none; }
 .src-card .path { color: var(--text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; user-select: text; }
 .src-card .info { flex: 1; min-width: 0; }
 .src-card .menu-btn { margin-left: auto; }
 .src-card .slots { display: flex; flex-wrap: wrap; gap: 6px; }
-.src-card .foot { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: 12px; }
+.src-card .foot { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: 12px; flex-wrap: wrap; }
+.src-card .foot .switch { white-space: nowrap; }
 .src-card .foot .grow { flex: 1; }
 .src-card.disabled { opacity: .72; }
 .src-card.missing { border-color: var(--err); }

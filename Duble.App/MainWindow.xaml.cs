@@ -114,9 +114,10 @@ public partial class MainWindow : Window, IOkno, IDialogi
     void ZarejestrujKomendy()
     {
         Komendy.Projekty.Zarejestruj(Mostek, Sesja);
-        ZarejestrujZrodla();
+        Zadania = new JobRunner(Mostek.Zdarzenie);
+        Komendy.Zrodla.Zarejestruj(Mostek, Sesja, Zadania);
     }
-    partial void ZarejestrujZrodla();
+    public JobRunner Zadania { get; private set; }
 
     void UiJestGotowe()
     {

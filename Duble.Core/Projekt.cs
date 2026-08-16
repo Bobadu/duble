@@ -80,6 +80,8 @@ public class Projekt
         if (juz != null) return juz;
         var z = new ZrodloProjektu { Id = Guid.NewGuid().ToString("N").Substring(0, 8), Sciezka = sciezka, Typ = RozpoznajTyp(sciezka) };
         var baza = z.Typ == "rpf" ? Path.GetFileNameWithoutExtension(sciezka) : Path.GetFileName(sciezka);
+        // "dlc.rpf" nic nie mowi — bierzemy nazwe folderu paczki (dlcpacks\studio_body\dlc.rpf -> studio_body)
+        if (z.Typ == "rpf" && baza.Equals("dlc", StringComparison.OrdinalIgnoreCase)) baza = Path.GetFileName(Path.GetDirectoryName(sciezka)) ?? baza;
         if (string.IsNullOrEmpty(baza)) baza = sciezka;
         var nazwa = baza; int n = 2;
         while (Zrodla.Exists(x => string.Equals(x.Nazwa, nazwa, StringComparison.OrdinalIgnoreCase))) nazwa = $"{baza} ({n++})";
