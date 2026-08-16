@@ -11,9 +11,16 @@ public static class Okno
     /// <summary>UI zglosilo gotowosc (po zaladowaniu i18n i pierwszym renderze) — MainWindow podpina zrzut ekranu / otwarcie projektu z argumentow.</summary>
     public static event Action UiGotowe;
 
+    /// <summary>Strona projektu / repozytorium (przycisk w „O programie"). null = jeszcze nieustalona — przycisk ukryty.</summary>
+    public const string StronaProjektu = null;
+
     public static void Zarejestruj(Mostek m)
     {
-        m.Rejestruj("app.info", _ => new { nazwa = "Duble", by = "Bobadu", wersja = Wersja(), dev = m.Dev });
+        m.Rejestruj("app.info", _ => new
+        {
+            nazwa = "Duble", by = "Bobadu", wersja = Wersja(), dev = m.Dev, strona = StronaProjektu,
+            sciezki = new { ustawienia = m.PlikUstawien ?? Ustawienia.Sciezka, webview2 = Ustawienia.FolderWebView2, projekty = Ustawienia.FolderProjektow, exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName },
+        });
         m.Rejestruj("ui.ready", _ => { UiGotowe?.Invoke(); return new { }; });
         m.Rejestruj("window.minimize", _ => { m.Okno.Uruchom(m.Okno.Minimalizuj); return new { }; });
         m.Rejestruj("window.maximize", _ => { m.Okno.Uruchom(m.Okno.MaksymalizujAlboPrzywroc); return new { maks = m.Okno.Zmaksymalizowane }; });

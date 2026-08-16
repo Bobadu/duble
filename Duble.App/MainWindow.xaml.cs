@@ -148,6 +148,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
         Komendy.Grupy.Zarejestruj(Mostek, Sesja, Zadania);
         Komendy.Historia.Zarejestruj(Mostek, Sesja, Zadania);
         Komendy.KatalogPozycji.Zarejestruj(Mostek, Sesja);
+        Komendy.UstawieniaKomendy.Zarejestruj(Mostek, Sesja, Zadania);
     }
     public JobRunner Zadania { get; private set; }
 
