@@ -4,6 +4,7 @@ import { el } from '../ui.js';
 const LICENCJE = [
   ['CodeWalker.Core (dexyfex)', 'MIT'],
   ['BCnEncoder.Net', 'MIT'],
+  ['three.js (r170)', 'MIT'],
   ['Microsoft Edge WebView2', 'Microsoft'],
   ['.NET / WPF', 'MIT'],
 ];

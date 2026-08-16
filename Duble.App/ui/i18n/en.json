@@ -214,5 +214,22 @@
   "wipe.zoom1": "1:1",
   "wipe.noPreview": "No preview for this texture (format without decoder or file unavailable).",
   "wipe.loading": "Loading texture…",
-  "wipe.hint": "Drag the slider or click the image."
+  "wipe.hint": "Drag the slider or click the image.",
+  "view3d.loading": "Loading model…",
+  "view3d.error": "Could not load the 3D model.",
+  "view3d.sync": "Rotate together",
+  "view3d.wireframe": "Wireframe",
+  "view3d.background": "Light background",
+  "view3d.reset": "Center",
+  "view3d.variant": "Variant",
+  "view3d.overlay": "Overlay A on B",
+  "view3d.sideBySide": "Side by side",
+  "view3d.showA": "Show A",
+  "view3d.showB": "Show B",
+  "view3d.verts": "verts",
+  "view3d.tris": "tris",
+  "view3d.hint": "Left button: rotate · wheel: zoom · right: pan · space in A/B mode: toggle",
+  "view3d.noModel": "No model to show.",
+  "view3d.webgl": "This graphics card/driver does not support WebGL — 3D preview unavailable.",
+  "view3d.overlayHint": "One view, two models — toggle A/B to spot mesh differences."
 }

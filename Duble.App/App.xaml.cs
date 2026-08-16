@@ -15,8 +15,7 @@ public partial class App : Application
         Argumenty = Argumenty.Parsuj(e.Args);
         if (!string.IsNullOrEmpty(Argumenty.DevIcon)) { Komendy.Ikona.Zapisz(Argumenty.DevIcon); Shutdown(0); return; }
         Ustawienia = Ustawienia.Wczytaj();
-        if (!string.IsNullOrEmpty(Argumenty.Jezyk)) Ustawienia.Jezyk = Argumenty.Jezyk;
-        if (!string.IsNullOrEmpty(Argumenty.Motyw)) Ustawienia.Motyw = Argumenty.Motyw;
+        // --lang/--theme NIE nadpisuja ustawien uzytkownika (tryb kontrolny) — ida do UI jako parametry adresu (MainWindow)
         DispatcherUnhandledException += (s, ex) =>
         {
             MessageBox.Show(ex.Exception.ToString(), "Duble — blad", MessageBoxButton.OK, MessageBoxImage.Error);

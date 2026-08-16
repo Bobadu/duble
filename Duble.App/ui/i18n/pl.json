@@ -214,5 +214,22 @@
   "wipe.zoom1": "1:1",
   "wipe.noPreview": "Brak podgladu tej tekstury (format bez dekodera albo plik niedostepny).",
   "wipe.loading": "Wczytywanie tekstury…",
-  "wipe.hint": "Przeciagnij suwak albo kliknij w obraz."
+  "wipe.hint": "Przeciagnij suwak albo kliknij w obraz.",
+  "view3d.loading": "Wczytuje model…",
+  "view3d.error": "Nie udalo sie wczytac modelu 3D.",
+  "view3d.sync": "Obrot razem",
+  "view3d.wireframe": "Siatka",
+  "view3d.background": "Jasne tlo",
+  "view3d.reset": "Wysrodkuj",
+  "view3d.variant": "Wariant",
+  "view3d.overlay": "Naloz A na B",
+  "view3d.sideBySide": "Obok siebie",
+  "view3d.showA": "Pokaz A",
+  "view3d.showB": "Pokaz B",
+  "view3d.verts": "wierzch.",
+  "view3d.tris": "trojk.",
+  "view3d.hint": "Lewy przycisk: obrot · kolko: zoom · prawy: przesun · spacja w trybie A/B: przelacz",
+  "view3d.noModel": "Brak modelu do pokazania.",
+  "view3d.webgl": "Ta karta graficzna/sterownik nie obsluguje WebGL — podglad 3D niedostepny.",
+  "view3d.overlayHint": "Jeden widok, dwa modele — przelaczaj A/B, zeby zobaczyc roznice siatki."
 }
