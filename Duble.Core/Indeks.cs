@@ -161,11 +161,25 @@ public static class Indeks
 
     // ===================== wejscie: folder / archiwum =====================
 
+    /// <summary>Nazwa folderu kosza (Zastosowanie) — indeksator go pomija, zeby odrzucone pliki nie wrocily jako paczka.</summary>
+    public const string FolderOdrzuconych = "_odrzucone";
+
+    /// <summary>true = sciezka pliku ma (miedzy korzeniem a nazwa) segment `_odrzucone`.</summary>
+    public static bool WKoszu(string korzen, string plik)
+    {
+        var wzgl = Path.GetRelativePath(korzen, plik);
+        var czesci = wzgl.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        for (int i = 0; i < czesci.Length - 1; i++)
+            if (czesci[i].Equals(FolderOdrzuconych, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
     static List<Wpis> ZFolderu(string korzen)
     {
         var wy = new List<Wpis>();
         foreach (var f in Directory.EnumerateFiles(korzen, "*", SearchOption.AllDirectories))
         {
+            if (WKoszu(korzen, f)) continue;
             var ext = Path.GetExtension(f);
             if (ext.Equals(".rpf", StringComparison.OrdinalIgnoreCase))
             {

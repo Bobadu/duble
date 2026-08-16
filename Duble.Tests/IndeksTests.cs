@@ -87,6 +87,27 @@ public class IndeksTests
     }
 
     [Fact]
+    public void Kosz_odrzucone_jest_pomijany_przy_indeksowaniu()
+    {
+        // WKoszu (czysta funkcja) + Zrodlo na folderze z plikami-atrapami: pusty ydd poza koszem trafia do prob wczytania (log go widzi),
+        // ten sam plik w _odrzucone jest niewidoczny
+        var tmp = Sciezki.Tymczasowy("kosz");
+        try
+        {
+            Assert.True(Indeks.WKoszu(tmp, Path.Combine(tmp, "_odrzucone", "p", "k.rpf", "jbib_001_u.ydd")));
+            Assert.True(Indeks.WKoszu(tmp, Path.Combine(tmp, "p", "_ODRZUCONE", "jbib_001_u.ydd")));
+            Assert.False(Indeks.WKoszu(tmp, Path.Combine(tmp, "p", "k.rpf", "jbib_001_u.ydd")));
+            Assert.False(Indeks.WKoszu(tmp, Path.Combine(tmp, "p", "_odrzucone.ydd")));   // nazwa pliku sie nie liczy
+            Directory.CreateDirectory(Path.Combine(tmp, "_odrzucone", "k.rpf"));
+            File.WriteAllBytes(Path.Combine(tmp, "_odrzucone", "k.rpf", "jbib_001_u.ydd"), new byte[16]);
+            var log = new System.Collections.Generic.List<string>();
+            Assert.Empty(Indeks.Zrodlo(tmp, "t", log.Add));
+            Assert.Contains(log, s => s.Contains("nie znalazlam"));   // dla indeksatora folder jest pusty
+        }
+        finally { Directory.Delete(tmp, true); }
+    }
+
+    [Fact]
     public void Anulowanie_przerywa_indeksowanie()
     {
         if (!Sciezki.SaLegacy4) { wyj.WriteLine("POMINIETY: brak downloads"); return; }

@@ -1,40 +1,150 @@
-// Zastosowanie.cs — wykonanie decyzji i cofniecie.
+// Zastosowanie.cs — wykonanie decyzji (przeniesienie odrzuconych plikow do kosza) i cofniecie.
 //
 // ZASADA PROJEKTU: oryginal nigdy nie ginie. Odrzucone pliki NIE sa kasowane, tylko
-// przenoszone do `staging\wardrobe2\_odrzucone\` z zachowaniem struktury, a lista
-// przeniesien ladzie w `cofnij.json` — jedno polecenie i wszystko wraca.
+// przenoszone do kosza (`_odrzucone` obok zrodla albo wskazany folder) z zachowaniem
+// struktury wzgledem zrodla, a lista przeniesien laduje w Cofce (JSON) — jedno polecenie
+// i wszystko wraca (calosc albo pojedyncza pozycja).
 //
 // PULAPKA, KTORA TO OBSLUGUJE: dwie pozycje o tym samym typie i numerze (np. feet_050
 // i feet_050_1, gdzie ogonek dolozył eksporter) WSPOLDZIELA te same pliki tekstur.
 // Przeniesienie "wszystkich plikow przegranego" okradloby wtedy zwyciezce. Dlatego
 // przed przeniesieniem sprawdzamy, czy plik nie jest uzywany przez pozycje, ktora zostaje.
+//
+// Przebieg: Zaplanuj (co, dokad, co pomijamy i dlaczego) -> uzytkownik ogląda plan -> Wykonaj
+// (ruchy + Cofka) -> Cofka.Zapisz. Cofnij(cofka, tylkoPozycje) przywraca.
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
 
 namespace Duble;
 
-public class Przeniesienie
+/// <summary>Jeden plik pozycji w planie: dokad pojdzie i czy w ogole (Stan).</summary>
+public sealed class RuchPliku
+{
+    public const string Przenies = "przenies";
+    public const string Wspoldzielony = "wspoldzielony";   // uzywa go pozycja, ktora zostaje
+    public const string WArchiwum = "wArchiwum";           // siedzi w .rpf — nie ruszamy archiwow
+    public const string Brak = "brak";                     // nie ma go na dysku / brak zrodla
+
+    public string Pozycja { get; set; }
+    public string Z { get; set; }
+    public string Do { get; set; }
+    public long Bajty { get; set; }
+    public string Stan { get; set; }
+}
+
+public sealed class PozycjaPlanu
+{
+    public string Id { get; set; }
+    public string Nazwa { get; set; }        // typ_NNN
+    public string Sufiks { get; set; }
+    public string Zrodlo { get; set; }
+    public string ZrodloId { get; set; }
+    public string Kontener { get; set; }
+    public string Kosz { get; set; }
+    public List<RuchPliku> Pliki { get; set; } = new();
+    public int DoPrzeniesienia => Pliki.Count(r => r.Stan == RuchPliku.Przenies);
+    public long Bajty => Pliki.Where(r => r.Stan == RuchPliku.Przenies).Sum(r => r.Bajty);
+    public int Wspoldzielone => Pliki.Count(r => r.Stan == RuchPliku.Wspoldzielony);
+    public int WArchiwum => Pliki.Count(r => r.Stan == RuchPliku.WArchiwum);
+    public int Brakujace => Pliki.Count(r => r.Stan == RuchPliku.Brak);
+}
+
+/// <summary>Skad liczyc sciezke wzgledna pozycji (Korzen zrodla) i dokad ja przeniesc (Kosz).</summary>
+public sealed class CelPozycji
+{
+    public string Korzen { get; set; }
+    public string Kosz { get; set; }
+    public string Zrodlo { get; set; }
+    public string ZrodloId { get; set; }
+}
+
+public sealed class PlanZastosowania
+{
+    public List<PozycjaPlanu> Pozycje { get; } = new();
+    /// <summary>Nazwy zrodel, ktorych nie ma na dysku (pozycje z nich maja pliki w stanie Brak).</summary>
+    public List<string> BrakujaceZrodla { get; } = new();
+    public int Pliki => Pozycje.Sum(p => p.DoPrzeniesienia);
+    public long Bajty => Pozycje.Sum(p => p.Bajty);
+    public int Wspoldzielone => Pozycje.Sum(p => p.Wspoldzielone);
+    public int WArchiwum => Pozycje.Sum(p => p.WArchiwum);
+    public int Brakujace => Pozycje.Sum(p => p.Brakujace);
+
+    public IEnumerable<(string kosz, int pliki, long bajty)> Kosze()
+        => Pozycje.Where(p => p.Kosz != null).GroupBy(p => p.Kosz, StringComparer.OrdinalIgnoreCase)
+                  .Select(g => (g.Key, g.Sum(p => p.DoPrzeniesienia), g.Sum(p => p.Bajty)))
+                  .Where(x => x.Item2 > 0);
+}
+
+public sealed class Przeniesienie
 {
     public string Z { get; set; }
     public string Do { get; set; }
+    public string Pozycja { get; set; }
+    public long Bajty { get; set; }
+    public bool Cofniety { get; set; }
 }
 
-public class Cofka
+public sealed class PozycjaCofki
+{
+    public string Id { get; set; }
+    public string Nazwa { get; set; }
+    public string Zrodlo { get; set; }
+    public string ZrodloId { get; set; }
+    public string Kosz { get; set; }
+    public int Pliki { get; set; }
+}
+
+/// <summary>Dziennik jednego zastosowania: co przeniesiono i skad — wystarcza, zeby wszystko wrocilo.</summary>
+public sealed class Cofka
 {
     public string Kiedy { get; set; }
+    public string Opis { get; set; }
     public List<Przeniesienie> Ruchy { get; set; } = new();
+    public List<PozycjaCofki> Pozycje { get; set; } = new();
+    public int Wspoldzielone { get; set; }
+    public int WArchiwum { get; set; }
+    public int Brakujace { get; set; }
+    /// <summary>true = Wykonaj przerwano (anulowanie/blad) — Ruchy zawieraja tylko to, co zdazylo sie przeniesc.</summary>
+    public bool Przerwano { get; set; }
+    public string Blad { get; set; }
+    /// <summary>Kiedy cofnieto WSZYSTKIE ruchy (null = jeszcze nie / czesciowo).</summary>
+    public string Cofnieto { get; set; }
+
+    [JsonIgnore] public long Bajty => Ruchy.Sum(r => r.Bajty);
+    [JsonIgnore] public bool CzesciowoCofnieta => Cofnieto == null && Ruchy.Any(r => r.Cofniety);
+    /// <summary>Jest co cofac: ruch niecofniety, plik nadal w koszu, a miejsce zrodlowe wolne.</summary>
+    [JsonIgnore] public bool MoznaCofnac => Ruchy.Any(MoznaCofnacRuch);
+    public static bool MoznaCofnacRuch(Przeniesienie r) => !r.Cofniety && File.Exists(r.Do) && !File.Exists(r.Z);
+    public bool MoznaCofnacPozycje(string id) => Ruchy.Any(r => r.Pozycja == id && MoznaCofnacRuch(r));
+
+    static readonly JsonSerializerOptions Opcje = new() { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+    public void Zapisz(string plik)
+    {
+        var kat = Path.GetDirectoryName(Path.GetFullPath(plik));
+        if (!string.IsNullOrEmpty(kat)) Directory.CreateDirectory(kat);
+        var tmp = plik + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(this, Opcje));
+        File.Move(tmp, plik, true);
+    }
+    public static Cofka Wczytaj(string plik)
+    {
+        var c = JsonSerializer.Deserialize<Cofka>(File.ReadAllText(plik), Opcje) ?? new Cofka();
+        c.Ruchy ??= new(); c.Pozycje ??= new();
+        return c;
+    }
 }
 
 public static class Zastosowanie
 {
-    /// <summary>Wypisuje liste decyzji do pliku TSV, ktory mozna recznie poprawic.</summary>
+    /// <summary>Wypisuje liste decyzji do pliku TSV, ktory mozna recznie poprawic (CLI).</summary>
     public static void ZapiszDecyzje(WynikPorownania wynik, Katalog katalog, string sciezka)
     {
-        var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
         var sb = new StringBuilder();
         sb.AppendLine("# Lista pozycji, ktore `duble zastosuj` przeniesie do _odrzucone\\.");
         sb.AppendLine("# Zmien TAK na NIE w pierwszej kolumnie przy tych, ktore chcesz zachowac.");
@@ -50,6 +160,154 @@ public static class Zastosowanie
         if (!string.IsNullOrEmpty(kat)) Directory.CreateDirectory(kat);
         File.WriteAllText(sciezka, sb.ToString(), Encoding.UTF8);
     }
+
+    // ===================== plan =====================
+
+    /// <summary>Plan przeniesien dla odrzuconych pozycji. `cel(p)` mowi, skad liczyc sciezke wzgledna i dokad przeniesc
+    /// (null = zrodla nie ma na dysku -> pliki pozycji w stanie Brak). Pliki uzywane przez pozycje, ktore zostaja,
+    /// dostaja stan Wspoldzielony; wpisy z archiwow (sciezka z '|') — WArchiwum.</summary>
+    public static PlanZastosowania Zaplanuj(Katalog katalog, IEnumerable<string> odrzucone, Func<Pozycja, CelPozycji> cel)
+    {
+        var plan = new PlanZastosowania();
+        var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
+        var odrzucane = new HashSet<string>(odrzucone.Where(wgId.ContainsKey));
+        if (odrzucane.Count == 0) return plan;
+
+        // Pliki uzywane przez pozycje, KTORE ZOSTAJA. Wszystko z tej listy jest nietykalne.
+        var chronione = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in katalog.Pozycje.Where(p => !odrzucane.Contains(p.Id)))
+        {
+            if (p.SciezkaYdd != null) chronione.Add(p.SciezkaYdd);
+            foreach (var t in p.Tekstury) if (t.Sciezka != null) chronione.Add(t.Sciezka);
+        }
+
+        // ten sam plik moze byc w dwoch odrzucanych pozycjach (feet_050 i feet_050_1 obie odrzucone) — przenosimy raz
+        var zaplanowane = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var brakZrodel = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in odrzucane.OrderBy(x => x, StringComparer.Ordinal))
+        {
+            var p = wgId[id];
+            var c = cel?.Invoke(p);
+            var pp = new PozycjaPlanu
+            {
+                Id = p.Id, Nazwa = $"{p.Typ}_{p.Numer:d3}", Sufiks = p.Sufiks, Kontener = p.Kontener,
+                Zrodlo = c?.Zrodlo ?? p.Paczka, ZrodloId = c?.ZrodloId ?? p.ZrodloId, Kosz = c?.Kosz,
+            };
+            if (c == null) brakZrodel.Add(pp.Zrodlo);
+
+            var pliki = new List<(string sciezka, long bajty)>();
+            if (p.SciezkaYdd != null) pliki.Add((p.SciezkaYdd, p.BajtyYdd));
+            pliki.AddRange(p.Tekstury.Where(t => t.Sciezka != null).Select(t => (t.Sciezka, t.Bajty)));
+            foreach (var (sciezka, bajty) in pliki.DistinctBy(x => x.sciezka, StringComparer.OrdinalIgnoreCase))
+            {
+                var r = new RuchPliku { Pozycja = p.Id, Z = sciezka, Bajty = bajty };
+                if (sciezka.Contains('|')) r.Stan = RuchPliku.WArchiwum;
+                else if (chronione.Contains(sciezka)) r.Stan = RuchPliku.Wspoldzielony;
+                else if (c == null || !File.Exists(sciezka)) r.Stan = RuchPliku.Brak;
+                else if (!zaplanowane.Add(sciezka)) continue;   // juz w planie innej odrzucanej pozycji
+                else { r.Stan = RuchPliku.Przenies; r.Do = Path.Combine(c.Kosz, Wzgledna(c.Korzen, sciezka)); }
+                pp.Pliki.Add(r);
+            }
+            plan.Pozycje.Add(pp);
+        }
+        plan.BrakujaceZrodla.AddRange(brakZrodel.OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+        return plan;
+    }
+
+    /// <summary>Sciezka wzgledem korzenia zrodla (zachowujemy uklad kontenerow w koszu); plik spoza korzenia -> sama nazwa.</summary>
+    public static string Wzgledna(string korzen, string plik)
+    {
+        if (string.IsNullOrEmpty(korzen)) return Path.GetFileName(plik);
+        try
+        {
+            var pelnyKorzen = Path.GetFullPath(korzen).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var pelny = Path.GetFullPath(plik);
+            if (File.Exists(pelnyKorzen)) pelnyKorzen = Path.GetDirectoryName(pelnyKorzen);   // korzen to plik (archiwum) — liczymy od jego folderu
+            var wzgl = Path.GetRelativePath(pelnyKorzen, pelny);
+            if (wzgl.StartsWith("..") || Path.IsPathRooted(wzgl)) return Path.GetFileName(plik);
+            return wzgl;
+        }
+        catch { return Path.GetFileName(plik); }
+    }
+
+    // ===================== wykonanie =====================
+
+    /// <summary>Przenosi pliki w stanie Przenies. Nie rzuca przy anulowaniu — konczy petle i ustawia Przerwano, zeby wolajacy
+    /// ZAWSZE mogl zapisac cofke z tym, co juz sie przenioslo. Wyjatek IO przy pojedynczym pliku tez przerywa (Blad).</summary>
+    public static Cofka Wykonaj(PlanZastosowania plan, string opis, Action<Postep> postep = null, CancellationToken ct = default)
+    {
+        var cofka = new Cofka
+        {
+            Kiedy = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), Opis = opis,
+            Wspoldzielone = plan.Wspoldzielone, WArchiwum = plan.WArchiwum, Brakujace = plan.Brakujace,
+        };
+        var ruchy = plan.Pozycje.SelectMany(p => p.Pliki.Where(r => r.Stan == RuchPliku.Przenies).Select(r => (p, r))).ToList();
+        int n = ruchy.Count, i = 0;
+        var pozycje = new Dictionary<string, PozycjaCofki>();
+        foreach (var (p, r) in ruchy)
+        {
+            postep?.Invoke(new Postep("zastosuj", i, n, p.Nazwa));
+            if (ct.IsCancellationRequested) { cofka.Przerwano = true; break; }
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(r.Do));
+                if (File.Exists(r.Do)) File.Delete(r.Do);   // stary odrzut o tej samej nazwie — nadpisujemy (to kosz)
+                File.Move(r.Z, r.Do);
+            }
+            catch (Exception e) { cofka.Przerwano = true; cofka.Blad = $"{r.Z}: {e.Message}"; break; }
+            cofka.Ruchy.Add(new Przeniesienie { Z = r.Z, Do = r.Do, Pozycja = p.Id, Bajty = r.Bajty });
+            if (!pozycje.TryGetValue(p.Id, out var pc))
+                pozycje[p.Id] = pc = new PozycjaCofki { Id = p.Id, Nazwa = p.Nazwa + (string.IsNullOrEmpty(p.Sufiks) ? "" : " " + p.Sufiks), Zrodlo = p.Zrodlo, ZrodloId = p.ZrodloId, Kosz = p.Kosz };
+            pc.Pliki++;
+            i++;
+        }
+        postep?.Invoke(new Postep("zastosuj", i, n, null));
+        cofka.Pozycje = pozycje.Values.ToList();
+        return cofka;
+    }
+
+    // ===================== cofniecie =====================
+
+    /// <summary>Przywraca pliki (wszystkie albo tylko podanych pozycji). Ruch pominiety, gdy pliku nie ma juz w koszu albo
+    /// miejsce zrodlowe jest zajete. Oznacza Cofniety; gdy nie zostal zaden niecofniety ruch — ustawia Cofnieto.</summary>
+    public static (int wrocilo, int pominieto) Cofnij(Cofka cofka, IEnumerable<string> tylkoPozycje = null, Action<Postep> postep = null)
+    {
+        var tylko = tylkoPozycje == null ? null : new HashSet<string>(tylkoPozycje);
+        var doCofniecia = cofka.Ruchy.Where(r => !r.Cofniety && (tylko == null || tylko.Contains(r.Pozycja))).ToList();
+        int wrocilo = 0, pominieto = 0, i = 0;
+        foreach (var r in doCofniecia)
+        {
+            postep?.Invoke(new Postep("cofnij", i++, doCofniecia.Count, Path.GetFileName(r.Z)));
+            if (!File.Exists(r.Do) || File.Exists(r.Z)) { pominieto++; continue; }
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(r.Z));
+                File.Move(r.Do, r.Z);
+                r.Cofniety = true; wrocilo++;
+                UsunPusteFoldery(Path.GetDirectoryName(r.Do));
+            }
+            catch { pominieto++; }
+        }
+        if (cofka.Ruchy.All(r => r.Cofniety) && cofka.Ruchy.Count > 0) cofka.Cofnieto = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        return (wrocilo, pominieto);
+    }
+
+    /// <summary>Po cofnieciu sprzatamy puste foldery kosza (do 8 poziomow w gore) — zeby po Cofnij nie zostawal szkielet _odrzucone.</summary>
+    static void UsunPusteFoldery(string folder)
+    {
+        for (int k = 0; k < 8 && !string.IsNullOrEmpty(folder); k++)
+        {
+            try
+            {
+                if (!Directory.Exists(folder) || Directory.EnumerateFileSystemEntries(folder).Any()) return;
+                Directory.Delete(folder);
+            }
+            catch { return; }
+            folder = Path.GetDirectoryName(folder);
+        }
+    }
+
+    // ===================== CLI (plik decyzji TSV + jeden korzen kosza) =====================
 
     public static int Zastosuj(Katalog katalog, string decyzje, string korzenOdrzuconych, string plikCofki, Action<string> log)
     {
@@ -69,7 +327,6 @@ public static class Zastosowanie
         }
 
         var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
-
         var doOdrzucenia = new List<string>();
         foreach (var linia in File.ReadAllLines(decyzje))
         {
@@ -83,86 +340,31 @@ public static class Zastosowanie
         if (doOdrzucenia.Count == 0) { log("nic do zrobienia — zadna linia nie ma TAK"); return 0; }
         log($"pozycji do odrzucenia: {doOdrzucenia.Count}");
 
-        // Pliki uzywane przez pozycje, KTORE ZOSTAJA. Wszystko z tej listy jest nietykalne.
-        var odrzucane = new HashSet<string>(doOdrzucenia);
-        var chronione = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var p in katalog.Pozycje.Where(p => !odrzucane.Contains(p.Id)))
+        var plan = Zaplanuj(katalog, doOdrzucenia, p => new CelPozycji
         {
-            if (p.SciezkaYdd != null) chronione.Add(p.SciezkaYdd);
-            foreach (var t in p.Tekstury) if (t.Sciezka != null) chronione.Add(t.Sciezka);
-        }
-
-        var cofka = new Cofka { Kiedy = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") };
-        int przeniesione = 0, wspoldzielone = 0, wArchiwum = 0, brakujace = 0;
-
-        foreach (var id in doOdrzucenia)
-        {
-            var p = wgId[id];
-            var pliki = new List<string>();
-            if (p.SciezkaYdd != null) pliki.Add(p.SciezkaYdd);
-            pliki.AddRange(p.Tekstury.Where(t => t.Sciezka != null).Select(t => t.Sciezka));
-
-            foreach (var zrodlo in pliki.Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                if (zrodlo.Contains('|'))
-                {
-                    // plik siedzi w archiwum .rpf — nie ruszamy zawartosci archiwow
-                    wArchiwum++;
-                    continue;
-                }
-                if (chronione.Contains(zrodlo))
-                {
-                    // ten sam plik obsluguje pozycje, ktora zostaje (np. feet_050 i feet_050_1)
-                    wspoldzielone++;
-                    continue;
-                }
-                if (!File.Exists(zrodlo)) { brakujace++; continue; }
-
-                var cel = Path.Combine(korzenOdrzuconych, p.Paczka, ZKorzenia(zrodlo, p.Paczka));
-                Directory.CreateDirectory(Path.GetDirectoryName(cel));
-                if (File.Exists(cel)) File.Delete(cel);
-                File.Move(zrodlo, cel);
-                cofka.Ruchy.Add(new Przeniesienie { Z = zrodlo, Do = cel });
-                przeniesione++;
-            }
-            log($"  odrzucone: {p.Opis}{p.Sufiks}");
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(plikCofki)));
-        File.WriteAllText(plikCofki, JsonSerializer.Serialize(cofka, new JsonSerializerOptions { WriteIndented = true }));
+            Korzen = katalog.Zrodla.TryGetValue(p.Paczka, out var k) ? k : null,
+            Kosz = Path.Combine(korzenOdrzuconych, p.Paczka), Zrodlo = p.Paczka,
+        });
+        var cofka = Wykonaj(plan, "duble zastosuj");
+        foreach (var p in cofka.Pozycje) log($"  odrzucone: {p.Zrodlo} / {p.Nazwa}");
+        cofka.Zapisz(plikCofki);
 
         log("");
-        log($"przeniesionych plikow : {przeniesione}");
-        if (wspoldzielone > 0) log($"pominietych (wspoldzielone z pozycja, ktora zostaje): {wspoldzielone}");
-        if (wArchiwum > 0) log($"pominietych (w archiwum .rpf — rozpakuj paczke, zeby ruszyc): {wArchiwum}");
-        if (brakujace > 0) log($"pominietych (brak pliku na dysku): {brakujace}");
+        log($"przeniesionych plikow : {cofka.Ruchy.Count}");
+        if (cofka.Wspoldzielone > 0) log($"pominietych (wspoldzielone z pozycja, ktora zostaje): {cofka.Wspoldzielone}");
+        if (cofka.WArchiwum > 0) log($"pominietych (w archiwum .rpf — rozpakuj paczke, zeby ruszyc): {cofka.WArchiwum}");
+        if (cofka.Brakujace > 0) log($"pominietych (brak pliku na dysku): {cofka.Brakujace}");
+        if (cofka.Przerwano) log($"[blad] przerwano: {cofka.Blad}");
         log($"cofka: {plikCofki}   — `duble cofnij` przywraca wszystko");
-        return 0;
-    }
-
-    /// <summary>Sciezka wzgledem folderu paczki, zeby w _odrzucone zachowac uklad kontenerow.</summary>
-    static string ZKorzenia(string pelna, string paczka)
-    {
-        var czesci = pelna.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        int i = Array.FindLastIndex(czesci, c => c.Equals(paczka, StringComparison.OrdinalIgnoreCase));
-        return i >= 0 && i < czesci.Length - 1
-            ? string.Join(Path.DirectorySeparatorChar, czesci.Skip(i + 1))
-            : Path.GetFileName(pelna);
+        return cofka.Przerwano ? 1 : 0;
     }
 
     public static int Cofnij(string plikCofki, Action<string> log)
     {
         if (!File.Exists(plikCofki)) { log($"[blad] brak pliku cofki: {plikCofki}"); return 1; }
-        var cofka = JsonSerializer.Deserialize<Cofka>(File.ReadAllText(plikCofki));
-        int wrocilo = 0, potkniecia = 0;
-        foreach (var r in cofka.Ruchy)
-        {
-            if (!File.Exists(r.Do)) { potkniecia++; continue; }
-            if (File.Exists(r.Z)) { log($"[uwaga] cel juz istnieje, pomijam: {r.Z}"); potkniecia++; continue; }
-            Directory.CreateDirectory(Path.GetDirectoryName(r.Z));
-            File.Move(r.Do, r.Z);
-            wrocilo++;
-        }
+        var cofka = Cofka.Wczytaj(plikCofki);
+        var (wrocilo, potkniecia) = Cofnij(cofka);
+        cofka.Zapisz(plikCofki);
         log($"przywrocono {wrocilo} plikow" + (potkniecia > 0 ? $", pominieto {potkniecia}" : ""));
         log("katalog jest teraz nieaktualny — uruchom `duble.ps1` zeby przeindeksowac");
         return 0;
