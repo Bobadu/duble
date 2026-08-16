@@ -47,6 +47,19 @@ public class SesjaPorownanieTests
             using (var st2 = s.Zasob("tex", sha)) Assert.Equal(dl, st2.Length);   // z cache
             Assert.Null(s.Zasob("tex", "NIEMA"));
 
+            // mesh: GLB pozycji z wariantem tekstury, w cache mesh\ (nazwa z SHA ydd i tekstury)
+            var uppr = s.Katalog.Pozycje.First(p => p.Typ == "uppr" && p.Numer == 15);
+            using (var st = s.Zasob("mesh", uppr.Id, "w=a"))
+            {
+                Assert.NotNull(st);
+                var b = new byte[4]; st.Read(b, 0, 4);
+                Assert.Equal("glTF", System.Text.Encoding.ASCII.GetString(b));
+            }
+            var glby = Directory.GetFiles(s.Projekt.FolderSiatek, "*.glb");
+            Assert.Single(glby);
+            using (var st2 = s.Zasob("mesh", uppr.Id, "w=a")) Assert.Equal(new FileInfo(glby[0]).Length, st2.Length);   // z cache
+            Assert.Null(s.Zasob("mesh", "nie|ma|takiej|0|u", null));
+
             s.Zamknij();
             s.Otworz(Path.Combine(tmp, "P.duble"));
             Assert.NotNull(s.Wynik);

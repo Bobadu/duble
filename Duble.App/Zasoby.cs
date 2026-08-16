@@ -16,8 +16,8 @@ public sealed class Zasoby
     readonly string uiFolder;
     readonly Dictionary<string, string> osadzone = new(StringComparer.OrdinalIgnoreCase);   // "index.html" -> logical name
 
-    /// <summary>(kategoria, klucz) -> strumien albo null. Kategorie: thumb, tex, mesh.</summary>
-    public Func<string, string, Stream> Dane { get; set; }
+    /// <summary>(kategoria, klucz, query bez '?') -> strumien albo null. Kategorie: thumb, tex, mesh (mesh: query "w=&lt;litera&gt;" = wariant tekstury).</summary>
+    public Func<string, string, string, Stream> Dane { get; set; }
 
     public bool ZFolderu => uiFolder != null;
 
@@ -59,7 +59,7 @@ public sealed class Zasoby
             {
                 tresc = new MemoryStream(Encoding.UTF8.GetBytes(Slownik(klucz))); mime = "application/json; charset=utf-8"; status = 200; return true;
             }
-            tresc = Dane?.Invoke(kategoria, klucz);
+            tresc = Dane?.Invoke(kategoria, klucz, (u.Query ?? "").TrimStart('?'));
             if (tresc == null) return false;
             mime = Mime(czesci[1]); status = 200; return true;
         }

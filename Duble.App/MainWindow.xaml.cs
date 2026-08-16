@@ -54,7 +54,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
         var arg = App.Argumenty;
         string uiFolder = null;
         if (arg.Dev) uiFolder = arg.UiFolder ?? ZnajdzFolderUi();
-        Zasoby = new Zasoby(uiFolder) { Dane = Sesja.Zasob };
+        Zasoby = new Zasoby(uiFolder) { Dane = (kategoria, klucz, query) => Sesja.Zasob(kategoria, klucz, query) };
         Log($"start dev={arg.Dev} ui={(uiFolder ?? "(osadzone)")} zrzut={arg.Zrzut}");
         try
         {

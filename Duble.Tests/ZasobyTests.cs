@@ -46,8 +46,9 @@ public class ZasobyTests
         var json = new StreamReader(s).ReadToEnd();
         Assert.Contains("\"powod.SAME_MODEL_SAME_TEX\"", json);   // z Core
         Assert.Contains("\"app.name\"", json);                     // z ui\i18n\pl.json
-        z.Dane = (kategoria, klucz) => kategoria == "thumb" && klucz == "ABC" ? new MemoryStream(new byte[] { 1, 2, 3 }) : null;
-        Assert.True(z.Rozwiaz("https://duble.data/thumb/ABC.png", out s, out mime, out status)); Assert.Equal("image/png", mime);
+        string ostatniQuery = null;
+        z.Dane = (kategoria, klucz, query) => { ostatniQuery = query; return kategoria == "thumb" && klucz == "ABC" ? new MemoryStream(new byte[] { 1, 2, 3 }) : null; };
+        Assert.True(z.Rozwiaz("https://duble.data/thumb/ABC.png?w=b", out s, out mime, out status)); Assert.Equal("image/png", mime); Assert.Equal("w=b", ostatniQuery);
         Assert.False(z.Rozwiaz("https://duble.data/thumb/XYZ.png", out _, out _, out status)); Assert.Equal(404, status);
         Assert.False(z.Rozwiaz("https://inna.domena/x", out _, out _, out status)); Assert.Equal(404, status);
     }
