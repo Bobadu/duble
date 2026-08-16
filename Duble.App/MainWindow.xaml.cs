@@ -97,8 +97,9 @@ public partial class MainWindow : Window, IOkno, IDialogi
                 _ = Task.Run(async () => { var odp = await Mostek.Obsluz(json); await Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(odp)); });
             };
             core.NavigationCompleted += (s, e) => Log($"navigation completed ok={e.IsSuccess} status={e.HttpStatusCode} err={e.WebErrorStatus}");
-            Log("navigate");
-            core.Navigate("https://duble.app/index.html");
+            var url = "https://duble.app/index.html" + (string.IsNullOrEmpty(arg.Widok) ? "" : "?view=" + Uri.EscapeDataString(arg.Widok));
+            Log("navigate " + url);
+            core.Navigate(url);
         }
         catch (Exception e)
         {
