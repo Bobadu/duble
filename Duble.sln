@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Duble.Cli", "Duble.Cli\Dubl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Duble.Tests", "Duble.Tests\Duble.Tests.csproj", "{BCA36017-AAD9-4E77-8509-1945FD900FCD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Duble.App", "Duble.App\Duble.App.csproj", "{685721FB-7225-431B-A09F-92F6D2C0D1BE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{BCA36017-AAD9-4E77-8509-1945FD900FCD}.Release|x64.Build.0 = Release|Any CPU
 		{BCA36017-AAD9-4E77-8509-1945FD900FCD}.Release|x86.ActiveCfg = Release|Any CPU
 		{BCA36017-AAD9-4E77-8509-1945FD900FCD}.Release|x86.Build.0 = Release|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Debug|x64.Build.0 = Debug|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Debug|x86.Build.0 = Debug|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Release|x64.ActiveCfg = Release|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Release|x64.Build.0 = Release|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Release|x86.ActiveCfg = Release|Any CPU
+		{685721FB-7225-431B-A09F-92F6D2C0D1BE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Duble</title>
+<style>
+  html,body{margin:0;height:100%;background:#1B1A1F;color:#F3EFEA;font:15px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+  .pasek{height:40px;display:flex;align-items:center;padding:0 14px;gap:10px;app-region:drag;-webkit-app-region:drag}
+  main{padding:40px}
+  h1{margin:0;font-weight:600}
+  .by{color:#FF6F61}
+</style>
+</head>
+<body>
+<div class="pasek"><b>Duble</b><span class="by">by Bobadu</span></div>
+<main><h1 data-i18n="app.name">Duble</h1><p id="stan">…</p></main>
+<script>
+fetch('https://duble.data/i18n/pl.json').then(r => r.json()).then(s => {
+  document.getElementById('stan').textContent = s['app.tagline'] || 'brak i18n';
+  window.chrome?.webview?.postMessage({ event: 'ui.ready' });
+});
+</script>
+</body>
+</html>

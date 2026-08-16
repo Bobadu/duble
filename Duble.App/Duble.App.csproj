@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Duble.App</RootNamespace>
+    <AssemblyName>Duble</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Version>0.2.0</Version>
+    <Company>Bobadu</Company>
+    <Product>Duble</Product>
+    <Authors>Bobadu</Authors>
+    <Copyright>Bobadu</Copyright>
+    <Description>Duble — duplikaty ubran do GTA V (Legacy i Enhanced)</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Duble.Core\Duble.Core.csproj" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- interfejs osadzony w exe; w trybie -dev czytany z folderu ui\ (edycja na zywo) -->
+    <EmbeddedResource Include="ui\**\*" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
