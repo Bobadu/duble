@@ -48,18 +48,19 @@ function naglowek(r, ctx) {
   const { t, icon, bridge, navigate } = ctx;
   const c = r.pozycja;
   const h = el(`
-    <div class="group-head">
-      <button class="btn ghost" id="i-back">${icon('chevron', 'rot90')}${t('item.back')}</button>
-      <div class="group-title item-title">
-        <span class="nm">${esc(nazwaPozycji(c))}<sub>${esc(c.sufiks || '')}</sub></span>
-        <span class="badge ${c.gen9 ? 'gen9' : 'legacy'}">${c.gen9 ? t('sources.formatGen9') : t('sources.formatLegacy')}</span>
-        <span class="faint">${esc(c.zrodlo)} · ${esc(c.kontener || '')}</span>
-        ${c.wArchiwum ? `<span class="badge unknown">${t('group.inArchive')}</span>` : `<button class="btn ghost sm" id="i-explorer" title="${esc(t('group.showInExplorer'))}">${icon('external')}${t('group.showInExplorer')}</button>`}
+    <div class="view-head group-head">
+      <div class="titles">
+        <a class="back-link" href="#/catalog" id="i-back">${icon('chevron', 'rot90')}${t('item.back')}</a>
+        <h1 class="group-h1"><span class="nm">${esc(nazwaPozycji(c))}<sub>${esc(c.sufiks || '')}</sub></span></h1>
+        <div class="group-sub"><span class="badge ${c.gen9 ? 'gen9' : 'legacy'}">${c.gen9 ? t('sources.formatGen9') : t('sources.formatLegacy')}</span>${c.wArchiwum ? `<span class="badge unknown">${t('group.inArchive')}</span>` : ''}<span>${esc(c.zrodlo)}<span class="faint"> › ${esc(c.kontener || '')}</span></span>${c.typ ? `<span class="faint">· ${esc(t('slot.' + c.typ))}</span>` : ''}</div>
+      </div>
+      <div class="actions">
+        ${c.wArchiwum ? '' : `<button class="btn" id="i-explorer" title="${esc(t('group.showInExplorer'))}">${icon('external')}${t('group.showInExplorer')}</button>`}
       </div>
     </div>`);
-  h.querySelector('#i-back').onclick = () => navigate('catalog');
+  h.querySelector('#i-back').onclick = (e) => { e.preventDefault(); navigate('catalog'); };
   h.querySelector('#i-explorer')?.addEventListener('click', () => bridge.call('shell.showInExplorer', { sciezka: c.sciezkaYdd }).catch(e => toast(e.message, { typ: 'warn' })));
-  const pasek = el(`<div class="group-sub"><div class="tabs"><button class="tab ${zakladka() === '2d' ? 'on' : ''}" data-tab="2d">${icon('catalog')}${t('group.tab2d')}</button><button class="tab ${zakladka() === '3d' ? 'on' : ''}" data-tab="3d">${icon('cube')}${t('group.tab3d')}</button></div></div>`);
+  const pasek = el(`<div class="group-bar"><div class="tabs"><button class="tab ${zakladka() === '2d' ? 'on' : ''}" data-tab="2d">${icon('catalog')}${t('group.tab2d')}</button><button class="tab ${zakladka() === '3d' ? 'on' : ''}" data-tab="3d">${icon('cube')}${t('group.tab3d')}</button></div></div>`);
   pasek.querySelectorAll('.tab[data-tab]').forEach(b => b.onclick = async () => { sessionStorage.setItem('item.tab', b.dataset.tab); const panel = document.getElementById('item-panel'); if (panel) await pokazZakladke(r, ctx, panel); });
   const w = el('<div></div>'); w.append(h, pasek);
   return w;
@@ -75,7 +76,7 @@ function karta2d(r, ctx) {
         <div class="col-facts">
           <div><span class="faint">${t('group.model')}</span> <b>${fmt.liczba(c.wierzcholki)}</b> ${t('group.verts')} · <b>${fmt.liczba(c.trojkaty)}</b> ${t('group.tris')} · ${t('group.lods')} <b>${c.lody}</b></div>
           <div><span class="faint">${t('group.size')}</span> <b>${fmt.rozmiar(c.bajty)}</b> · ${t('dup.textures', { n: c.tekstur })}</div>
-          <div class="col-path"><span class="faint">${t('group.path')}</span> <span class="mono select-text" title="${esc(c.sciezkaYdd || '')}">${esc(sciezkaKrotka(c.sciezkaYdd, 90))}</span></div>
+          <div class="col-path"><span class="faint">${t('group.path')}</span> <span class="mono select-text" title="${esc(c.sciezkaYdd || '')}">${esc(sciezkaKrotka(c.sciezkaYdd, 10000))}</span></div>
         </div>
         <div class="col-tex-head"><span>${t('group.textures')}</span></div>
         <div class="tex-grid item-tex"></div>
