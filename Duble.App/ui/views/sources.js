@@ -106,7 +106,13 @@ function karta(s, wToku, ctx) {
   const sloty = Object.entries(s.perSlot || {}).sort((a, b) => SLOTY_KOLEJNOSC.indexOf(a[0]) - SLOTY_KOLEJNOSC.indexOf(b[0]));
   const pokaz = sloty.slice(0, 8); const reszta = sloty.length - pokaz.length;
   const indeksowane = wToku && wToku.tekst === s.nazwa;
-  const wArch = s.typ === 'rpf' ? `<span class="badge unknown" title="${esc(t('sources.archiveOnly'))}">${t('sources.readOnly')}</span>` : '';
+  const meta = [];
+  if (s.format) meta.push(`<span class="fmt ${fmtKlasa}"><i></i>${esc(fmtTekst)}</span>`);
+  meta.push(esc(typTekst));
+  if (s.typ === 'rpf') meta.push(`<span title="${esc(t('sources.archiveOnly'))}">${esc(t('sources.readOnly'))}</span>`);
+  else if (s.archiwa) meta.push(`<span title="${esc(t('sources.hasArchives'))}">${fmt.liczba(s.archiwa)} ${esc(t('sources.inArchives'))}</span>`);
+  const slotyTekst = pokaz.map(([typ, n]) => `<span>${esc(t('slot.' + typ))} <b>${n}</b></span>`).join('<i>·</i>')
+    + (reszta > 0 ? `<i>·</i><span title="${esc(sloty.slice(8).map(([typ, n]) => t('slot.' + typ) + ' ' + n).join(', '))}">+${reszta}</span>` : '');
   const k = el(`
     <div class="card src-card ${s.wlaczone ? '' : 'disabled'} ${s.istnieje ? '' : 'missing'}" data-id="${esc(s.id)}">
       <div class="card-body">
@@ -115,22 +121,18 @@ function karta(s, wToku, ctx) {
           <div class="info">
             <div class="name" title="${esc(s.nazwa)}">${esc(s.nazwa)}</div>
             <div class="path mono" title="${esc(s.sciezka)}">${esc(fmt.sciezkaKrotka(s.sciezka, 64))}</div>
+            <div class="meta">${meta.join('<i>·</i>')}</div>
           </div>
           <button class="btn ghost icon menu-btn" data-i18n-title="common.more">${icon('more')}</button>
         </div>
-        <div class="badges">${s.format ? `<span class="badge ${fmtKlasa}">${esc(fmtTekst)}</span>` : ''}<span class="badge unknown">${esc(typTekst)}</span>${wArch}</div>
         ${s.istnieje ? '' : `<div class="missing-text">${icon('warn')} ${t('sources.missing')}</div>`}
-        <div class="stats">
-          <div class="stat"><b>${fmt.liczba(s.pozycje)}</b><span>${t('sources.items')}</span></div>
-          <div class="stat"><b>${fmt.liczba(s.tekstury)}</b><span>${t('sources.textures')}</span></div>
-          ${s.archiwa && s.typ !== 'rpf' ? `<div class="stat faint" title="${esc(t('sources.hasArchives'))}"><b>${fmt.liczba(s.archiwa)}</b><span>${t('sources.inArchives')}</span></div>` : ''}
-        </div>
-        ${sloty.length ? `<div class="slots">${pokaz.map(([typ, n]) => `<span class="chip static mini">${esc(t('slot.' + typ))} <span class="n">${n}</span></span>`).join('')}${reszta > 0 ? `<span class="chip static mini" title="${esc(sloty.slice(8).map(([typ, n]) => t('slot.' + typ) + ' ' + n).join(', '))}">+${reszta}</span>` : ''}</div>` : ''}
+        <div class="stats"><b>${fmt.liczba(s.pozycje)}</b> ${t('sources.items')}<i>·</i><b>${fmt.liczba(s.tekstury)}</b> ${t('sources.textures')}</div>
+        ${sloty.length ? `<div class="slots">${slotyTekst}</div>` : ''}
         ${indeksowane ? `<div class="indexing"><span>${wToku.stan === 'postep' && wToku.wszystkie ? esc(t('sources.indexingOf', { etap: wToku.etap, zrobione: fmt.liczba(wToku.zrobione), wszystkie: fmt.liczba(wToku.wszystkie) })) : t('sources.indexing')}</span><div class="progress ${wToku.stan === 'postep' && wToku.wszystkie ? '' : 'indeterminate'}"><i style="width:${wToku.procent || 0}%"></i></div></div>` : ''}
         <div class="foot">
           <span>${s.zaindeksowano ? t('sources.indexed', { d: fmt.data(s.zaindeksowano) }) : t('sources.never')}</span>
           <span class="grow"></span>
-          <button class="switch ${s.wlaczone ? 'on' : ''}" title="${s.wlaczone ? t('sources.enabled') : t('sources.disabled')}">${icon(s.wlaczone ? 'toggleOn' : 'toggleOff')}<span>${s.wlaczone ? t('sources.enabled') : t('sources.disabled')}</span></button>
+          <button class="switch ${s.wlaczone ? 'on' : ''}" title="${s.wlaczone ? t('sources.enabled') : t('sources.disabled')}"><span>${s.wlaczone ? t('sources.enabled') : t('sources.disabled')}</span>${icon(s.wlaczone ? 'toggleOn' : 'toggleOff')}</button>
         </div>
       </div>
     </div>`);
