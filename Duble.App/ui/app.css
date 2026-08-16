@@ -259,8 +259,8 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .proj-card .info { flex: 1; min-width: 0; }
 
 /* ---------- zrodla ---------- */
-.src-card { position: relative; }
-.src-card .card-body { display: grid; gap: 12px; min-width: 0; padding: 18px 20px 14px; }
+.src-card { position: relative; display: flex; }
+.src-card .card-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px 20px 14px; width: 100%; }
 .src-card .top { display: flex; align-items: center; gap: 14px; min-width: 0; padding-right: 30px; }
 .src-card .ico-box { width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); color: var(--text-2); display: grid; place-items: center; flex: none; }
 .src-card .ico-box .ico { width: 21px; height: 21px; }
@@ -272,14 +272,18 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .src-card .pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .src-card .stats { font-size: 14px; color: var(--text-2); }
 .src-card .stats b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-.src-card .stats i { font-style: normal; color: var(--text-3); margin: 0 8px; }
-.src-card .foot { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: 12px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; }
+.src-card .stats i, .src-card .slots i { font-style: normal; color: var(--text-3); margin: 0 7px; }
+.src-card .slots { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+.src-card .slots b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.src-card .foot { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: 12px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: auto; }
 .src-card .foot .switch { white-space: nowrap; flex: none; }
 .src-card .foot .grow { flex: 1; min-width: 8px; }
-.src-card .foot > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-card .foot .when { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.src-card .foot .when .ico { width: 14px; height: 14px; flex: none; }
 .src-card.disabled { opacity: .72; }
 .src-card.missing { border-color: var(--err); }
 .src-card .missing-text { color: var(--err); font-size: 12.5px; }
+.src-card .indexing { display: grid; gap: 4px; font-size: 12px; color: var(--text-2); }
 
 /* miekkie kapsulki: bez wersalikow, spokojne tlo, kropka koloru formatu */
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); font-size: 12px; line-height: 16px; color: var(--text-2); white-space: nowrap; }
@@ -287,7 +291,6 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; }
 .pill.fmt { color: var(--text); font-weight: 600; }
 .pill.fmt.gen9 .dot { background: var(--info); } .pill.fmt.legacy .dot { background: var(--warn); } .pill.fmt.mixed .dot { background: var(--accent); }
-.src-card .indexing { display: grid; gap: 4px; font-size: 12px; color: var(--text-2); }
 
 /* ---------- ustawienia / o programie / wip ---------- */
 .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
