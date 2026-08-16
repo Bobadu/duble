@@ -44,8 +44,8 @@ async function odswiezOstatnie(kont, ile, ctx) {
           <div class="ico-box">${icon(o.istnieje ? 'file' : 'warn')}</div>
           <div class="info">
             <div class="name">${esc(o.nazwa)}</div>
-            <div class="path" title="${esc(o.sciezka)}">${esc(o.sciezka)}</div>
-            <div class="meta">${o.istnieje ? t('start.lastOpened', { d: fmt.data(o.ostatnio) }) : t('start.missing')}</div>
+            <div class="path mono" title="${esc(o.sciezka)}">${esc(fmt.sciezkaKrotka(o.sciezka.replace(/[\\/][^\\/]*$/, ''), 34))}</div>
+            <div class="meta">${icon('history')} ${o.istnieje ? esc(t('start.lastOpened', { d: fmt.data(o.ostatnio) })) : esc(t('start.missing'))}</div>
           </div>
           <button class="btn ghost icon more" data-i18n-title="common.more">${icon('more')}</button>
         </div>
