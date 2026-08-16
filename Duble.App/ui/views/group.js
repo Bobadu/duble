@@ -115,7 +115,7 @@ function kolumny(g, ctx) {
         <div class="col-facts">
           <div><span class="faint">${t('group.model')}</span> <b>${fmt.liczba(c.wierzcholki)}</b> ${t('group.verts')} · <b>${fmt.liczba(c.trojkaty)}</b> ${t('group.tris')} · ${t('group.lods')} <b>${c.lody}</b></div>
           <div><span class="faint">${t('group.size')}</span> <b>${fmt.rozmiar(c.bajty)}</b> · ${t('dup.textures', { n: c.tekstur })}</div>
-          <div class="col-path"><span class="faint">${t('group.path')}</span> <span class="mono select-text" title="${esc(c.sciezkaYdd || '')}">${esc(sciezkaKrotka(c.sciezkaYdd))}</span> ${c.wArchiwum ? `<span class="badge unknown">${t('group.inArchive')}</span>` : `<button class="btn ghost sm" data-akcja="explorer" title="${esc(t('group.showInExplorer'))}">${icon('external')}</button>`}</div>
+          <div class="col-path"><span class="faint">${t('group.path')}</span> <span class="mono select-text" title="${esc(c.sciezkaYdd || '')}">${esc(sciezkaKrotka(c.sciezkaYdd))}</span> ${c.wArchiwum ? `<a href="#/sources" class="badge unknown" title="${esc(t('apply.tooltipArchive'))}">${t('group.inArchive')}</a>` : `<button class="btn ghost sm" data-akcja="explorer" title="${esc(t('group.showInExplorer'))}">${icon('external')}</button>`}</div>
         </div>
         <div class="col-tex-head"><span>${t('group.textures')}</span><span class="faint">${matchesTekst(t, c, partner)}</span></div>
         <div class="tex-grid"></div>

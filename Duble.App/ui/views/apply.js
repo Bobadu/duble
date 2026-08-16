@@ -22,8 +22,8 @@ export async function otworzZastosuj(ctx) {
           catch (e) { toast(e.message, { typ: 'error' }); }
         }));
         body.append(lista(plan, ctx, () => { zamknij(); navigate('sources'); }));
-        const warn = el(`<div class="apply-warn">${icon('warn')}<div><b>${t('apply.warnTitle')}</b><p>${t('apply.warnText')}</p><button class="btn ghost sm" id="apply-help">${t('apply.warnMore')}</button></div></div>`);
-        warn.querySelector('#apply-help').onclick = () => pomocPrzenumerowanie(ctx);
+        const warn = el(`<div class="apply-warn">${icon('warn')}<div><b>${t('apply.warnTitle')}</b><p>${t('apply.warnText')} <a href="#" id="apply-help">${t('apply.warnMore')}</a></p></div></div>`);
+        warn.querySelector('#apply-help').onclick = (e) => { e.preventDefault(); pomocPrzenumerowanie(ctx); };
         body.append(warn);
         const otw = el(`<label class="check-row"><input type="checkbox" id="apply-open" ${sessionStorage.getItem(KLUCZ_OTWORZ) !== '0' ? 'checked' : ''}><span>${t('apply.openAfter')}</span></label>`);
         body.append(otw);
