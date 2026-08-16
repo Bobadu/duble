@@ -304,5 +304,21 @@
   "unpack.failed": "Rozpakowanie nie powiodlo sie: {blad}",
   "sources.readOnly": "tylko podglad",
   "sources.archiveOnly": "archiwum: tylko podglad — rozpakuj do folderu, zeby moc przenosic pliki",
-  "sources.hasArchives": "zawiera archiwa .rpf (pozycje z nich sa tylko do podgladu)"
+  "sources.hasArchives": "zawiera archiwa .rpf (pozycje z nich sa tylko do podgladu)",
+  "catalog.title": "Katalog",
+  "catalog.subtitle": "Wszystko, co zaindeksowane. Kliknij pozycje, zeby zobaczyc tekstury i model.",
+  "catalog.count": "{n} pozycji · {t} tekstur",
+  "catalog.shown": "pokazuje {n} z {m}",
+  "catalog.more": "Wiecej",
+  "catalog.problems": "tylko z problemami",
+  "catalog.inGroups": "w grupach duplikatow",
+  "catalog.empty": "Brak pozycji — dodaj i zaindeksuj zrodla.",
+  "catalog.emptyFiltered": "Nic nie pasuje do filtrow.",
+  "catalog.problemMips": "tekstura bez mipmap",
+  "catalog.problemBc1": "BC1 z alfa (przezroczystosc 1-bitowa)",
+  "item.back": "Wroc do katalogu",
+  "item.groups": "Grupy z ta pozycja",
+  "item.noGroups": "Nie dubluje sie z niczym.",
+  "item.with": "razem z",
+  "item.openGroup": "Otworz porownanie"
 }

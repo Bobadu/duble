@@ -497,3 +497,37 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .hist-table tr:last-child td { border-bottom: 0; }
 .hist-table tr.done td { color: var(--text-3); }
 .hist-table td.act { text-align: right; white-space: nowrap; }
+
+/* ---------- katalog (siatka wirtualizowana) ---------- */
+.main:has(> .wrap[data-view="catalog"]) { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
+.wrap[data-view="catalog"] { flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; }
+.cat-filtry { flex: none; }
+.cat-grid { flex: 1; min-height: 0; overflow: auto; position: relative; padding: 2px; }
+.vgrid-body { position: relative; }
+.vgrid-row { position: absolute; left: 0; right: 0; display: grid; }
+.cat-tile { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px 8px 9px; text-align: left; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); min-width: 0; height: 200px; transition: transform .1s, box-shadow .1s, border-color .1s; }
+.cat-tile:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); border-color: var(--border-2); }
+.cat-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cat-tile .thumb { position: relative; height: 112px; border-radius: 6px; overflow: hidden; background: var(--bg-2); display: grid; place-items: center; color: var(--text-3); }
+.cat-tile .thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cat-tile .thumb .dot { position: absolute; top: 6px; left: 6px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--panel); background: var(--text-3); }
+.cat-tile .thumb .dot.w-dup { background: var(--err); } .cat-tile .thumb .dot.w-nad { background: var(--warn); } .cat-tile .thumb .dot.w-wgl { background: var(--info); } .cat-tile .thumb .dot.w-prz { background: var(--ok); }
+.cat-tile .thumb .arch { position: absolute; top: 4px; right: 4px; color: var(--text-2); background: var(--panel); border-radius: 6px; padding: 2px; display: grid; }
+.cat-tile .thumb .arch .ico { width: 14px; height: 14px; }
+.cat-tile .nm { font-family: var(--mono); font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-tile .nm sub { font-size: 10px; color: var(--text-3); margin-left: 2px; }
+.cat-tile .src { color: var(--text-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-tile .tile-badges { display: flex; align-items: center; gap: 6px; font-size: 11.5px; overflow: hidden; white-space: nowrap; }
+.cat-tile .tile-badges .badge { padding: 1px 6px; font-size: 10.5px; }
+
+/* ---------- karta pozycji ---------- */
+.item-title .nm { font-family: var(--mono); font-weight: 700; font-size: 18px; }
+.item-title .nm sub { font-size: 11px; color: var(--text-3); margin-left: 2px; }
+.item-2d { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+.item-col { max-width: none; }
+.item-groups .section-head { margin-top: 0; }
+.item-groups-list { display: grid; gap: 10px; }
+.item-group .card-body { display: grid; gap: 8px; }
+.item-group-with { font-size: 13px; }
+.item-group-with .mono { font-weight: 600; }
+@media (max-width: 1100px) { .item-2d { grid-template-columns: 1fr; } }

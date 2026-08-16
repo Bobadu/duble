@@ -3,6 +3,7 @@ import { el, esc, toast, fmt, confirm } from '../ui.js';
 import { wipe } from '../wipe.js';
 import { KLASA_WERDYKTU, powodTekst, nazwaPozycji } from './duplicates.js';
 import * as group3d from './group3d.js';
+import { blokJakosci, kafelekTekstury, sciezkaKrotka } from './parts.js';
 
 let odpisz = null, ctxRef = null, rootEl = null, idGrupy = null, debounceNotatki = null;
 let uchwyt3d = null;   // { zniszcz } biezacej zakladki 3D
@@ -99,7 +100,6 @@ function kolumny(g, ctx) {
   for (const c of czl) {
     const zostaje = r.zwyciezca === c.id; const odrzucona = !r.ignoruj && (r.odrzucone || []).includes(c.id);
     const stan = r.ignoruj ? 'neutral' : zostaje ? 'stays' : odrzucona ? 'rejected' : 'neutral';
-    const q = c.rozpiska || {};
     const kol = el(`
       <div class="group-col ${stan}">
         <div class="col-head">
@@ -111,14 +111,7 @@ function kolumny(g, ctx) {
             ${!zostaje && !r.ignoruj ? (odrzucona ? `<button class="btn sm" data-akcja="unreject">${icon('ok')}${t('group.unreject')}</button>` : `<button class="btn sm danger" data-akcja="reject">${icon('trash')}${t('group.reject')}</button>`) : ''}
           </div>
         </div>
-        <div class="col-quality">
-          <div class="q-total"><b>${Math.round(c.punkty)}</b><span>/100 ${t('quality.total')}</span></div>
-          ${slupek(t('quality.resolution'), q.rozdz, 40, `${Math.round(q.rozdzPx || 0)} px`)}
-          ${slupek(t('quality.mips'), q.mipy, 20, `${Math.round((q.udzialMipow || 0) * 100)} %`)}
-          ${slupek(t('quality.variants'), q.warianty, 20, `${q.liczbaWariantow ?? c.tekstur}`)}
-          ${slupek(t('quality.format'), q.format, 10, q.zlyFormat ? `${q.zlyFormat} BC1+α` : 'ok')}
-          ${slupek(t('quality.lod'), q.lod, 10, `${q.lody ?? c.lody}`)}
-        </div>
+        <div class="col-quality">${blokJakosci(c, t)}</div>
         <div class="col-facts">
           <div><span class="faint">${t('group.model')}</span> <b>${fmt.liczba(c.wierzcholki)}</b> ${t('group.verts')} · <b>${fmt.liczba(c.trojkaty)}</b> ${t('group.tris')} · ${t('group.lods')} <b>${c.lody}</b></div>
           <div><span class="faint">${t('group.size')}</span> <b>${fmt.rozmiar(c.bajty)}</b> · ${t('dup.textures', { n: c.tekstur })}</div>
@@ -143,23 +136,10 @@ function matchesTekst(t, c, partner) {
   return n ? t('group.matches', { n }) : '';
 }
 
-function slupek(etyk, wartosc, maks, opis) {
-  const v = Math.max(0, Math.min(maks, Number(wartosc) || 0));
-  return `<div class="q-row"><span class="q-lab">${esc(etyk)}</span><div class="q-bar"><i style="width:${(v / maks) * 100}%"></i></div><span class="q-val">${Math.round(v)}/${maks}</span><span class="q-desc faint">${esc(opis)}</span></div>`;
-}
-
-function sciezkaKrotka(p) { if (!p) return ''; const s = p.replace('|', ' › '); return s.length > 60 ? '…' + s.slice(-59) : s; }
-
 function kafelek(tx, c, partner, ctx, g) {
-  const { t, icon } = ctx;
+  const { t } = ctx;
   const par = partner.get(tx.sha) || [];
-  const zn = [];
-  if (tx.mipy <= 1) zn.push('!mip'); if (tx.format === 'BC1' && tx.alfa > 0.02) zn.push('!BC1α');
-  const k = el(`
-    <button class="tex ${par.length ? 'has-pair' : ''}" data-sha="${esc(tx.sha || '')}" title="${esc(tx.plik)}&#10;${tx.w}×${tx.h} ${esc(tx.format)} · ${tx.mipy} mip · ${esc(par.length ? t('group.pair') : t('group.single'))}">
-      <div class="tex-img">${tx.zdekodowana && tx.sha ? `<img src="https://duble.data/thumb/${esc(tx.sha)}.png" alt="" loading="lazy">` : `<span class="tex-nopreview">${esc(tx.format || '?')}</span>`}${par.length ? `<span class="tex-dot" aria-hidden="true"></span>` : ''}</div>
-      <div class="tex-cap"><span class="tex-name">${esc(literaZPliku(tx.plik))}</span><span class="tex-meta">${tx.w}×${tx.h} ${esc(tx.format || '')}${zn.length ? ` <span class="warn-txt">${zn.join(' ')}</span>` : ''}</span></div>
-    </button>`);
+  const k = kafelekTekstury(tx, { para: par.length > 0, tytul: par.length ? t('group.pair') : t('group.single') });
   k.addEventListener('mouseenter', () => { for (const p of par) document.querySelectorAll(`.tex[data-sha="${CSS.escape(p.sha)}"]`).forEach(x => x.classList.add('para-hover')); });
   k.addEventListener('mouseleave', () => { document.querySelectorAll('.tex.para-hover').forEach(x => x.classList.remove('para-hover')); });
   k.onclick = () => {
@@ -175,5 +155,3 @@ function kafelek(tx, c, partner, ctx, g) {
   };
   return k;
 }
-
-function literaZPliku(plik) { const m = /_diff_\d{3}_([a-z])_/i.exec(plik || ''); return m ? m[1].toUpperCase() : (plik || ''); }
