@@ -21,8 +21,9 @@ disappears without your decision: rejected files are **moved** to a bin next to 
 
 ## Download and run
 
-1. Download `Duble.exe` (a single file, ~90 MB — .NET included) from the repository **Releases**.
+1. Download `Duble.exe` (a single file, ~60 MB — .NET included) from the repository **Releases**.
 2. Run it. Windows SmartScreen may warn that the app is unsigned: "More info → Run anyway".
+   The first start takes a few seconds longer (the file unpacks itself into `%TEMP%\.net\Duble\`), later starts are quick.
 3. Program settings go to `%AppData%\Bobadu\Duble\`, projects by default to `Documents\Duble\`.
 
 ## How to use (step by step)
