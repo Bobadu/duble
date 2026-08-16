@@ -117,6 +117,17 @@ public partial class MainWindow : Window, IOkno, IDialogi
 
             core.WebMessageReceived += (s, e) =>
             {
+                // przeciagniecie plikow z Eksploratora: strona (app.js) wysyla postMessageWithAdditionalObjects z obiektami File,
+                // WebView2 daje nam je jako CoreWebView2File ze SCIEZKA (sam HTML5 drop nie zna sciezek). Dziecko-HWND WebView2
+                // nie przekazuje OLE drop do okna WPF, wiec to jedyna droga, ktora naprawde dziala.
+                if (e.AdditionalObjects != null && e.AdditionalObjects.Count > 0)
+                {
+                    var sciezki = new System.Collections.Generic.List<string>();
+                    foreach (var o in e.AdditionalObjects) if (o is CoreWebView2File f && !string.IsNullOrEmpty(f.Path)) sciezki.Add(f.Path);
+                    Log("drop " + sciezki.Count + " plikow");
+                    if (sciezki.Count > 0) Upuszczono?.Invoke(sciezki.ToArray());
+                    return;
+                }
                 var json = e.WebMessageAsJson;
                 Log("msg " + (json.Length > 300 ? json.Substring(0, 300) + "…" : json));
                 // handlery bywaja dlugie (dialogi, dysk) — nie blokujemy watku UI; odpowiedz wraca przez Dispatcher w wyslij()
