@@ -163,7 +163,7 @@ p { margin: 0; }
 .chip.static { pointer-events: none; }
 .chip .n { color: var(--text-3); font-variant-numeric: tabular-nums; }
 .chip[aria-pressed="true"] .n, .chip.on .n { color: var(--accent); opacity: .85; }
-.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 5px; font-size: 11.5px; line-height: 16px; font-weight: 600; letter-spacing: 0; text-transform: none; white-space: nowrap; }
 .badge.gen9 { background: var(--info-soft); color: var(--info); }
 .badge.legacy { background: var(--warn-soft); color: var(--warn); }
 .badge.mixed { background: var(--accent-soft); color: var(--accent); }
@@ -285,8 +285,8 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .src-card .missing-text { color: var(--err); font-size: 12.5px; }
 .src-card .indexing { display: grid; gap: 4px; font-size: 12px; color: var(--text-2); }
 
-/* miekkie kapsulki: bez wersalikow, spokojne tlo, kropka koloru formatu */
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); font-size: 12px; line-height: 16px; color: var(--text-2); white-space: nowrap; }
+/* tagi (nie kapsulki): lekko zaokraglone prostokaty, spokojne tlo, kropka koloru formatu */
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 5px; background: var(--panel-2); border: 1px solid var(--border); font-size: 11.5px; line-height: 16px; color: var(--text-2); white-space: nowrap; }
 .pill b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; }
 .pill.fmt { color: var(--text); font-weight: 600; }
