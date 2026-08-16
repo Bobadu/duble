@@ -405,5 +405,7 @@
   "about.lib.3d": "podgląd 3D",
   "about.lib.webview": "okno interfejsu",
   "about.lib.platform": "platforma",
-  "calib.geoSha": "identyczne pliki — geometria (musi być 0)"
+  "calib.geoSha": "identyczne pliki — geometria (musi być 0)",
+  "about.repo": "Kod źródłowy (GitHub)",
+  "about.appLicense": "Licencja programu: {lic}. Kod źródłowy i zgłoszenia — w repozytorium."
 }

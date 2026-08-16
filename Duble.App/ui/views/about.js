@@ -24,11 +24,14 @@ export async function render(root, { t, icon, store, bridge }) {
   root.append(el(`<p class="about-text">${t('about.text')}</p>`));
   root.append(el(`<p class="about-text" style="margin-top:12px">${t('about.engine')}</p>`));
   root.append(el(`<p class="about-text" style="margin-top:12px">${t('about.madeBy')}</p>`));
-  if (info.strona) {
-    const b = el(`<div class="btn-row" style="margin-top:14px"><button class="btn primary">${icon('external')}${t('about.website')}</button><span class="faint mono">${esc(info.strona)}</span></div>`);
-    b.querySelector('button').onclick = () => bridge.call('shell.openUrl', { url: info.strona }).catch(e => toast(e.message, { typ: 'warn' }));
+  if (info.strona || info.repo) {
+    const b = el(`<div class="btn-row about-links" style="margin-top:14px"></div>`);
+    if (info.strona) { const x = el(`<button class="btn primary" title="${esc(info.strona)}">${icon('external')}${t('about.website')}</button>`); x.onclick = () => bridge.call('shell.openUrl', { url: info.strona }).catch(e => toast(e.message, { typ: 'warn' })); b.append(x); }
+    if (info.repo) { const x = el(`<button class="btn" title="${esc(info.repo)}">${icon('external')}${t('about.repo')}</button>`); x.onclick = () => bridge.call('shell.openUrl', { url: info.repo }).catch(e => toast(e.message, { typ: 'warn' })); b.append(x); }
+    b.append(el(`<span class="faint mono">${esc(info.strona || info.repo)}</span>`));
     root.append(b);
   }
+  if (info.licencja) root.append(el(`<p class="about-text faint" style="margin-top:10px">${esc(t('about.appLicense', { lic: info.licencja }))}</p>`));
 
   const sc = info.sciezki || {};
   const sek = el(`<div class="section"><div class="section-head"><h2>${t('about.paths')}</h2></div><ul class="lic-list paths"></ul></div>`);

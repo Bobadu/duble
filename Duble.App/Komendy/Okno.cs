@@ -11,14 +11,16 @@ public static class Okno
     /// <summary>UI zglosilo gotowosc (po zaladowaniu i18n i pierwszym renderze) — MainWindow podpina zrzut ekranu / otwarcie projektu z argumentow.</summary>
     public static event Action UiGotowe;
 
-    /// <summary>Strona projektu / repozytorium (przycisk w „O programie"). null = jeszcze nieustalona — przycisk ukryty.</summary>
-    public const string StronaProjektu = null;
+    /// <summary>Strona projektu i repozytorium (przyciski w „O programie"). Adresy od Wiktorii (16.08.2026); null = przycisk ukryty.</summary>
+    public const string StronaProjektu = "https://qorion.net/duble";
+    public const string Repozytorium = "https://github.com/qorion-net/duble";
+    public const string Licencja = "MIT";
 
     public static void Zarejestruj(Mostek m)
     {
         m.Rejestruj("app.info", _ => new
         {
-            nazwa = "Duble", by = "Bobadu", wersja = Wersja(), dev = m.Dev, strona = StronaProjektu,
+            nazwa = "Duble", by = "Bobadu", wersja = Wersja(), dev = m.Dev, strona = StronaProjektu, repo = Repozytorium, licencja = Licencja,
             sciezki = new { ustawienia = m.PlikUstawien ?? Ustawienia.Sciezka, webview2 = Ustawienia.FolderWebView2, projekty = Ustawienia.FolderProjektow, exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName },
         });
         m.Rejestruj("ui.ready", _ => { UiGotowe?.Invoke(); return new { }; });
