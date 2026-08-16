@@ -136,6 +136,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
         Komendy.Projekty.Zarejestruj(Mostek, Sesja);
         Zadania = new JobRunner(Mostek.Zdarzenie);
         Komendy.Zrodla.Zarejestruj(Mostek, Sesja, Zadania);
+        Komendy.Grupy.Zarejestruj(Mostek, Sesja, Zadania);
     }
     public JobRunner Zadania { get; private set; }
 
