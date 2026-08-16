@@ -34,20 +34,23 @@ using System.Text.Json;
 
 namespace Duble;
 
-public static class Progi
+/// <summary>Progi porownania. Domyslne = kalibracja 15.08 (uzasadnienie w naglowku pliku). Aplikacja moze je nadpisac per projekt.</summary>
+public class Progi
 {
-    public const double GeoIdentyczna = 0.02;   // + rowna liczba trojkatow i wierzcholkow
-    public const double GeoPodobna = 0.10;
-    public const double GeoPodobnaTri = 0.05;   // dopuszczalna wzgledna roznica trojkatow
-    public const double GeoPodobnaBbox = 0.15;
+    public double GeoIdentyczna { get; set; } = 0.02;   // + rowna liczba trojkatow i wierzcholkow
+    public double GeoPodobna { get; set; } = 0.10;
+    public double GeoPodobnaTri { get; set; } = 0.05;   // dopuszczalna wzgledna roznica trojkatow
+    public double GeoPodobnaBbox { get; set; } = 0.15;
 
-    public const int TexPHash = 20;             // na 256 bitow
-    public const double TexKolor = 3.0;         // srednia roznica na kanal
-    public const float TexWariancjaMin = 3.0f;  // ponizej tego tekstura jest plaska i PHash to szum
-    public const double TexKolorPlaska = 1.0;   // dla plaskich tekstur decyduje sam kolor, ostrzej
+    public int TexPHash { get; set; } = 20;             // na 256 bitow
+    public double TexKolor { get; set; } = 3.0;         // srednia roznica na kanal
+    public float TexWariancjaMin { get; set; } = 3.0f;  // ponizej tego tekstura jest plaska i PHash to szum
+    public double TexKolorPlaska { get; set; } = 1.0;   // dla plaskich tekstur decyduje sam kolor, ostrzej
 
-    public const double PelnePokrycie = 0.95;
-    public const double CzesciowePokrycie = 0.5;
+    public double PelnePokrycie { get; set; } = 0.95;
+    public double CzesciowePokrycie { get; set; } = 0.5;
+
+    public static Progi Domyslne => new();
 }
 
 public class Para
@@ -65,6 +68,8 @@ public class Para
 
 public class Grupa
 {
+    /// <summary>Stabilny identyfikator grupy: 16 hex z SHA-256 posortowanych id czlonkow — decyzje uzytkownika przezywaja przeliczenie.</summary>
+    public string Id { get; set; }
     public List<string> Pozycje { get; set; } = new();
     public string Werdykt { get; set; }
     public string Zwyciezca { get; set; }
@@ -73,6 +78,12 @@ public class Grupa
     public Dictionary<string, double> Punkty { get; set; } = new();
     /// <summary>Skladniki oceny jakosci per pozycja (tekst: Punktacja.Tekst(jezyk)).</summary>
     public Dictionary<string, Punktacja> Rozpiska { get; set; } = new();
+
+    public static string PoliczId(IEnumerable<string> pozycje)
+    {
+        var s = string.Join("\n", pozycje.OrderBy(x => x, StringComparer.Ordinal));
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(s))).Substring(0, 16);
+    }
 }
 
 public class WynikPorownania
@@ -102,8 +113,9 @@ public static class Porownanie
     public const string DoWgladu = "DO WGLADU";
     public const string Przemalowanie = "PRZEMALOWANIE";
 
-    public static WynikPorownania Znajdz(Katalog katalog, Action<string> log)
+    public static WynikPorownania Znajdz(Katalog katalog, Action<string> log, Progi progi = null)
     {
+        progi ??= Progi.Domyslne;
         var poz = katalog.Pozycje.Where(p => p.Geo?.Hist != null && p.Geo.Wierzcholki > 0).ToList();
         log($"pozycji do porownania: {poz.Count}");
 
@@ -114,10 +126,10 @@ public static class Porownanie
             for (int j = i + 1; j < poz.Count; j++)
             {
                 var a = poz[i]; var b = poz[j];
-                var g = WerdyktGeometrii(a, b, out double dist);
+                var g = WerdyktGeometrii(a, b, progi, out double dist);
                 if (g == null) continue;
                 kandydatow++;
-                var para = Oceń(a, b, g, dist);
+                var para = Oceń(a, b, g, dist, progi);
                 if (para != null) pary.Add(para);
             }
             if ((i + 1) % 200 == 0) log($"  porownane: {i + 1}/{poz.Count}");
@@ -145,6 +157,7 @@ public static class Porownanie
                 Pary = g.ToList(),
                 Werdykt = g.Any(p => p.Werdykt == Nadzbior) ? Nadzbior : Duplikat
             };
+            grupa.Id = Grupa.PoliczId(ids);
             foreach (var id in ids)
             {
                 var pkt = Jakosc(wgId[id]);
@@ -165,6 +178,7 @@ public static class Porownanie
         foreach (var p in pary.Where(p => p.Werdykt == DoWgladu || p.Werdykt == Przemalowanie))
         {
             var grupa = new Grupa { Pozycje = new List<string> { p.A, p.B }, Pary = new List<Para> { p }, Werdykt = p.Werdykt, Powod = p.Powod };
+            grupa.Id = Grupa.PoliczId(grupa.Pozycje);
             foreach (var id in grupa.Pozycje) { var pkt = Jakosc(wgId[id]); grupa.Punkty[id] = pkt.Razem; grupa.Rozpiska[id] = pkt; }
             grupa.Zwyciezca = grupa.Pozycje.OrderByDescending(x => grupa.Punkty[x]).First();
             wynik.Grupy.Add(grupa);
@@ -184,7 +198,7 @@ public static class Porownanie
     }
 
     /// <summary>"identyczna" / "podobna" / null gdy para w ogole nie jest kandydatem.</summary>
-    static string WerdyktGeometrii(Pozycja a, Pozycja b, out double dist)
+    static string WerdyktGeometrii(Pozycja a, Pozycja b, Progi progi, out double dist)
     {
         dist = double.MaxValue;
         // typy musza sie zgadzac tylko co do tego, czy to props — ubranie z jednej paczki
@@ -195,9 +209,9 @@ public static class Porownanie
         if (a.Geo.HashPozycji != null && a.Geo.HashPozycji == b.Geo.HashPozycji) { dist = 0; return "identyczna"; }
 
         dist = Odciski.OdlegloscGeo(a.Geo.Hist, b.Geo.Hist);
-        if (dist > Progi.GeoPodobna) return null;
+        if (dist > progi.GeoPodobna) return null;
 
-        if (dist <= Progi.GeoIdentyczna
+        if (dist <= progi.GeoIdentyczna
             && a.Geo.Trojkaty == b.Geo.Trojkaty
             && a.Geo.Wierzcholki == b.Geo.Wierzcholki
             && a.Geo.Trojkaty > 0) return "identyczna";
@@ -205,26 +219,27 @@ public static class Porownanie
         double maxTri = Math.Max(a.Geo.Trojkaty, b.Geo.Trojkaty);
         if (maxTri < 1) return null;
         double roznicaTri = Math.Abs(a.Geo.Trojkaty - b.Geo.Trojkaty) / maxTri;
-        if (roznicaTri > Progi.GeoPodobnaTri) return null;
-        if (Odciski.OdlegloscBbox(a.Geo.Bbox, b.Geo.Bbox) > Progi.GeoPodobnaBbox) return null;
+        if (roznicaTri > progi.GeoPodobnaTri) return null;
+        if (Odciski.OdlegloscBbox(a.Geo.Bbox, b.Geo.Bbox) > progi.GeoPodobnaBbox) return null;
         return "podobna";
     }
 
     /// <summary>Czy dwie tekstury to ta sama grafika (ten sam kolor, nie tylko ten sam wzor).</summary>
-    public static bool TaSamaGrafika(Tekstura x, Tekstura y)
+    public static bool TaSamaGrafika(Tekstura x, Tekstura y, Progi progi = null)
     {
+        progi ??= Progi.Domyslne;
         if (x.Sha == y.Sha) return true;
         if (!x.Zdekodowana || !y.Zdekodowana) return false;
         double kol = Odciski.OdlegloscKoloru(x.Kolor, y.Kolor);
         // Plaska tekstura (np. jednolity kolor) daje PHash z szumu — wtedy ufamy samemu
         // kolorowi, ale wymagamy scislejszej zgodnosci.
-        if (x.Wariancja < Progi.TexWariancjaMin || y.Wariancja < Progi.TexWariancjaMin)
-            return kol <= Progi.TexKolorPlaska;
+        if (x.Wariancja < progi.TexWariancjaMin || y.Wariancja < progi.TexWariancjaMin)
+            return kol <= progi.TexKolorPlaska;
         int ph = Odciski.Hamming(x.PHash, y.PHash);
-        return ph >= 0 && ph <= Progi.TexPHash && kol <= Progi.TexKolor;
+        return ph >= 0 && ph <= progi.TexPHash && kol <= progi.TexKolor;
     }
 
-    static Para Oceń(Pozycja a, Pozycja b, string geo, double dist)
+    static Para Oceń(Pozycja a, Pozycja b, string geo, double dist, Progi progi)
     {
         var ta = a.Tekstury ?? new List<Tekstura>();
         var tb = b.Tekstury ?? new List<Tekstura>();
@@ -244,7 +259,7 @@ public static class Porownanie
             for (int k = 0; k < tb.Count; k++)
             {
                 if (uzyteB[k]) continue;
-                if (TaSamaGrafika(x, tb[k])) { uzyteB[k] = true; dopasowaneA++; break; }
+                if (TaSamaGrafika(x, tb[k], progi)) { uzyteB[k] = true; dopasowaneA++; break; }
             }
         }
         int dopasowaneB = uzyteB.Count(v => v);
@@ -252,8 +267,8 @@ public static class Porownanie
         para.PokrycieA = (double)dopasowaneA / ta.Count;
         para.PokrycieB = (double)dopasowaneB / tb.Count;
         double maxPokrycie = Math.Max(para.PokrycieA, para.PokrycieB);
-        bool pelneA = para.PokrycieA >= Progi.PelnePokrycie;
-        bool pelneB = para.PokrycieB >= Progi.PelnePokrycie;
+        bool pelneA = para.PokrycieA >= progi.PelnePokrycie;
+        bool pelneB = para.PokrycieB >= progi.PelnePokrycie;
 
         // parametry wspolne wszystkich powodow: ile tekstur wspolnych po obu stronach ({a}/{na} i {b}/{nb})
         (string, object)[] Tex(params (string, object)[] extra)
@@ -276,7 +291,7 @@ public static class Porownanie
                 para.Werdykt = Nadzbior;
                 para.Powod = new Powod("SAME_MODEL_SUBSET", Tex());
             }
-            else if (maxPokrycie >= Progi.CzesciowePokrycie)
+            else if (maxPokrycie >= progi.CzesciowePokrycie)
             {
                 para.Werdykt = DoWgladu;
                 para.Powod = new Powod("SAME_MODEL_PARTIAL", Tex());
@@ -296,7 +311,7 @@ public static class Porownanie
                 para.Werdykt = DoWgladu;
                 para.Powod = new Powod("SIMILAR_MODEL_SAME_TEX", Tex(("dist", distTekst)));
             }
-            else if (maxPokrycie >= Progi.CzesciowePokrycie)
+            else if (maxPokrycie >= progi.CzesciowePokrycie)
             {
                 para.Werdykt = DoWgladu;
                 para.Powod = new Powod("SIMILAR_MODEL_PARTIAL", Tex(("dist", distTekst)));
