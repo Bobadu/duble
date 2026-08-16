@@ -27,6 +27,8 @@ using CodeWalker.Utils;
 using Duble;
 
 var argv = args.ToList();
+// teksty PL maja ogonki (od etapu 6) — konsola Windows domyslnie ma strone kodowa OEM, wiec ustawiamy UTF-8
+try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
 
 string Opcja(string nazwa, string domyslnie)
 {

@@ -114,4 +114,18 @@ public class PorownanieTests
         Assert.Equal(20, p.TexPHash); Assert.Equal(3.0, p.TexKolor); Assert.Equal(3.0f, p.TexWariancjaMin); Assert.Equal(1.0, p.TexKolorPlaska);
         Assert.Equal(0.95, p.PelnePokrycie); Assert.Equal(0.5, p.CzesciowePokrycie);
     }
+
+    [Fact]
+    public void Progi_sprawdz_kopia_rowne()
+    {
+        var p = Progi.Domyslne;
+        Assert.Empty(p.Sprawdz());
+        var k = p.Kopia(); Assert.True(p.Rowne(k)); Assert.NotSame(p, k);
+        k.TexPHash = 24; Assert.False(p.Rowne(k)); Assert.Empty(k.Sprawdz());
+        k.TexPHash = 300; k.GeoPodobna = 0.01; k.CzesciowePokrycie = 0.99; k.TexKolor = -1;
+        var b = k.Sprawdz();
+        Assert.Contains("TexPHash", b); Assert.Contains("GeoPodobna", b); Assert.Contains("CzesciowePokrycie", b); Assert.Contains("TexKolor", b);
+        Assert.DoesNotContain("GeoIdentyczna", b);
+        Assert.False(p.Rowne(null));
+    }
 }

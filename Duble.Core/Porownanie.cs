@@ -51,6 +51,32 @@ public class Progi
     public double CzesciowePokrycie { get; set; } = 0.5;
 
     public static Progi Domyslne => new();
+
+    public Progi Kopia() => (Progi)MemberwiseClone();
+
+    public bool Rowne(Progi p) => p != null
+        && GeoIdentyczna == p.GeoIdentyczna && GeoPodobna == p.GeoPodobna && GeoPodobnaTri == p.GeoPodobnaTri && GeoPodobnaBbox == p.GeoPodobnaBbox
+        && TexPHash == p.TexPHash && TexKolor == p.TexKolor && TexWariancjaMin == p.TexWariancjaMin && TexKolorPlaska == p.TexKolorPlaska
+        && PelnePokrycie == p.PelnePokrycie && CzesciowePokrycie == p.CzesciowePokrycie;
+
+    /// <summary>Kody bledow (nazwy pol) — pusta lista = progi poprawne. Zakresy: geometria [0;1] (podobna >= identyczna), PHash [0;256],
+    /// kolor [0;100], wariancja [0;255], pokrycia [0;1] (czesciowe &lt;= pelne).</summary>
+    public List<string> Sprawdz()
+    {
+        var b = new List<string>();
+        bool Zle(double v, double od, double @do) => double.IsNaN(v) || v < od || v > @do;
+        if (Zle(GeoIdentyczna, 0, 1)) b.Add(nameof(GeoIdentyczna));
+        if (Zle(GeoPodobna, 0, 1) || GeoPodobna < GeoIdentyczna) b.Add(nameof(GeoPodobna));
+        if (Zle(GeoPodobnaTri, 0, 1)) b.Add(nameof(GeoPodobnaTri));
+        if (Zle(GeoPodobnaBbox, 0, 1)) b.Add(nameof(GeoPodobnaBbox));
+        if (TexPHash < 0 || TexPHash > 256) b.Add(nameof(TexPHash));
+        if (Zle(TexKolor, 0, 100)) b.Add(nameof(TexKolor));
+        if (Zle(TexWariancjaMin, 0, 255)) b.Add(nameof(TexWariancjaMin));
+        if (Zle(TexKolorPlaska, 0, 100)) b.Add(nameof(TexKolorPlaska));
+        if (Zle(PelnePokrycie, 0, 1)) b.Add(nameof(PelnePokrycie));
+        if (Zle(CzesciowePokrycie, 0, 1) || CzesciowePokrycie > PelnePokrycie) b.Add(nameof(CzesciowePokrycie));
+        return b;
+    }
 }
 
 public class Para
