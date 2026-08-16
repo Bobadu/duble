@@ -50,32 +50,34 @@ async function pokazZakladke(g, ctx, panel) {
 function naglowek(g, ctx) {
   const { t, icon, bridge, navigate } = ctx;
   const r = g.rozstrzygniecie || {};
+  const czl = g.czlonkowie || [];
+  const nazwy = czl.map(c => `<span class="nm">${esc(nazwaPozycji(c))}<sub>${esc(c.sufiks || '')}</sub></span>`).join('<span class="sep">·</span>');
   const h = el(`
-    <div class="group-head">
-      <button class="btn ghost" id="g-back">${icon('chevron', 'rot90')}${t('group.back')}</button>
-      <div class="group-title">
-        ${znaczekWerdyktu(t, icon, g.werdykt)}
-        <span class="group-powod">${esc(powodTekst(t, g.powod))}</span>
+    <div class="view-head group-head">
+      <div class="titles">
+        <a class="back-link" href="#/duplicates" id="g-back">${icon('chevron', 'rot90')}${t('group.back')}</a>
+        <h1 class="group-h1">${nazwy}</h1>
+        <div class="group-sub">${znaczekWerdyktu(t, icon, g.werdykt)}<span class="group-powod">${esc(powodTekst(t, g.powod))}</span>${czl[0]?.typ ? `<span class="faint">· ${esc(t('slot.' + czl[0].typ))}</span>` : ''}</div>
       </div>
-      <div class="group-actions">
-        <button class="chip" id="g-ign" aria-pressed="${!!r.ignoruj}">${icon(r.ignoruj ? 'ok' : 'x')}${r.ignoruj ? t('group.isDuplicate') : t('group.notDuplicate')}</button>
-        ${!r.domyslna ? `<button class="btn ghost sm" id="g-reset">${icon('refresh')}${t('group.reset')}</button>` : ''}
+      <div class="actions">
+        <div class="filtr-szukaj note"><span class="ico-wrap">${icon('file')}</span><input class="input" id="group-note" placeholder="${esc(t('group.notePlaceholder'))}" value="${esc(r.notatka || '')}" aria-label="${esc(t('group.note'))}"></div>
+        <button class="btn" id="g-ign" aria-pressed="${!!r.ignoruj}">${icon(r.ignoruj ? 'ok' : 'x')}${r.ignoruj ? t('group.isDuplicate') : t('group.notDuplicate')}</button>
+        ${!r.domyslna ? `<button class="btn icon" id="g-reset" title="${esc(t('group.reset'))}" aria-label="${esc(t('group.reset'))}">${icon('refresh')}</button>` : ''}
       </div>
     </div>`);
-  h.querySelector('#g-back').onclick = () => navigate('duplicates');
+  h.querySelector('#g-back').onclick = (e) => { e.preventDefault(); navigate('duplicates'); };
   h.querySelector('#g-ign').onclick = async () => { await decyduj(ctx, { ignoruj: !r.ignoruj }); };
   h.querySelector('#g-reset')?.addEventListener('click', async () => {
     try { await bridge.call('groups.reset', { id: g.id }); toast(t('decision.saved'), { typ: 'ok', czas: 1500 }); await odswiez(); } catch (e) { toast(e.message, { typ: 'error' }); }
   });
-  const pasek = el(`<div class="group-sub">${r.ignoruj ? `<div class="banner">${icon('info')} ${t('group.ignoredBanner')}</div>` : ''}
-    <div class="group-note"><label for="group-note">${icon('file')} ${t('group.note')}</label><input class="input" id="group-note" placeholder="${esc(t('group.notePlaceholder'))}" value="${esc(r.notatka || '')}"></div>
-    <div class="tabs"><button class="tab ${zakladka() === '2d' ? 'on' : ''}" data-tab="2d">${icon('catalog')}${t('group.tab2d')}</button><button class="tab ${zakladka() === '3d' ? 'on' : ''}" data-tab="3d">${icon('cube')}${t('group.tab3d')}</button></div>
-  </div>`);
-  pasek.querySelectorAll('.tab[data-tab]').forEach(b => b.onclick = async () => { sessionStorage.setItem('group.tab', b.dataset.tab); const panel = document.getElementById('group-panel'); if (panel) await pokazZakladke(g, ctx, panel); });
-  pasek.querySelector('#group-note').addEventListener('input', (e) => {
+  h.querySelector('#group-note').addEventListener('input', (e) => {
     clearTimeout(debounceNotatki);
     debounceNotatki = setTimeout(() => decyduj(ctx, { notatka: e.target.value }, true), 600);
   });
+  const pasek = el(`<div class="group-bar">${r.ignoruj ? `<div class="banner">${icon('info')}<span>${t('group.ignoredBanner')}</span></div>` : ''}
+    <div class="tabs"><button class="tab ${zakladka() === '2d' ? 'on' : ''}" data-tab="2d">${icon('catalog')}${t('group.tab2d')}</button><button class="tab ${zakladka() === '3d' ? 'on' : ''}" data-tab="3d">${icon('cube')}${t('group.tab3d')}</button></div>
+  </div>`);
+  pasek.querySelectorAll('.tab[data-tab]').forEach(b => b.onclick = async () => { sessionStorage.setItem('group.tab', b.dataset.tab); const panel = document.getElementById('group-panel'); if (panel) await pokazZakladke(g, ctx, panel); });
   const w = el('<div></div>'); w.append(h, pasek);
   return w;
 }
@@ -103,9 +105,8 @@ function kolumny(g, ctx) {
     const kol = el(`
       <div class="group-col ${stan}">
         <div class="col-head">
-          <div class="col-title"><span class="nm">${esc(nazwaPozycji(c))}<sub>${esc(c.sufiks || '')}</sub></span><span class="badge ${c.gen9 ? 'gen9' : 'legacy'}">${c.gen9 ? t('sources.formatGen9') : t('sources.formatLegacy')}</span></div>
-          <div class="col-src" title="${esc(c.zrodlo)}">${esc(c.zrodlo)} <span class="faint">· ${esc(c.kontener || '')}</span></div>
-          <div class="col-state ${stan}">${stan === 'stays' ? `${icon('check')} ${t('group.stays')}` : stan === 'rejected' ? `${icon('x')} ${t('group.rejected')}` : `${t('group.neutral')}`}</div>
+          <div class="col-title"><span class="nm">${esc(nazwaPozycji(c))}<sub>${esc(c.sufiks || '')}</sub></span><span class="badge ${c.gen9 ? 'gen9' : 'legacy'}">${c.gen9 ? t('sources.formatGen9') : t('sources.formatLegacy')}</span>${stan === 'stays' ? `<span class="badge ok col-state">${icon('check')}${t('group.stays')}</span>` : stan === 'rejected' ? `<span class="badge err col-state">${icon('x')}${t('group.rejected')}</span>` : `<span class="badge unknown col-state">${t('group.neutral')}</span>`}</div>
+          <div class="col-src" title="${esc(c.zrodlo)} › ${esc(c.kontener || '')}">${esc(c.zrodlo)}<span class="faint"> › ${esc(c.kontener || '')}</span></div>
           <div class="btn-row">
             ${!zostaje && !r.ignoruj ? `<button class="btn sm primary" data-akcja="keep">${icon('check')}${t('group.keepThis')}</button>` : ''}
             ${!zostaje && !r.ignoruj ? (odrzucona ? `<button class="btn sm" data-akcja="unreject">${icon('ok')}${t('group.unreject')}</button>` : `<button class="btn sm danger" data-akcja="reject">${icon('trash')}${t('group.reject')}</button>`) : ''}
@@ -115,7 +116,7 @@ function kolumny(g, ctx) {
         <div class="col-facts">
           <div><span class="faint">${t('group.model')}</span> <b>${fmt.liczba(c.wierzcholki)}</b> ${t('group.verts')} · <b>${fmt.liczba(c.trojkaty)}</b> ${t('group.tris')} · ${t('group.lods')} <b>${c.lody}</b></div>
           <div><span class="faint">${t('group.size')}</span> <b>${fmt.rozmiar(c.bajty)}</b> · ${t('dup.textures', { n: c.tekstur })}</div>
-          <div class="col-path"><span class="faint">${t('group.path')}</span> <span class="mono select-text" title="${esc(c.sciezkaYdd || '')}">${esc(sciezkaKrotka(c.sciezkaYdd))}</span> ${c.wArchiwum ? `<a href="#/sources" class="badge unknown" title="${esc(t('apply.tooltipArchive'))}">${t('group.inArchive')}</a>` : `<button class="btn ghost sm" data-akcja="explorer" title="${esc(t('group.showInExplorer'))}">${icon('external')}</button>`}</div>
+          <div class="col-path"><span class="faint">${t('group.path')}</span> <span class="mono select-text" title="${esc(c.sciezkaYdd || '')}">${esc(sciezkaKrotka(c.sciezkaYdd, 10000))}</span> ${c.wArchiwum ? `<a href="#/sources" class="badge unknown" title="${esc(t('apply.tooltipArchive'))}">${t('group.inArchive')}</a>` : `<button class="btn ghost sm" data-akcja="explorer" title="${esc(t('group.showInExplorer'))}">${icon('external')}</button>`}</div>
         </div>
         <div class="col-tex-head"><span>${t('group.textures')}</span><span class="faint">${matchesTekst(t, c, partner)}</span></div>
         <div class="tex-grid"></div>
