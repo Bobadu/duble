@@ -13,27 +13,6 @@ namespace Duble.Tests;
 /// <summary>Komendy groups.* / apply.preview na SZTUCZNYM katalogu (bez plikow gry): 3 grupy — DUPLIKAT a=b, PRZEMALOWANIE c=d, DUPLIKAT e=f=g.</summary>
 public class GrupyKomendyTests
 {
-    static float[] Hist(int szczyt) { var h = new float[Geo.Kubelki]; h[szczyt] = 0.7f; h[Math.Min(Geo.Kubelki - 1, szczyt + 1)] = 0.3f; return h; }
-
-    static Pozycja Poz(string tmp, string paczka, string typ, int numer, string hashPoz, float[] hist, params string[] shaTekstur)
-    {
-        var folder = Path.Combine(tmp, paczka, "k.rpf"); Directory.CreateDirectory(folder);
-        var ydd = Path.Combine(folder, $"{typ}_{numer:d3}_u.ydd"); File.WriteAllBytes(ydd, new byte[100]);
-        var p = new Pozycja
-        {
-            Id = $"{paczka}|k.rpf|{typ}|{numer}|u", Paczka = paczka, Kontener = "k.rpf", Typ = typ, Numer = numer, Sufiks = "u", ZrodloId = "z1",
-            SciezkaYdd = ydd, BajtyYdd = 100,
-            Geo = new Geo { HashPozycji = hashPoz, Trojkaty = 1000, Wierzcholki = 600, Hist = hist, Bbox = new[] { 0.5f, 0.3f, 0.6f }, Lody = 3 },
-        };
-        char litera = 'a';
-        foreach (var sha in shaTekstur)
-        {
-            var plik = Path.Combine(folder, $"{typ}_diff_{numer:d3}_{litera++}_uni.ytd"); File.WriteAllBytes(plik, new byte[50]);
-            p.Tekstury.Add(new Tekstura { Plik = Path.GetFileName(plik), Sciezka = plik, Sha = sha + paczka + numer, Bajty = 50, W = 1024, H = 1024, Mipy = 11, Format = "BC3", Zdekodowana = true, Wariancja = 30, PHash = new ulong[] { 1, 2, 3, 4 }, Kolor = Convert.ToBase64String(new byte[192]) });
-        }
-        return p;
-    }
-
     static (Mostek m, Sesja s, List<string> wyslane, string tmp) Zbuduj()
     {
         var tmp = Sciezki.Tymczasowy("grupy");
@@ -41,19 +20,7 @@ public class GrupyKomendyTests
         var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
         var s = new Sesja(); s.Nowy("G", Path.Combine(tmp, "G.duble"));
         s.Projekt.Zrodla.Add(new ZrodloProjektu { Id = "z1", Nazwa = "z1", Sciezka = tmp, Typ = "folder", Wlaczone = true });
-        var a = Poz(tmp, "p1", "jbib", 1, "H1", Hist(10), "S1", "S2");
-        var b = Poz(tmp, "p2", "jbib", 7, "H1", Hist(10), "S1", "S2");
-        b.Tekstury.ForEach(t => t.Mipy = 1);
-        var c = Poz(tmp, "p1", "lowr", 3, "H3", Hist(20), "T1");
-        var d = Poz(tmp, "p2", "lowr", 9, "H3", Hist(20), "U1");
-        d.Tekstury.ForEach(t => { t.PHash = new ulong[] { ulong.MaxValue, 0, ulong.MaxValue, 0 }; t.Kolor = Convert.ToBase64String(Enumerable.Repeat((byte)200, 192).ToArray()); });
-        var e = Poz(tmp, "p1", "feet", 5, "H5", Hist(30), "V1");
-        var f = Poz(tmp, "p2", "feet", 6, "H5", Hist(30), "V1"); f.Tekstury.ForEach(t => t.Mipy = 1);
-        var g = Poz(tmp, "p3", "feet", 8, "H5", Hist(30), "V1"); g.Tekstury.ForEach(t => t.Mipy = 1);
-        // te same grafiki: SHA rowne miedzy paczkami (Sha = sha+paczka+numer — ujednolic dla par a/b, e/f/g)
-        foreach (var t in b.Tekstury) t.Sha = a.Tekstury[b.Tekstury.IndexOf(t)].Sha;
-        foreach (var t in f.Tekstury) t.Sha = e.Tekstury[0].Sha; foreach (var t in g.Tekstury) t.Sha = e.Tekstury[0].Sha;
-        s.ZmienKatalog(k => k.Wstaw(new[] { a, b, c, d, e, f, g }));
+        s.ZmienKatalog(k => k.Wstaw(Sztuczne.Siedem(tmp)));
         s.Porownaj(default, null);
         s.Zapisz();
         var jr = new JobRunner(m.Zdarzenie);
