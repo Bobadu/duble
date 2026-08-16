@@ -69,7 +69,7 @@ public class RaportTests
             Assert.StartsWith("\uFEFF", csv);
             var linie = csv.TrimEnd('\r', '\n').Split('\n').Select(l => l.TrimEnd('\r')).ToList();
             Assert.Equal(1 + 7, linie.Count);                       // naglowek + 7 czlonkow (2+2+3)
-            Assert.StartsWith("\uFEFFgrupa;werdykt;powod;pozycja;", linie[0]);
+            Assert.StartsWith("\uFEFFgrupa;werdykt;pow\u00F3d;pozycja;", linie[0]);
             Assert.Contains(linie, l => l.Contains(";zignorowana;\"inne; buty\";"));   // srednik w notatce -> cudzyslow
             Assert.Contains(linie, l => l.Contains(";zostaje;")); Assert.Contains(linie, l => l.Contains(";odrzucona;"));
             Assert.Contains(linie, l => l.Contains(";bez zmian;"));                        // przemalowanie
