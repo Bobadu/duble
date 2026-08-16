@@ -110,8 +110,12 @@ public static class Zrodla
                     z.Format = pozycje.Count == 0 ? null : pozycje.All(p => p.Gen9) ? "gen9" : pozycje.All(p => !p.Gen9) ? "legacy" : "mieszany";
                     Zmienilo(z.Id);
                 }
+                // po indeksowaniu od razu porownanie — widok Duplikaty ma byc zawsze aktualny
+                postep(new Postep("porownaj", 0, 0, null));
+                s.Porownaj(ct, postep);
                 s.Zapisz();
                 Zmienilo();
+                m.Zdarzenie("compare.done", new { podsumowanie = s.Podsumowanie() });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
             return new { uruchomiono = true, zrodla = zrodla.Select(z => z.Id).ToList() };

@@ -71,18 +71,37 @@ public partial class MainWindow : Window, IOkno, IDialogi
             core.AddWebResourceRequestedFilter("https://duble.data/*", CoreWebView2WebResourceContext.All);
             core.WebResourceRequested += (s, e) =>
             {
-                try
+                void Odpowiedz(bool ok, Stream tresc, string mime, int status)
                 {
-                    if (Zasoby.Rozwiaz(e.Request.Uri, out var tresc, out var mime, out int status))
-                        // CORS: strona z duble.app pobiera dane z duble.data (fetch/three.js) — bez tego naglowka przegladarka odrzuca odpowiedz
-                        e.Response = env.CreateWebResourceResponse(tresc, 200, "OK", $"Content-Type: {mime}\nCache-Control: no-cache\nAccess-Control-Allow-Origin: *");
-                    else
+                    try
                     {
-                        Log("404 " + e.Request.Uri);
-                        e.Response = env.CreateWebResourceResponse(new MemoryStream(), status, status == 404 ? "Not Found" : "Error", "Content-Type: text/plain");
+                        if (ok)
+                            // CORS: strona z duble.app pobiera dane z duble.data (fetch/three.js) — bez tego naglowka przegladarka odrzuca odpowiedz
+                            e.Response = env.CreateWebResourceResponse(tresc, 200, "OK", $"Content-Type: {mime}\nCache-Control: no-cache\nAccess-Control-Allow-Origin: *");
+                        else
+                        {
+                            Log("404 " + e.Request.Uri);
+                            e.Response = env.CreateWebResourceResponse(new MemoryStream(), status, status == 404 ? "Not Found" : "Error", "Content-Type: text/plain\nAccess-Control-Allow-Origin: *");
+                        }
                     }
+                    catch (Exception ex) { Log("zasob BLAD " + e.Request.Uri + ": " + ex.Message); }
                 }
-                catch (Exception ex) { Log("zasob BLAD " + e.Request.Uri + ": " + ex.Message); }
+                var uri = e.Request.Uri;
+                if (uri.StartsWith("https://duble.data/", StringComparison.OrdinalIgnoreCase))
+                {
+                    // dane (tekstura generowana z pliku gry ~50-200 ms) — poza watkiem UI, odpowiedz z odroczeniem
+                    var odroczenie = e.GetDeferral();
+                    _ = Task.Run(() =>
+                    {
+                        bool ok; Stream tresc = null; string mime = null; int status = 500;
+                        try { ok = Zasoby.Rozwiaz(uri, out tresc, out mime, out status); }
+                        catch (Exception ex) { Log("zasob BLAD " + uri + ": " + ex.Message); ok = false; }
+                        Dispatcher.InvokeAsync(() => { Odpowiedz(ok, tresc, mime, status); odroczenie.Complete(); });
+                    });
+                    return;
+                }
+                bool ok2 = Zasoby.Rozwiaz(uri, out var tresc2, out var mime2, out int status2);
+                Odpowiedz(ok2, tresc2, mime2, status2);
             };
 
             Mostek = new Mostek(this, this, App.Ustawienia, json => Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(json))) { Dev = arg.Dev };
