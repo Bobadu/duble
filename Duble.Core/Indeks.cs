@@ -42,12 +42,9 @@ public static class Indeks
 
         var paczka = nazwaPaczki ?? Path.GetFileNameWithoutExtension(sciezka.TrimEnd(Path.DirectorySeparatorChar));
 
-        // WYKRYCIE FORMATU. RpfManager.IsGen9 jest STATYCZNE i czytane przy tworzeniu
-        // czytnika, wiec nie wolno go zmieniac w trakcie pracy rownoleglej — ustawiamy
-        // je raz na cale zrodlo. Paczka jest jednorodna: albo cala legacy, albo cala gen9.
-        bool gen9 = WykryjGen9(wpisy, log);
-        RpfManager.IsGen9 = gen9;
-        log($"  format: {(gen9 ? "gen9 (Enhanced)" : "legacy")}");
+        // FORMAT: CodeWalker w trybie gen9 czyta oba formaty po naglowku RSC7 kazdego pliku (Format.cs),
+        // wiec tryb ustawiamy raz i nie dotykamy; etykieta Legacy/Enhanced per pozycja z naglowka (Rsc7.Gen9).
+        Format.Przygotuj();
 
         // Pliki o nazwie spoza konwencji NIE moga zniknac po cichu — to zwykle wlasnie
         // one sa smieciem po eksporcie i kandydatem na duplikat. Zbieramy je i wypisujemy.
@@ -59,7 +56,7 @@ public static class Indeks
         int zrobione = 0;
         Parallel.ForEach(pliki, w =>
         {
-            var p = Model(w, paczka, gen9);
+            var p = Model(w, paczka);
             if (p != null) modele.Add(p); else pominiete.Add(w.Nazwa);
             int n = Interlocked.Increment(ref zrobione);
             if (n % 200 == 0) log($"  modele: {n}/{pliki.Count}");
@@ -106,6 +103,13 @@ public static class Indeks
                 m.Tekstury = moje.Select(x => x.t).OrderBy(t => t.Plik, StringComparer.OrdinalIgnoreCase).ToList();
             }
         }
+
+        // format per kontener (folder z wieloma .rpf moze mieszac Legacy i gen9)
+        foreach (var k in lista.GroupBy(p => p.Kontener).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            bool sa9 = k.Any(p => p.Gen9), saL = k.Any(p => !p.Gen9);
+            log($"  {(string.IsNullOrEmpty(k.Key) ? "(pliki luzem)" : k.Key)}: {(sa9 && saL ? "MIESZANY" : sa9 ? "gen9 (Enhanced)" : "legacy")}, pozycji {k.Count()}");
+        }
         return lista.OrderBy(p => p.Typ).ThenBy(p => p.Numer).ToList();
     }
 
@@ -117,6 +121,12 @@ public static class Indeks
         foreach (var f in Directory.EnumerateFiles(korzen, "*", SearchOption.AllDirectories))
         {
             var ext = Path.GetExtension(f);
+            if (ext.Equals(".rpf", StringComparison.OrdinalIgnoreCase))
+            {
+                // prawdziwe archiwum lezace w folderze (np. stream\civil01_female.rpf, dlcpacks\x\dlc.rpf)
+                wy.AddRange(ZArchiwum(f, _ => { }));
+                continue;
+            }
             if (!ext.Equals(".ydd", StringComparison.OrdinalIgnoreCase) &&
                 !ext.Equals(".ytd", StringComparison.OrdinalIgnoreCase)) continue;
             // kontener = najblizszy przodek o nazwie konczacej sie na .rpf (u nas to FOLDER)
@@ -158,7 +168,8 @@ public static class Indeks
                         // wydobyc te sama teksture drugi raz (do miniatury)
                         Sciezka = plik + "|" + e.Path,
                         Dlugosc = e.GetFileSize(),
-                        Dane = () => wlasciciel.ExtractFile(e)
+                        // ExtractFile oddaje zasob bez naglowka RSC7 — doklejamy go (Rsc7.Owin), zeby LoadResourceFile czytal poprawnie
+                        Dane = () => Rsc7.Owin(e, wlasciciel.ExtractFile(e))
                     });
                 }
             if (f.Children != null) foreach (var c in f.Children) Chodz(c);
@@ -167,56 +178,9 @@ public static class Indeks
         return wy;
     }
 
-    // ===================== wykrycie gen9 =====================
-
-    /// <summary>
-    /// Paczki z internetu bywaja w formacie legacy, nasze skonwertowane sa gen9. Uklad
-    /// bloku Texture rozni sie miedzy nimi, wiec zly wybor daje ciche smieci zamiast bledu.
-    /// Sprawdzamy probke w obu trybach i wybieramy ten, ktory daje sensowne wartosci.
-    /// </summary>
-    static bool WykryjGen9(List<Wpis> wpisy, Action<string> log)
-    {
-        var probka = wpisy.Where(w => w.Nazwa.EndsWith(".ytd", StringComparison.OrdinalIgnoreCase)).Take(8).ToList();
-        if (probka.Count == 0) probka = wpisy.Take(8).ToList();
-
-        int Punkty(bool gen9)
-        {
-            RpfManager.IsGen9 = gen9;
-            int ok = 0;
-            foreach (var w in probka)
-            {
-                try
-                {
-                    if (w.Nazwa.EndsWith(".ytd", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var ytd = new YtdFile();
-                        RpfFile.LoadResourceFile(ytd, w.Dane(), 13);
-                        var t = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
-                        if (t != null && t.Width > 0 && t.Width <= 16384 && t.Height > 0 && t.Height <= 16384
-                            && t.Levels >= 1 && t.Levels <= 16) ok++;
-                    }
-                    else
-                    {
-                        var ydd = new YddFile();
-                        RpfFile.LoadResourceFile(ydd, w.Dane(), 165);
-                        var d = ydd.Drawables?.FirstOrDefault();
-                        var n = d?.DrawableModels?.High?.FirstOrDefault()?.Geometries?.FirstOrDefault()?.VertexBuffer?.VertexCount ?? 0;
-                        if (n > 0 && n < 5_000_000) ok++;
-                    }
-                }
-                catch { }
-            }
-            return ok;
-        }
-
-        int zg = Punkty(true), zl = Punkty(false);
-        if (zg == 0 && zl == 0) log("[uwaga] nie rozpoznalam formatu zrodla — probuje jako gen9");
-        return zg >= zl;
-    }
-
     // ===================== pojedyncze pliki =====================
 
-    static Pozycja Model(Wpis w, string paczka, bool gen9)
+    static Pozycja Model(Wpis w, string paczka)
     {
         var n = Nazwy.Model(w.Nazwa);
         if (n == null) return null;
@@ -236,7 +200,7 @@ public static class Indeks
             Numer = numer,
             Sufiks = sufiks,
             Props = props,
-            Gen9 = gen9,
+            Gen9 = Rsc7.Gen9(dane, ".ydd") ?? false,   // etykieta formatu z naglowka pliku
             SciezkaYdd = w.Sciezka,
             BajtyYdd = dane.Length,
             ShaYdd = Convert.ToHexString(SHA256.HashData(dane))
