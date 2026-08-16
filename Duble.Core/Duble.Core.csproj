@@ -16,4 +16,7 @@
     <EmbeddedResource Include="i18n\pl.json" LogicalName="Duble.i18n.pl.json" />
     <EmbeddedResource Include="i18n\en.json" LogicalName="Duble.i18n.en.json" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BCnEncoder.Net" Version="2.3.0" />
+  </ItemGroup>
 </Project>

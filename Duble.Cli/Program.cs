@@ -274,13 +274,13 @@ switch (cmd)
             Directory.CreateDirectory(folder);
             foreach (var t in ytdT.TextureDict.Textures.data_items)
             {
-                var px = DDSIO.GetPixels(t, 0);
-                if (px == null || px.Length != t.Width * t.Height * 4) { Log($"{t.Name}: nie zdekodowano ({Odciski.NazwaFormatu(t)})"); continue; }
-                var rgb = new byte[t.Width * t.Height * 3];
+                var px = Tekstury.Piksele(t, 0, out int tw, out int th);   // DDSIO + BC7
+                if (px == null) { Log($"{t.Name}: nie zdekodowano ({Odciski.NazwaFormatu(t)})"); continue; }
+                var rgb = new byte[tw * th * 3];
                 for (int i = 0, j = 0; i < px.Length; i += 4, j += 3) { rgb[j] = px[i + 2]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i]; }
                 var pngT = Path.Combine(folder, t.Name + ".png");
-                File.WriteAllBytes(pngT, Png.Rgb(rgb, t.Width, t.Height));
-                Log($"{t.Name}  {t.Width}x{t.Height} {Odciski.NazwaFormatu(t)} -> {pngT}");
+                File.WriteAllBytes(pngT, Png.Rgb(rgb, tw, th));
+                Log($"{t.Name}  {tw}x{th} {Odciski.NazwaFormatu(t)} -> {pngT}");
             }
             return 0;
         }
