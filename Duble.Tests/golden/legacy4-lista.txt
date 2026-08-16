@@ -1,0 +1,32 @@
+civil_f_premium                174 pozycji,   1893 tekstur
+    accs          2
+    berd          1
+    decl          2
+    feet         12
+    hand          3
+    jbib         67
+    lowr         30
+    p_eyes        2
+    p_head        7
+    task         11
+    teef         21
+    uppr         16
+vrp_clothes_f_civil01          652 pozycji,   5257 tekstur
+    accs         14
+    berd          9
+    decl         29
+    feet         70
+    hair        128
+    hand         28
+    jbib        128
+    lowr         62
+    p_ears       24
+    p_eyes       13
+    p_head       21
+    task         79
+    teef         47
+vrp_clothes_f_civil02          244 pozycji,   1526 tekstur
+    hair        116
+    jbib        128
+vrp_clothes_f_civil03           62 pozycji,    761 tekstur
+    jbib         62

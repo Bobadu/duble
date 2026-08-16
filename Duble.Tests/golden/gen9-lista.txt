@@ -1,0 +1,16 @@
+studio_wardrobe               1130 pozycji,   9409 tekstur
+    accs         16
+    berd         10
+    decl         31
+    feet         81
+    hair        244
+    hand         31
+    jbib        383
+    lowr         92
+    p_ears       24
+    p_eyes       15
+    p_head       28
+    p_mouth       1
+    task         90
+    teef         68
+    uppr         16
