@@ -8,8 +8,10 @@ import * as sources from './views/sources.js';
 import * as settings from './views/settings.js';
 import * as about from './views/about.js';
 import * as wip from './views/wip.js';
+import * as duplicates from './views/duplicates.js';
+import * as group from './views/group.js';
 
-const WIDOKI = { start, sources, duplicates: wip, catalog: wip, history: wip, settings, about };
+const WIDOKI = { start, sources, duplicates, catalog: wip, history: wip, settings, about };
 const RAIL = [
   { id: 'start', ikona: 'home' }, { id: 'sources', ikona: 'sources' }, { id: 'duplicates', ikona: 'duplicates' },
   { id: 'catalog', ikona: 'catalog' }, { id: 'history', ikona: 'history' }, { grow: true },
@@ -83,17 +85,20 @@ function renderujStatus() {
 // ---------- router ----------
 export function navigate(nazwa) { location.hash = '#/' + nazwa; }
 async function montuj(wymus = false) {
-  const nazwa = (location.hash || '#/start').replace(/^#\/?/, '').split('?')[0] || 'start';
-  const modul = WIDOKI[nazwa] || wip;
-  if (!wymus && biezacy?.nazwa === nazwa) return;
+  const sciezka = (location.hash || '#/start').replace(/^#\/?/, '').split('?')[0] || 'start';
+  const [nazwa, ...reszta] = sciezka.split('/');
+  const param = reszta.length ? decodeURIComponent(reszta.join('/')) : null;
+  // #/duplicates/<id grupy> = karta porownania jednej grupy
+  const modul = nazwa === 'duplicates' && param ? group : (WIDOKI[nazwa] || wip);
+  if (!wymus && biezacy?.nazwa === nazwa && biezacy?.param === param) return;
   try { biezacy?.modul?.unmount?.(); } catch (e) { console.error(e); }
   store.widok = nazwa;
   const wrap = document.getElementById('wrap');
   wrap.innerHTML = '';
   wrap.dataset.view = nazwa;
-  biezacy = { nazwa, modul };
+  biezacy = { nazwa, modul, param };
   renderujRail();
-  try { await modul.render(wrap, { ...ctx, nazwa }); } catch (e) { console.error(e); wrap.append(el(`<div class="empty"><h3>${t('common.error')}</h3><p class="mono select-text">${String(e?.message || e)}</p></div>`)); }
+  try { await modul.render(wrap, { ...ctx, nazwa, param }); } catch (e) { console.error(e); wrap.append(el(`<div class="empty"><h3>${t('common.error')}</h3><p class="mono select-text">${String(e?.message || e)}</p></div>`)); }
   i18n.applyDom(wrap);
 }
 
