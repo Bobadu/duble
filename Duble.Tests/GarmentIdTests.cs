@@ -21,12 +21,12 @@ public class GarmentIdTests
     public void The_group_id_is_the_same_hash_whatever_the_order_of_its_members()
     {
         var ids = new[] { "a|k.rpf|jbib|1|u", "b|k.rpf|jbib|2|u" };
-        Assert.Equal("AB13B2B818E2F50E", Grupa.PoliczId(ids));
-        Assert.Equal(Grupa.PoliczId(ids), Grupa.PoliczId(ids.Reverse()));
+        Assert.Equal("AB13B2B818E2F50E", DuplicateGroup.ComputeId(ids));
+        Assert.Equal(DuplicateGroup.ComputeId(ids), DuplicateGroup.ComputeId(ids.Reverse()));
     }
 
     [Fact]
     public void A_different_membership_gives_a_different_group_id()
-        => Assert.NotEqual(Grupa.PoliczId(new[] { "a|k.rpf|jbib|1|u" }),
-                           Grupa.PoliczId(new[] { "a|k.rpf|jbib|1|u", "b|k.rpf|jbib|2|u" }));
+        => Assert.NotEqual(DuplicateGroup.ComputeId(new[] { "a|k.rpf|jbib|1|u" }),
+                           DuplicateGroup.ComputeId(new[] { "a|k.rpf|jbib|1|u", "b|k.rpf|jbib|2|u" }));
 }

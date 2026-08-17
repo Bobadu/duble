@@ -12,7 +12,7 @@ public interface IResolutionService
     /// rest are rejected; for "needs review" and "retexture" nobody is rejected. A decision is authoritative —
     /// including an empty rejection list, which means "reject nobody".
     /// </summary>
-    Resolution Resolve(Grupa group, Decision? decision);
+    Resolution Resolve(DuplicateGroup group, Decision? decision);
 
     /// <summary>
     /// After a re-comparison groups change membership and therefore change id, which would leave the user's
@@ -22,5 +22,5 @@ public interface IResolutionService
     /// Returns how many decisions were carried over.
     /// </summary>
     int CarryOver(IDictionary<string, Decision> decisions,
-                  IEnumerable<Grupa> previous, IEnumerable<Grupa> current);
+                  IEnumerable<DuplicateGroup> previous, IEnumerable<DuplicateGroup> current);
 }

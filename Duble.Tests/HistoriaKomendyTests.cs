@@ -34,7 +34,7 @@ public class HistoriaKomendyTests
             s.Porownaj(default, null); s.Zapisz();
 
             // decyzja: grupa e=f=g zignorowana
-            var efg = Duble.App.Komendy.Grupy.Zywe(s).First(x => x.g.Pozycje.Count == 3).g;
+            var efg = Duble.App.Komendy.Grupy.Zywe(s).First(x => x.g.Members.Count == 3).g;
             await m.Obsluz("{\"id\":\"2\",\"cmd\":\"groups.decide\",\"args\":{\"id\":\"" + efg.Id + "\",\"ignoruj\":true,\"notatka\":\"other boots\"}}");
 
             var csv = Path.Combine(tmp, "out", "g.csv").Replace("\\", "\\\\");

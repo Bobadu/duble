@@ -146,18 +146,18 @@ public sealed class Cofka
 public static class Zastosowanie
 {
     /// <summary>Wypisuje liste decyzji do pliku TSV, ktory mozna recznie poprawic (CLI).</summary>
-    public static void ZapiszDecyzje(WynikPorownania wynik, Catalog katalog, string sciezka)
+    public static void ZapiszDecyzje(ComparisonResult wynik, Catalog katalog, string sciezka)
     {
         var sb = new StringBuilder();
         sb.AppendLine("# Lista pozycji, ktore `duble zastosuj` przeniesie do _odrzucone\\.");
         sb.AppendLine("# Zmien TAK na NIE w pierwszej kolumnie przy tych, ktore chcesz zachowac.");
         sb.AppendLine("# Kolumny rozdzielone TABEM. Linie z # sa pomijane.");
         sb.AppendLine("odrzucic\twerdykt\tpozycja\tzostaje_zamiast\tpowod");
-        foreach (var g in wynik.Grupy.Where(g => g.Werdykt == Porownanie.Duplikat || g.Werdykt == Porownanie.Nadzbior))
-            foreach (var id in g.Pozycje.Where(x => x != g.Zwyciezca))
+        foreach (var g in wynik.Groups.Where(g => g.Verdict == Verdict.Duplicate || g.Verdict == Verdict.Superset))
+            foreach (var id in g.Members.Where(x => x != g.Winner))
             {
-                var powod = Teksty.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod, "pl");
-                sb.AppendLine($"TAK\t{g.Werdykt}\t{id}\t{g.Zwyciezca}\t{powod.Replace('\t', ' ')}");
+                var powod = Texts.Reason(g.Pairs.FirstOrDefault()?.Reason ?? g.Reason, "pl");
+                sb.AppendLine($"TAK\t{g.Verdict}\t{id}\t{g.Winner}\t{powod.Replace('\t', ' ')}");
             }
         var kat = Path.GetDirectoryName(Path.GetFullPath(sciezka));
         if (!string.IsNullOrEmpty(kat)) Directory.CreateDirectory(kat);

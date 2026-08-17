@@ -116,8 +116,8 @@ function kafelek(p, ctx) {
   if (p.bezMipow) problemy.push(`<span class="badge err" title="${esc(t('catalog.problemMips'))}">!mip</span>`);
   if (p.bc1Alfa) problemy.push(`<span class="badge err" title="${esc(t('catalog.problemBc1'))}">BC1α</span>`);
   const k = el(`
-    <button class="cat-tile ${p.grupa ? 'in-group' : ''}" data-id="${esc(p.id)}" title="${esc(nazwaPozycji(p))} ${esc(p.sufiks || '')} · ${esc(p.zrodlo)} · ${esc(p.kontener || '')}${p.grupa ? ' · ' + esc(t('werdykt.' + p.grupa)) : ''}">
-      <div class="thumb">${p.thumb ? `<img src="https://duble.data/thumb/${esc(p.thumb)}.png" alt="" loading="lazy">` : icon('cube')}${p.grupa ? `<span class="vico ${KLASA_WERDYKTU[p.grupa] || ''}" title="${esc(t('werdykt.' + p.grupa))}">${icon(IKONA_WERDYKTU[p.grupa] || 'duplicates')}</span>` : ''}${p.wArchiwum ? `<span class="arch" title="${esc(t('group.inArchive'))}">${icon('archive')}</span>` : ''}</div>
+    <button class="cat-tile ${p.grupa ? 'in-group' : ''}" data-id="${esc(p.id)}" title="${esc(nazwaPozycji(p))} ${esc(p.sufiks || '')} · ${esc(p.zrodlo)} · ${esc(p.kontener || '')}${p.grupa ? ' · ' + esc(t('verdict.' + p.grupa)) : ''}">
+      <div class="thumb">${p.thumb ? `<img src="https://duble.data/thumb/${esc(p.thumb)}.png" alt="" loading="lazy">` : icon('cube')}${p.grupa ? `<span class="vico ${KLASA_WERDYKTU[p.grupa] || ''}" title="${esc(t('verdict.' + p.grupa))}">${icon(IKONA_WERDYKTU[p.grupa] || 'duplicates')}</span>` : ''}${p.wArchiwum ? `<span class="arch" title="${esc(t('group.inArchive'))}">${icon('archive')}</span>` : ''}</div>
       <div class="nm">${esc(nazwaPozycji(p))}<sub>${esc(p.sufiks || '')}</sub></div>
       <div class="src" title="${esc(p.zrodlo)}">${esc(p.zrodlo)}</div>
       <div class="tile-badges"><span class="badge ${p.gen9 ? 'gen9' : 'legacy'}">${p.gen9 ? t('sources.formatGen9') : t('sources.formatLegacy')}</span><span class="faint">${t('dup.textures', { n: p.tekstur })}</span>${problemy.join('')}</div>

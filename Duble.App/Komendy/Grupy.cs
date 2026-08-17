@@ -1,6 +1,6 @@
 // Komendy/Grupy.cs — compare.run, groups.list/get/decide/reset, apply.preview/run.
 //
-// Grupy pochodza z Sesja.Wynik (WynikPorownania z Duble.Core); "kto zostaje" liczy s.Rozstrzygniecia.Resolve(grupa, decyzja z projektu).
+// Grupy pochodza z Sesja.Wynik (ComparisonResult z Duble.Core); "kto zostaje" liczy s.Rozstrzygniecia.Resolve(grupa, decyzja z projektu).
 // Powody werdyktow ida do UI jako kody {kod, p} — UI formatuje je z i18n (slownik Core jest zlaczony ze slownikiem UI).
 // Zastosuj: plan z Sesja.Zaplanuj (Zastosowanie w Core), wykonanie w JobRunner "zastosuj", cofka do historia\<czas>.json,
 // potem ponowne indeksowanie dotknietych zrodel + porownanie (Zrodla.Indeksuj/PorownajIZapisz).
@@ -15,31 +15,31 @@ namespace Duble.App.Komendy;
 
 public static class Grupy
 {
-    static readonly Dictionary<string, int> KolejnoscWerdyktow = new()
+    static readonly Dictionary<Verdict, int> KolejnoscWerdyktow = new()
     {
-        [Porownanie.Duplikat] = 0, [Porownanie.Nadzbior] = 1, [Porownanie.DoWgladu] = 2, [Porownanie.Przemalowanie] = 3,
+        [Verdict.Duplicate] = 0, [Verdict.Superset] = 1, [Verdict.NeedsReview] = 2, [Verdict.Retexture] = 3,
     };
 
     /// <summary>Grupy z wyniku, ktorych wszyscy czlonkowie nadal sa w katalogu (usuniete zrodlo = grupa znika), z rozstrzygnieciami; posortowane.</summary>
-    public static List<(Grupa g, List<Garment> czl, Resolution r)> Zywe(Sesja s)
+    public static List<(DuplicateGroup g, List<Garment> czl, Resolution r)> Zywe(Sesja s)
     {
         var wynik = s.Wynik; if (wynik == null || s.Project == null) return new();
         var wg = s.Catalog.Garments.ToDictionary(p => p.Id);
-        var wy = new List<(Grupa g, List<Garment> czl, Resolution r)>();
-        foreach (var g in wynik.Grupy)
+        var wy = new List<(DuplicateGroup g, List<Garment> czl, Resolution r)>();
+        foreach (var g in wynik.Groups)
         {
-            if (g.Pozycje == null || g.Pozycje.Count == 0 || !g.Pozycje.All(wg.ContainsKey)) continue;
-            if (string.IsNullOrEmpty(g.Id)) g.Id = Grupa.PoliczId(g.Pozycje);
-            wy.Add((g, g.Pozycje.Select(id => wg[id]).ToList(), Rozstrzygnij(s, g)));
+            if (g.Members == null || g.Members.Count == 0 || !g.Members.All(wg.ContainsKey)) continue;
+            if (string.IsNullOrEmpty(g.Id)) g.Id = DuplicateGroup.ComputeId(g.Members);
+            wy.Add((g, g.Members.Select(id => wg[id]).ToList(), Rozstrzygnij(s, g)));
         }
-        return wy.OrderBy(x => KolejnoscWerdyktow.TryGetValue(x.g.Werdykt, out var k) ? k : 9).ThenByDescending(x => x.g.Pozycje.Count).ThenBy(x => x.g.Pozycje[0], StringComparer.Ordinal).ToList();
+        return wy.OrderBy(x => KolejnoscWerdyktow.TryGetValue(x.g.Verdict, out var k) ? k : 9).ThenByDescending(x => x.g.Members.Count).ThenBy(x => x.g.Members[0], StringComparer.Ordinal).ToList();
     }
 
-    public static Resolution Rozstrzygnij(Sesja s, Grupa g)
+    public static Resolution Rozstrzygnij(Sesja s, DuplicateGroup g)
         => s.Rozstrzygniecia.Resolve(g, s.Project.Decisions.TryGetValue(g.Id ?? "", out var d) ? d : null);
 
     /// <summary>Id pozycji odrzuconych we wszystkich zywych grupach (bez zignorowanych).</summary>
-    public static HashSet<string> Odrzucone(List<(Grupa g, List<Garment> czl, Resolution r)> zywe)
+    public static HashSet<string> Odrzucone(List<(DuplicateGroup g, List<Garment> czl, Resolution r)> zywe)
         => new(zywe.Where(x => !x.r.Ignored).SelectMany(x => x.r.Rejected));
 
     public static object PlanJson(Sesja s, PlanZastosowania plan, bool lista)
@@ -68,16 +68,16 @@ public static class Grupy
         Sesja Wymag() => s.Otwarty ? s : throw new BladMostka("no_project", "brak otwartego projektu");
         string Zrodlo(Garment p) => s.Project.Sources.Find(z => z.Id == p.SourceId)?.Name ?? p.PackName;
 
-        object Grupa1(Grupa g, List<Garment> czl, Resolution r, bool szczegoly)
+        object Grupa1(DuplicateGroup g, List<Garment> czl, Resolution r, bool szczegoly)
         {
             var o = new Dictionary<string, object>
             {
-                ["id"] = g.Id, ["werdykt"] = g.Werdykt, ["powod"] = Widoki.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod), ["zwyciezca"] = g.Zwyciezca,
+                ["id"] = g.Id, ["werdykt"] = g.Verdict.ToKey(), ["powod"] = Widoki.Reason(g.Pairs.FirstOrDefault()?.Reason ?? g.Reason), ["zwyciezca"] = g.Winner,
                 ["rozstrzygniecie"] = Widoki.Rozstrz(r), ["czlonkowie"] = czl.Select(p => Widoki.Czlonek(p, g, szczegoly, Zrodlo)).ToList(),
             };
             if (szczegoly)
             {
-                o["pary"] = g.Pary.Select(p => new { a = p.A, b = p.B, werdykt = p.Werdykt, powod = Widoki.Powod(p.Powod), distGeo = p.DistGeo, pokrycieA = p.PokrycieA, pokrycieB = p.PokrycieB, wspolnychTekstur = p.WspolnychTekstur }).ToList();
+                o["pary"] = g.Pairs.Select(p => new { a = p.A, b = p.B, werdykt = p.Verdict.ToKey(), powod = Widoki.Reason(p.Reason), distGeo = p.GeometryDistance, pokrycieA = p.CoverageA, pokrycieB = p.CoverageB, wspolnychTekstur = p.SharedTextures }).ToList();
                 var progi = s.Project.Settings?.Thresholds ?? Thresholds.Default;
                 var dop = new List<object>();
                 for (int i = 0; i < czl.Count; i++)
@@ -89,7 +89,7 @@ public static class Grupy
                             for (int k = 0; k < czl[j].Textures.Count; k++)
                             {
                                 if (uzyte.Contains(k)) continue;
-                                if (Porownanie.TaSamaGrafika(ta, czl[j].Textures[k], progi)) { uzyte.Add(k); pary.Add(new[] { ta.Sha256, czl[j].Textures[k].Sha256 }); break; }
+                                if (DuplicateFinder.SameGraphic(ta, czl[j].Textures[k], progi)) { uzyte.Add(k); pary.Add(new[] { ta.Sha256, czl[j].Textures[k].Sha256 }); break; }
                             }
                         dop.Add(new { a = czl[i].Id, b = czl[j].Id, pary });
                     }
@@ -121,16 +121,16 @@ public static class Grupy
             var podsumowanie = new
             {
                 grup = wynik == null ? (int?)null : zywe.Count,
-                duplikat = zywe.Count(x => x.g.Werdykt == Porownanie.Duplikat), nadzbior = zywe.Count(x => x.g.Werdykt == Porownanie.Nadzbior),
-                wglad = zywe.Count(x => x.g.Werdykt == Porownanie.DoWgladu), przemalowanie = zywe.Count(x => x.g.Werdykt == Porownanie.Przemalowanie),
-                zignorowane = zywe.Count(x => x.r.Ignored), porownano = wynik?.Zbudowany,
+                duplikat = zywe.Count(x => x.g.Verdict == Verdict.Duplicate), nadzbior = zywe.Count(x => x.g.Verdict == Verdict.Superset),
+                wglad = zywe.Count(x => x.g.Verdict == Verdict.NeedsReview), przemalowanie = zywe.Count(x => x.g.Verdict == Verdict.Retexture),
+                zignorowane = zywe.Count(x => x.r.Ignored), porownano = wynik?.Built,
                 doOdrzucenia = PlanJson(s, s.Zaplanuj(Odrzucone(zywe)), false),
             };
             var filtrySloty = zywe.SelectMany(x => x.czl.Select(p => p.Slot)).GroupBy(t => t).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
             var filtryZrodla = zywe.SelectMany(x => x.czl.Select(p => p.SourceId ?? "")).GroupBy(t => t).Select(g => new { id = g.Key, nazwa = s.Project.Sources.Find(z => z.Id == g.Key)?.Name ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
             var grupy = zywe.Where(x =>
                 (zignorowane || !x.r.Ignored)
-                && (werdykty.Count == 0 || werdykty.Contains(x.g.Werdykt))
+                && (werdykty.Count == 0 || werdykty.Contains(x.g.Verdict.ToKey()))
                 && (sloty.Count == 0 || x.czl.Any(p => sloty.Contains(p.Slot)))
                 && (zrodla.Count == 0 || x.czl.Any(p => zrodla.Contains(p.SourceId ?? "")))
                 && (szukaj.Length == 0 || x.czl.Any(p => ($"{p.Slot}_{p.Number:d3} {p.PackName} {p.Container} {Zrodlo(p)} {p.Id}").ToLowerInvariant().Contains(szukaj)))
@@ -153,7 +153,7 @@ public static class Grupy
             var id = Mostek.Tekst(a, "id", true);
             var x = Zywe(s).FirstOrDefault(y => y.g.Id == id);
             if (x.g == null) throw new BladMostka("not_found", id);
-            var czlonkowie = x.g.Pozycje;
+            var czlonkowie = x.g.Members;
             if (!s.Project.Decisions.TryGetValue(id, out var d))
             {
                 var dom = s.Rozstrzygniecia.Resolve(x.g, null);

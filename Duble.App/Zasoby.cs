@@ -1,7 +1,7 @@
 // Zasoby.cs — odpowiedzi na https://duble.app/* (pliki UI) i https://duble.data/* (slowniki, miniatury, tekstury, siatki).
 //
 // UI: w trybie dev z folderu (edycja na zywo), normalnie z zasobow osadzonych w exe (LogicalName "ui/<sciezka>").
-// Dane: i18n = slownik UI (ui\i18n\<jezyk>.json) + slownik Core (Teksty.Slownik) zlaczone; reszta przez delegat Dane
+// Dane: i18n = slownik UI (ui\i18n\<jezyk>.json) + slownik Core (Texts.Slownik) zlaczone; reszta przez delegat Dane
 // (ustawia Sesja: thumb -> <projekt>.duble.cache\thumbs\<sha>.png itd.).
 using System;
 using System.Collections.Generic;
@@ -69,7 +69,7 @@ public sealed class Zasoby
     /// <summary>Slownik UI + Core dla jezyka (klucze UI wygrywaja przy kolizji).</summary>
     public string Slownik(string jezyk)
     {
-        var wynik = new Dictionary<string, string>(Duble.Core.Comparison.Teksty.Slownik(jezyk));
+        var wynik = new Dictionary<string, string>(Duble.Core.Comparison.Texts.Dictionary(jezyk));
         if (Rozwiaz($"https://duble.app/i18n/{jezyk}.json", out var s, out _, out _))
             using (s)
             {

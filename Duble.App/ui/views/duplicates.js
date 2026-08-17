@@ -2,11 +2,11 @@
 import { el, esc, toast, fmt } from '../ui.js';
 import { otworzZastosuj } from './apply.js';
 
-const WERDYKTY = ['DUPLIKAT', 'DUPLIKAT-NADZBIOR', 'DO WGLADU', 'PRZEMALOWANIE'];
-export const KLASA_WERDYKTU = { 'DUPLIKAT': 'w-dup', 'DUPLIKAT-NADZBIOR': 'w-nad', 'DO WGLADU': 'w-wgl', 'PRZEMALOWANIE': 'w-prz' };
-export const IKONA_WERDYKTU = { 'DUPLIKAT': 'duplicates', 'DUPLIKAT-NADZBIOR': 'layers', 'DO WGLADU': 'eye', 'PRZEMALOWANIE': 'palette' };
+const WERDYKTY = ['duplicate', 'superset', 'needsReview', 'retexture'];
+export const KLASA_WERDYKTU = { duplicate: 'w-dup', superset: 'w-nad', needsReview: 'w-wgl', retexture: 'w-prz' };
+export const IKONA_WERDYKTU = { duplicate: 'duplicates', superset: 'layers', needsReview: 'eye', retexture: 'palette' };
 /** Znaczek werdyktu: ikona + nazwa (kolor z klasy w-*). */
-export function znaczekWerdyktu(t, icon, werdykt) { return `<span class="badge ${KLASA_WERDYKTU[werdykt] || ''}">${IKONA_WERDYKTU[werdykt] ? icon(IKONA_WERDYKTU[werdykt]) : ''}${esc(t('werdykt.' + werdykt))}</span>`; }
+export function znaczekWerdyktu(t, icon, werdykt) { return `<span class="badge ${KLASA_WERDYKTU[werdykt] || ''}">${IKONA_WERDYKTU[werdykt] ? icon(IKONA_WERDYKTU[werdykt]) : ''}${esc(t('verdict.' + werdykt))}</span>`; }
 const KLUCZ_FILTROW = 'dup.filtry';
 
 let odpisz = null;
@@ -87,10 +87,10 @@ async function odswiez() {
   // filtry: jeden pasek — werdykt (segment), slot i zrodlo (listy), szukajka, przelacznik zignorowanych, wyczysc
   filtryEl.innerHTML = '';
   if (pod.grup != null) {
-    const licz = { 'DUPLIKAT': pod.duplikat, 'DUPLIKAT-NADZBIOR': pod.nadzbior, 'DO WGLADU': pod.wglad, 'PRZEMALOWANIE': pod.przemalowanie };
+    const licz = { duplicate: pod.duplikat, superset: pod.nadzbior, needsReview: pod.wglad, retexture: pod.przemalowanie };
     const seg = el('<div class="seg seg-werdykt" role="radiogroup"></div>');
     const wybrany = filtry.werdykty.length === 1 ? filtry.werdykty[0] : '';
-    const opcje = [['', t('dup.allVerdicts'), pod.grup]].concat(WERDYKTY.map(w => [w, t('werdykt.' + w), licz[w] ?? 0]));
+    const opcje = [['', t('dup.allVerdicts'), pod.grup]].concat(WERDYKTY.map(w => [w, t('verdict.' + w), licz[w] ?? 0]));
     for (const [w, nazwa, n] of opcje) {
       const b = el(`<button role="radio" aria-checked="${wybrany === w}" class="${wybrany === w ? 'on' : ''} ${w ? KLASA_WERDYKTU[w] : ''}">${w ? icon(IKONA_WERDYKTU[w]) : ''}${esc(nazwa)} <span class="n">${fmt.liczba(n)}</span></button>`);
       b.onclick = () => { filtry.werdykty = w ? [w] : []; zapiszFiltry(); odswiez(); };
