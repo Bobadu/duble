@@ -69,7 +69,7 @@ public sealed class Zasoby
     /// <summary>Slownik UI + Core dla jezyka (klucze UI wygrywaja przy kolizji).</summary>
     public string Slownik(string jezyk)
     {
-        var wynik = new Dictionary<string, string>(Duble.Core.Teksty.Slownik(jezyk));
+        var wynik = new Dictionary<string, string>(Duble.Core.Comparison.Teksty.Slownik(jezyk));
         if (Rozwiaz($"https://duble.app/i18n/{jezyk}.json", out var s, out _, out _))
             using (s)
             {

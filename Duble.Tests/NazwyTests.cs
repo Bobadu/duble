@@ -1,4 +1,3 @@
-using Duble.Core;
 using Xunit;
 
 namespace Duble.Tests;

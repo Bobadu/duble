@@ -9,8 +9,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
+using Duble.Core.Formats;
 
-namespace Duble.Core;
+namespace Duble.Core.Sources;
 
 public static class Zrodla
 {

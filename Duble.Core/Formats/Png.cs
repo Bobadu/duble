@@ -8,7 +8,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 
-namespace Duble.Core;
+namespace Duble.Core.Formats;
 
 public static class Png
 {

@@ -11,7 +11,7 @@ using System.Text;
 using System.Text.Json;
 using CodeWalker.GameFiles;
 
-namespace Duble.Core;
+namespace Duble.Core.Formats;
 
 public sealed class SiatkaGeo
 {

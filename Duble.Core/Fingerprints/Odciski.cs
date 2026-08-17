@@ -16,8 +16,10 @@ using System.Linq;
 using System.Security.Cryptography;
 using CodeWalker.GameFiles;
 using CodeWalker.Utils;
+using Duble.Core.Model;
+using Duble.Core.Formats;
 
-namespace Duble.Core;
+namespace Duble.Core.Fingerprints;
 
 public static class Odciski
 {

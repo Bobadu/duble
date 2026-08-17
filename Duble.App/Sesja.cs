@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using CodeWalker.GameFiles;
-using Duble.Core;
 
 namespace Duble.App;
 

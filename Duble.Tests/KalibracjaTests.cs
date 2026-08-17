@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Duble.Core;
 using Xunit;
 
 namespace Duble.Tests;

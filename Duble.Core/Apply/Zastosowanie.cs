@@ -20,8 +20,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
+using Duble.Core.Comparison;
+using Duble.Core.Indexing;
+using Duble.Core.Model;
 
-namespace Duble.Core;
+namespace Duble.Core.Apply;
 
 /// <summary>Jeden plik pozycji w planie: dokad pojdzie i czy w ogole (Stan).</summary>
 public sealed class RuchPliku

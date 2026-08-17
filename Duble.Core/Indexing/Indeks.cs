@@ -17,8 +17,12 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using CodeWalker.GameFiles;
+using Duble.Core.Model;
+using Duble.Core.Fingerprints;
+using Duble.Core.Formats;
+using Duble.Core.Naming;
 
-namespace Duble.Core;
+namespace Duble.Core.Indexing;
 
 public static class Indeks
 {

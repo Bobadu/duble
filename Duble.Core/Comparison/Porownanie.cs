@@ -31,8 +31,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Duble.Core.Indexing;
+using Duble.Core.Model;
+using Duble.Core.Fingerprints;
 
-namespace Duble.Core;
+namespace Duble.Core.Comparison;
 
 /// <summary>Progi porownania. Domyslne = kalibracja 15.08 (uzasadnienie w naglowku pliku). Aplikacja moze je nadpisac per projekt.</summary>
 public class Progi

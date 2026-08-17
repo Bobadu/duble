@@ -11,8 +11,14 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using CodeWalker.GameFiles;
+using Duble.Core.Comparison;
+using Duble.Core.Decisions;
+using Duble.Core.Model;
+using Duble.Core.Fingerprints;
+using Duble.Core.Formats;
+using Duble.Core.Sources;
 
-namespace Duble.Core;
+namespace Duble.Core.Reporting;
 
 public static class Raport
 {

@@ -13,8 +13,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using CodeWalker.GameFiles;
+using Duble.Core.Indexing;
 
-namespace Duble.Core;
+namespace Duble.Core.Sources;
 
 public static class Rozpakowanie
 {

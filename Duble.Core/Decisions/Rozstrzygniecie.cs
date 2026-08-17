@@ -4,8 +4,10 @@
 // nikt odrzucony). Decyzja jest autorytatywna (takze pusta lista Odrzucone = nikt); Ignoruj = "to nie duplikat".
 using System.Collections.Generic;
 using System.Linq;
+using Duble.Core.Comparison;
+using Duble.Core.Projects;
 
-namespace Duble.Core;
+namespace Duble.Core.Decisions;
 
 public sealed class Rozstrzygniecie
 {

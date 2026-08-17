@@ -6,7 +6,7 @@
 // Ogonek "_k" (np. jbib_022_u_1) dokladaja eksportery przy kolizji nazw; wchodzi do Sufiksu.
 using System.Text.RegularExpressions;
 
-namespace Duble.Core;
+namespace Duble.Core.Naming;
 
 public sealed record NazwaModelu(string Typ, int Numer, string Sufiks, bool Props, string Kontener);
 public sealed record NazwaTekstury(string Typ, int Numer, string Litera, string Rasa, bool Props, string Kontener);

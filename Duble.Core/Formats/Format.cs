@@ -9,7 +9,7 @@
 using System.Runtime.CompilerServices;
 using CodeWalker.GameFiles;
 
-namespace Duble.Core;
+namespace Duble.Core.Formats;
 
 public static class Format
 {

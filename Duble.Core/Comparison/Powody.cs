@@ -12,7 +12,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace Duble.Core;
+namespace Duble.Core.Comparison;
 
 public class Powod
 {
