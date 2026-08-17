@@ -73,8 +73,8 @@ worth reading before changing anything in `Odciski.cs` or `Porownanie.cs`.
 ## Commits and pull requests
 
 - One topic per pull request, please.
-- Commit messages: a short summary line saying what changed from the user's point of view, then the details.
-  English or Polish, both are fine.
+- **Commit messages are written in English**: a short summary line (72 characters or so) saying what changed
+  from the user's point of view, then the details in the body. Commits are signed — GitHub shows them as verified.
 - Run `.\build.ps1` before pushing — the CI runs exactly that.
 - New verdict logic or threshold changes should come with the numbers behind them (`duble kalibruj` prints the
   distributions, and Settings → Calibration shows them as charts).
