@@ -52,7 +52,7 @@ jobs:
         run: ./build.ps1 -Publish -BezTestow
 
       - name: Upload Duble.exe
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Duble-exe-${{ github.sha }}
           path: publish/Duble.exe
