@@ -3,7 +3,7 @@ import { el, esc, toast, fmt, confirm } from '../ui.js';
 import { wipe } from '../wipe.js';
 import { KLASA_WERDYKTU, powodTekst, nazwaPozycji, znaczekWerdyktu } from './duplicates.js';
 import * as group3d from './group3d.js';
-import { blokJakosci, kafelekTekstury, sciezkaKrotka } from './parts.js';
+import { blokJakosci, kafelekTekstury, sciezkaKrotka, literaZPliku } from './parts.js';
 
 let odpisz = null, ctxRef = null, rootEl = null, idGrupy = null, debounceNotatki = null;
 let uchwyt3d = null;   // { zniszcz } biezacej zakladki 3D
@@ -141,6 +141,20 @@ function matchesTekst(t, c, partner) {
   return n ? t('group.matches', { n }) : '';
 }
 
+/** Strona porownania dla kazdego modelu w grupie: tekstura dopasowana (ta sama grafika), a jak nie ma — ten sam wariant. */
+function stronyPorownania(tx, c, partner, g) {
+  const pary = new Set((partner.get(tx.sha) || []).map(p => p.sha));
+  const litera = literaZPliku(tx.plik);
+  const strony = [];
+  for (const cz of g.czlonkowie || []) {
+    const txx = cz.id === c.id ? tx
+      : (cz.tekstury || []).find(x => pary.has(x.sha)) || (cz.tekstury || []).find(x => literaZPliku(x.plik) === litera);
+    if (!txx || !txx.zdekodowana || !txx.sha) continue;
+    strony.push({ sha: txx.sha, nazwa: nazwaPozycji(cz), zrodlo: cz.zrodlo, litera: literaZPliku(txx.plik), plik: txx.plik, w: txx.w, h: txx.h, format: txx.format, mipy: txx.mipy, id: cz.id });
+  }
+  return strony;
+}
+
 function kafelek(tx, c, partner, ctx, g) {
   const { t } = ctx;
   const par = partner.get(tx.sha) || [];
@@ -149,14 +163,12 @@ function kafelek(tx, c, partner, ctx, g) {
   k.addEventListener('mouseleave', () => { document.querySelectorAll('.tex.para-hover').forEach(x => x.classList.remove('para-hover')); });
   k.onclick = () => {
     if (!tx.zdekodowana || !tx.sha) { toast(t('wipe.noPreview'), { typ: 'warn' }); return; }
-    const podpisA = `${c.zrodlo} · ${tx.plik} · ${tx.w}×${tx.h} ${tx.format}`;
-    if (par.length) {
-      const p = par[0];
-      const cz = (g.czlonkowie || []).find(x => x.id === p.czlonek);
-      const tb = cz?.tekstury?.find(x => x.sha === p.sha);
-      const podpisB = cz && tb ? `${cz.zrodlo} · ${tb.plik} · ${tb.w}×${tb.h} ${tb.format}` : p.sha;
-      wipe({ sha: tx.sha, podpis: podpisA }, { sha: p.sha, podpis: podpisB });
-    } else wipe({ sha: tx.sha, podpis: podpisA }, null);
+    const strony = stronyPorownania(tx, c, partner, g);
+    const a = Math.max(0, strony.findIndex(s => s.id === c.id));
+    const bSha = par[0]?.sha;
+    let b = bSha ? strony.findIndex((s, i) => i !== a && s.sha === bSha) : -1;
+    if (b < 0) b = strony.findIndex((s, i) => i !== a);
+    wipe(strony, a, b < 0 ? null : b);
   };
   return k;
 }
