@@ -57,7 +57,8 @@ Namespace `Duble.Core`, one folder per concern:
 Model/          Garment, TextureInfo, GeometryFingerprint, Catalog, GameFormat
 Naming/         ClothingFileNameParser, ModelFileName, TextureFileName
 Sources/        ISourceReader, FolderSourceReader, ArchiveSourceReader, ISourceReaderFactory,
-                IArchiveCache, RpfArchiveCache, SourceEntry, SourceKind
+                IArchiveCache, RpfArchiveCache, IArchiveExtractor, RpfArchiveExtractor,
+                SourceEntry, SourceKind
 Fingerprints/   IGeometryFingerprinter, ITextureFingerprinter, ThumbnailRequest,
                 PerceptualHash, ColorSignature, Distances
 Indexing/       IGarmentIndexer, GarmentIndexer, IndexOptions, IndexReport
@@ -181,6 +182,7 @@ handles to archives whose files have since moved, which is a latent bug the refa
 | `Raport` | `HtmlReportBuilder` + `CsvExporter` | |
 | `Kalibracja` / `Rozklad` / `WynikKalibracji` | `Calibrator` / `Distribution` / `CalibrationReport` | |
 | `Zrodla` | `RpfArchiveCache` | plus a real lifetime |
+| `Rozpakowanie` | `RpfArchiveExtractor` | unpacking an `.rpf` into a folder of RSC7 files |
 | `Format` | `CodeWalkerRuntime` | |
 | `Rsc7` / `Png` / `Glb` / `Tekstury` / `Podglad3D` | `Rsc7Header` / `PngWriter` / `GlbWriter` / `TextureDecoder` / `MeshPreviewBuilder` | |
 | `Teksty` | `IReasonFormatter` + internal dictionary loader | |
@@ -279,8 +281,10 @@ log line into `IndexReport.SkippedFiles`, so the app can show them.
 
 ## Compiler settings
 
-`Duble.Core` and `Duble.Tests` get `Nullable=enable`, `ImplicitUsings=enable`, `TreatWarningsAsErrors=true`.
-Nullability is expressed in the model: `Garment.Geometry` is non-null (an empty fingerprint when a model cannot
+`Duble.Core` and `Duble.Tests` get `TreatWarningsAsErrors=true` in PR 1. `Nullable=enable` and
+`ImplicitUsings=enable` are project-wide switches that would light up every not-yet-rewritten file at once, so
+they flip in PR 5, once the last file has been rewritten; until then every new or rewritten file opts in with
+`#nullable enable` on its first line. Nullability is expressed in the model: `Garment.Geometry` is non-null (an empty fingerprint when a model cannot
 be read), `TextureInfo.PerceptualHash` is `ulong[]?` (null when undecodable), `Decision?` is nullable in
 `IResolutionService.Resolve`.
 

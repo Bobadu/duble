@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Duble;
+using Duble.Core;
 using Xunit;
 
 namespace Duble.Tests;

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Duble;
+using Duble.Core;
 using Xunit;
 
 namespace Duble.Tests;

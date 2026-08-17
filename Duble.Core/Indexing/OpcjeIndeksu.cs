@@ -2,7 +2,7 @@
 using System;
 using System.Threading;
 
-namespace Duble;
+namespace Duble.Core;
 
 public sealed record Postep(string Etap, int Zrobione, int Wszystkie, string Kontener);
 

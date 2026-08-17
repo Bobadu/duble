@@ -7,7 +7,7 @@
 using System;
 using CodeWalker.GameFiles;
 
-namespace Duble;
+namespace Duble.Core;
 
 public static class Rsc7
 {

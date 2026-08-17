@@ -10,7 +10,7 @@ using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
 
-namespace Duble;
+namespace Duble.Core;
 
 public static class Zrodla
 {

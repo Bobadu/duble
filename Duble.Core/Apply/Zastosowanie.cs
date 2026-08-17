@@ -21,7 +21,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 
-namespace Duble;
+namespace Duble.Core;
 
 /// <summary>Jeden plik pozycji w planie: dokad pojdzie i czy w ogole (Stan).</summary>
 public sealed class RuchPliku

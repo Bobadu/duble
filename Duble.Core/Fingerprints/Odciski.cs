@@ -17,7 +17,7 @@ using System.Security.Cryptography;
 using CodeWalker.GameFiles;
 using CodeWalker.Utils;
 
-namespace Duble;
+namespace Duble.Core;
 
 public static class Odciski
 {

@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Duble;
+using Duble.Core;
 using Duble.App;
 using Xunit;
 

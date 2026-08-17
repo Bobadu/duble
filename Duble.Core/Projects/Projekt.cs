@@ -6,7 +6,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Duble;
+namespace Duble.Core;
 
 public class ZrodloProjektu
 {

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using Duble;
+using Duble.Core;
 using Xunit;
 using Xunit.Abstractions;
 

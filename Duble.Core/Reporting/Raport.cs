@@ -12,7 +12,7 @@ using System.Net;
 using System.Text;
 using CodeWalker.GameFiles;
 
-namespace Duble;
+namespace Duble.Core;
 
 public static class Raport
 {

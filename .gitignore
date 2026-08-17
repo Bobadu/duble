@@ -13,3 +13,6 @@ TestResults/
 
 # local UI check scripts (Duble.exe --dev --exec "import('./_dev-*.js')")
 Duble.App/ui/_dev-*.js
+
+# local implementation plans (working notes, not project documentation)
+.plans/

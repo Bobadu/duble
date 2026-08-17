@@ -3,7 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using CodeWalker.GameFiles;
-using Duble;
+using Duble.Core;
 using Xunit;
 
 namespace Duble.Tests;

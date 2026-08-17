@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
 
-namespace Duble;
+namespace Duble.Core;
 
 public static class Podglad3D
 {
@@ -36,7 +36,7 @@ public static class Podglad3D
         catch (Exception e) { throw new InvalidDataException("nie udalo sie wczytac modelu: " + e.Message, e); }
         var n0 = dr?.DrawableModels?.High?.FirstOrDefault()?.Geometries?.FirstOrDefault()?.VertexBuffer?.VertexCount ?? 0;
         if (n0 <= 0 || n0 > 5_000_000) throw new InvalidDataException("model bez sensownej geometrii (wierzcholkow: " + n0 + ")");
-        var geos = Duble.Glb.ZDrawable(dr);
+        var geos = Duble.Core.Glb.ZDrawable(dr);
         var pngi = new Dictionary<string, byte[]>();
         // osadzone tekstury (wlosy itp.)
         var td = dr.ShaderGroup?.TextureDictionary?.Textures?.data_items;
@@ -58,7 +58,7 @@ public static class Podglad3D
             catch (Exception e) { log("[uwaga] nie odczytalam ytd: " + e.Message); }
         }
         log($"geometrii {geos.Count}, wierzcholkow {geos.Sum(g => g.Pozycje.Length / 3)}, trojkatow {geos.Sum(g => g.Indeksy.Length / 3)}, tekstur {pngi.Count}");
-        return Duble.Glb.Zapisz(geos, pngi);
+        return Duble.Core.Glb.Zapisz(geos, pngi);
     }
 
     static byte[] PngZTekstury(Texture t) => Tekstury.PngRgba(t, MaksBok);

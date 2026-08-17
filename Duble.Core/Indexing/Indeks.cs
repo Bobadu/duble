@@ -18,7 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CodeWalker.GameFiles;
 
-namespace Duble;
+namespace Duble.Core;
 
 public static class Indeks
 {

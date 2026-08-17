@@ -32,7 +32,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace Duble;
+namespace Duble.Core;
 
 /// <summary>Progi porownania. Domyslne = kalibracja 15.08 (uzasadnienie w naglowku pliku). Aplikacja moze je nadpisac per projekt.</summary>
 public class Progi

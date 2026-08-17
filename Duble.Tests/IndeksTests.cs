@@ -1,6 +1,6 @@
 using System.IO;
 using System.Linq;
-using Duble;
+using Duble.Core;
 using Xunit;
 using Xunit.Abstractions;
 

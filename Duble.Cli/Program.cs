@@ -24,7 +24,7 @@ using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
 using CodeWalker.Utils;
-using Duble;
+using Duble.Core;
 
 var argv = args.ToList();
 // teksty PL maja ogonki (od etapu 6) — konsola Windows domyslnie ma strone kodowa OEM, wiec ustawiamy UTF-8

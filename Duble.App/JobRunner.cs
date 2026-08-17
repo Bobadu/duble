@@ -18,7 +18,7 @@ public sealed class JobRunner
     public JobRunner(Action<string, object> zdarzenie) { this.zdarzenie = zdarzenie; }
 
     /// <summary>Uruchamia prace w tle. false = inne zadanie w toku (nic nie uruchomiono).</summary>
-    public async Task<bool> Uruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Postep>, Task> praca)
+    public async Task<bool> Uruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.Postep>, Task> praca)
     {
         CancellationTokenSource moj;
         lock (klucz)
@@ -31,7 +31,7 @@ public sealed class JobRunner
         // postep bywa zglaszany per plik (zastosuj/cofnij: setki razy na sekunde) — do UI idzie najwyzej co ~100 ms
         // (plus zawsze: nowy etap i ostatni krok etapu), bo kazde zdarzenie odswieza widoki
         long ostatniTik = 0; string ostatniEtap = null; var klucz2 = new object();
-        void Postep(Duble.Postep p)
+        void Postep(Duble.Core.Postep p)
         {
             lock (klucz2)
             {
@@ -63,7 +63,7 @@ public sealed class JobRunner
     }
 
     /// <summary>Jak Uruchom, ale nie czeka na koniec: true = wystartowalo (w tle), false = zajety.</summary>
-    public bool SprobujUruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Postep>, Task> praca)
+    public bool SprobujUruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.Postep>, Task> praca)
     {
         lock (klucz) { if (Zajety) return false; }
         _ = Uruchom(typ, opis, praca);   // ustawia Zajety synchronicznie (do pierwszego await)

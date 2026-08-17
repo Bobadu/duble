@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Duble;
+using Duble.Core;
 using Xunit;
 
 namespace Duble.Tests;

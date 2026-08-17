@@ -20,7 +20,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 
-namespace Duble;
+namespace Duble.Core;
 
 /// <summary>Rozklad wartosci: percentyle + histogram w zadanym zakresie (ostatni kubelek zbiera wszystko powyzej Do).</summary>
 public sealed class Rozklad

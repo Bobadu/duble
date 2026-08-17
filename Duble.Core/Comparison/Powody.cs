@@ -12,7 +12,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace Duble;
+namespace Duble.Core;
 
 public class Powod
 {
@@ -44,7 +44,7 @@ public static class Teksty
 
     static Dictionary<string, string> Wczytaj(string jezyk)
     {
-        var nazwa = $"Duble.i18n.{jezyk}.json";
+        var nazwa = $"Duble.Core.i18n.{jezyk}.json";
         using var s = typeof(Teksty).Assembly.GetManifestResourceStream(nazwa)
             ?? throw new FileNotFoundException("brak zasobu " + nazwa);
         return JsonSerializer.Deserialize<Dictionary<string, string>>(s) ?? new();
