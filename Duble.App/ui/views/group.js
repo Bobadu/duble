@@ -107,9 +107,13 @@ function kolumny(g, ctx) {
         <div class="col-head">
           <div class="col-title"><span class="nm">${esc(nazwaPozycji(c))}<sub>${esc(c.sufiks || '')}</sub></span><span class="badge ${c.gen9 ? 'gen9' : 'legacy'}">${c.gen9 ? t('sources.formatGen9') : t('sources.formatLegacy')}</span>${stan === 'stays' ? `<span class="badge ok col-state">${icon('check')}${t('group.stays')}</span>` : stan === 'rejected' ? `<span class="badge err col-state">${icon('x')}${t('group.rejected')}</span>` : `<span class="badge unknown col-state">${t('group.neutral')}</span>`}</div>
           <div class="col-src" title="${esc(c.zrodlo)} › ${esc(c.kontener || '')}">${esc(c.zrodlo)}<span class="faint"> › ${esc(c.kontener || '')}</span></div>
-          <div class="btn-row">
-            ${!zostaje && !r.ignoruj ? `<button class="btn sm primary" data-akcja="keep">${icon('check')}${t('group.keepThis')}</button>` : ''}
-            ${!zostaje && !r.ignoruj ? (odrzucona ? `<button class="btn sm" data-akcja="unreject">${icon('ok')}${t('group.unreject')}</button>` : `<button class="btn sm danger" data-akcja="reject">${icon('trash')}${t('group.reject')}</button>`) : ''}
+          <div class="btn-row col-actions">
+            ${r.ignoruj
+              ? `<button class="btn sm" disabled>${icon('check')}${t('group.keepThis')}</button><button class="btn sm" disabled>${icon('trash')}${t('group.reject')}</button>`
+              : zostaje
+                ? `<button class="btn sm" aria-pressed="true" disabled>${icon('check')}${t('group.keepThis')}</button>`
+                : `<button class="btn sm" data-akcja="keep">${icon('check')}${t('group.keepThis')}</button>` +
+                  (odrzucona ? `<button class="btn sm" data-akcja="unreject">${icon('ok')}${t('group.unreject')}</button>` : `<button class="btn sm danger" data-akcja="reject">${icon('trash')}${t('group.reject')}</button>`)}
           </div>
         </div>
         <div class="col-quality">${blokJakosci(c, t)}</div>
