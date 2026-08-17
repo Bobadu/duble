@@ -65,7 +65,7 @@ public static class UstawieniaKomendy
                 progiZmienione = progi != null && !progi.Rowne(Progi.Domyslne),
                 cache = cache.ToDictionary(k => k.Key, k => new { pliki = k.Value.pliki, bajty = k.Value.bajty }),
                 folderCache = pr.FolderCache,
-                zrodla = pr.Zrodla.Count, pozycje = s.Katalog.Pozycje.Count,
+                zrodla = pr.Zrodla.Count, pozycje = s.Catalog.Garments.Count,
                 porownanie,   // true = ruszylo ponowne porownanie, false = zajety, null = niepotrzebne
             };
         }
@@ -127,7 +127,7 @@ public static class UstawieniaKomendy
         {
             Wymag();
             var katalog = s.KatalogWlaczony();
-            if (katalog.Pozycje.Count(p => p.Geo?.Hist != null && p.Geo.Wierzcholki > 0) < 2) throw new BladMostka("not_found", "za malo pozycji");
+            if (katalog.Garments.Count(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0) < 2) throw new BladMostka("not_found", "za malo pozycji");
             var progi = s.ProgiProjektu;
             bool ok = jr.SprobujUruchom("kalibracja", s.Projekt.Nazwa, async (ct, postep) =>
             {

@@ -142,15 +142,15 @@ public static class Porownanie
     public const string DoWgladu = "DO WGLADU";
     public const string Przemalowanie = "PRZEMALOWANIE";
 
-    public static WynikPorownania Znajdz(Katalog katalog, Action<string> log, Progi progi = null)
+    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Progi progi = null)
         => Znajdz(katalog, log, progi, null, default);
 
     /// <summary>Jak wyzej, z postepem (Etap "porownaj") i anulowaniem — dla aplikacji okienkowej.</summary>
-    public static WynikPorownania Znajdz(Katalog katalog, Action<string> log, Progi progi, Action<Postep> postep, System.Threading.CancellationToken anuluj)
+    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Progi progi, Action<Postep> postep, System.Threading.CancellationToken anuluj)
     {
         progi ??= Progi.Domyslne;
         log ??= _ => { };
-        var poz = katalog.Pozycje.Where(p => p.Geo?.Hist != null && p.Geo.Wierzcholki > 0).ToList();
+        var poz = katalog.Garments.Where(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0).ToList();
         log($"pozycji do porownania: {poz.Count}");
 
         var pary = new List<Para>();
@@ -201,7 +201,7 @@ public static class Porownanie
                 grupa.Rozpiska[id] = pkt;
             }
             grupa.Zwyciezca = ids.OrderByDescending(x => grupa.Punkty[x])
-                                 .ThenByDescending(x => wgId[x].Tekstury.Count)
+                                 .ThenByDescending(x => wgId[x].Textures.Count)
                                  .ThenBy(x => x, StringComparer.Ordinal).First();
             var przegrani = ids.Where(x => x != grupa.Zwyciezca).ToList();
             grupa.Powod = new Powod("WINNER",
@@ -234,51 +234,51 @@ public static class Porownanie
     }
 
     /// <summary>"identyczna" / "podobna" / null gdy para w ogole nie jest kandydatem.</summary>
-    static string WerdyktGeometrii(Pozycja a, Pozycja b, Progi progi, out double dist)
+    static string WerdyktGeometrii(Garment a, Garment b, Progi progi, out double dist)
     {
         dist = double.MaxValue;
         // typy musza sie zgadzac tylko co do tego, czy to props — ubranie z jednej paczki
         // bywa w drugiej pod innym typem (u nas: accs_007 == jbib_015), wiec typu NIE
         // porownujemy. Propsy i ubrania mieszamy juz jednak nie.
-        if (a.Props != b.Props) return null;
+        if (a.IsProp != b.IsProp) return null;
 
-        if (a.Geo.HashPozycji != null && a.Geo.HashPozycji == b.Geo.HashPozycji) { dist = 0; return "identyczna"; }
+        if (a.Geometry.PositionHash != null && a.Geometry.PositionHash == b.Geometry.PositionHash) { dist = 0; return "identyczna"; }
 
-        dist = Odciski.OdlegloscGeo(a.Geo.Hist, b.Geo.Hist);
+        dist = Odciski.OdlegloscGeo(a.Geometry.ShapeHistogram, b.Geometry.ShapeHistogram);
         if (dist > progi.GeoPodobna) return null;
 
         if (dist <= progi.GeoIdentyczna
-            && a.Geo.Trojkaty == b.Geo.Trojkaty
-            && a.Geo.Wierzcholki == b.Geo.Wierzcholki
-            && a.Geo.Trojkaty > 0) return "identyczna";
+            && a.Geometry.Triangles == b.Geometry.Triangles
+            && a.Geometry.Vertices == b.Geometry.Vertices
+            && a.Geometry.Triangles > 0) return "identyczna";
 
-        double maxTri = Math.Max(a.Geo.Trojkaty, b.Geo.Trojkaty);
+        double maxTri = Math.Max(a.Geometry.Triangles, b.Geometry.Triangles);
         if (maxTri < 1) return null;
-        double roznicaTri = Math.Abs(a.Geo.Trojkaty - b.Geo.Trojkaty) / maxTri;
+        double roznicaTri = Math.Abs(a.Geometry.Triangles - b.Geometry.Triangles) / maxTri;
         if (roznicaTri > progi.GeoPodobnaTri) return null;
-        if (Odciski.OdlegloscBbox(a.Geo.Bbox, b.Geo.Bbox) > progi.GeoPodobnaBbox) return null;
+        if (Odciski.OdlegloscBbox(a.Geometry.BoundingBox, b.Geometry.BoundingBox) > progi.GeoPodobnaBbox) return null;
         return "podobna";
     }
 
     /// <summary>Czy dwie tekstury to ta sama grafika (ten sam kolor, nie tylko ten sam wzor).</summary>
-    public static bool TaSamaGrafika(Tekstura x, Tekstura y, Progi progi = null)
+    public static bool TaSamaGrafika(TextureInfo x, TextureInfo y, Progi progi = null)
     {
         progi ??= Progi.Domyslne;
-        if (x.Sha == y.Sha) return true;
-        if (!x.Zdekodowana || !y.Zdekodowana) return false;
-        double kol = Odciski.OdlegloscKoloru(x.Kolor, y.Kolor);
+        if (x.Sha256 == y.Sha256) return true;
+        if (!x.IsDecoded || !y.IsDecoded) return false;
+        double kol = Odciski.OdlegloscKoloru(x.ColorSignature, y.ColorSignature);
         // Plaska tekstura (np. jednolity kolor) daje PHash z szumu — wtedy ufamy samemu
         // kolorowi, ale wymagamy scislejszej zgodnosci.
-        if (x.Wariancja < progi.TexWariancjaMin || y.Wariancja < progi.TexWariancjaMin)
+        if (x.Variance < progi.TexWariancjaMin || y.Variance < progi.TexWariancjaMin)
             return kol <= progi.TexKolorPlaska;
-        int ph = Odciski.Hamming(x.PHash, y.PHash);
+        int ph = Odciski.Hamming(x.PerceptualHash, y.PerceptualHash);
         return ph >= 0 && ph <= progi.TexPHash && kol <= progi.TexKolor;
     }
 
-    static Para Oceń(Pozycja a, Pozycja b, string geo, double dist, Progi progi)
+    static Para Oceń(Garment a, Garment b, string geo, double dist, Progi progi)
     {
-        var ta = a.Tekstury ?? new List<Tekstura>();
-        var tb = b.Tekstury ?? new List<Tekstura>();
+        var ta = a.Textures ?? new List<TextureInfo>();
+        var tb = b.Textures ?? new List<TextureInfo>();
         var para = new Para { A = a.Id, B = b.Id, DistGeo = dist };
 
         if (ta.Count == 0 || tb.Count == 0)
@@ -361,40 +361,40 @@ public static class Porownanie
     /// Punktacja jakosci 0..100 ze skladnikami — zeby w raporcie i aplikacji bylo widac,
     /// DLACZEGO cos wygralo, a nie tylko ze wygralo.
     /// </summary>
-    public static Punktacja Jakosc(Pozycja p)
+    public static Punktacja Jakosc(Garment p)
     {
-        var t = p.Tekstury ?? new List<Tekstura>();
+        var t = p.Textures ?? new List<TextureInfo>();
         if (t.Count == 0) return new Punktacja { BrakTekstur = true, Razem = 0 };
 
         // rozdzielczosc: mediana liczby pikseli, odniesiona do 1024x1024 = komplet punktow
-        var piksele = t.Select(x => (double)x.W * x.H).Where(x => x > 0).OrderBy(x => x).ToArray();
+        var piksele = t.Select(x => (double)x.Width * x.Height).Where(x => x > 0).OrderBy(x => x).ToArray();
         double medPx = piksele.Length > 0 ? piksele[piksele.Length / 2] : 0;
         double pktRozdz = medPx > 0 ? Math.Clamp(Math.Log2(medPx) / Math.Log2(1024.0 * 1024.0), 0, 1.25) * 40 : 0;
 
         // mipmapy: 28% naszych tekstur ma tylko jeden poziom — bez mipow tekstura migocze
-        double udzialMipow = t.Count(x => x.Mipy > 1) / (double)t.Count;
+        double udzialMipow = t.Count(x => x.MipLevels > 1) / (double)t.Count;
         double pktMipy = udzialMipow * 20;
 
         // liczba wariantow kolorystycznych — bogatszy wybor w menu
         double pktWarianty = Math.Min(t.Count, 20) / 20.0 * 20;
 
         // format wobec alfy: BC1 ma alfe 1-bitowa, wiec przy przezroczystosci to strata
-        int zlyFormat = t.Count(x => x.Format == "BC1" && x.Alfa > 0.02f);
+        int zlyFormat = t.Count(x => x.Format == "BC1" && x.AlphaShare > 0.02f);
         double pktFormat = 10 * (1.0 - zlyFormat / (double)t.Count);
 
-        double pktLod = Math.Clamp((p.Geo?.Lody ?? 0) / 3.0, 0, 1) * 10;
+        double pktLod = Math.Clamp((p.Geometry?.LodLevels ?? 0) / 3.0, 0, 1) * 10;
 
         return new Punktacja
         {
             Razem = pktRozdz + pktMipy + pktWarianty + pktFormat + pktLod,
             Rozdz = pktRozdz, Mipy = pktMipy, Warianty = pktWarianty, Format = pktFormat, Lod = pktLod,
             RozdzPx = Math.Sqrt(medPx), UdzialMipow = udzialMipow, LiczbaWariantow = t.Count, ZlyFormat = zlyFormat,
-            Lody = p.Geo?.Lody ?? 0
+            Lody = p.Geometry?.LodLevels ?? 0
         };
     }
 
     /// <summary>Zgodnosc wstecz: suma punktow + rozpiska po polsku.</summary>
-    public static double Jakosc(Pozycja p, out string rozpiska)
+    public static double Jakosc(Garment p, out string rozpiska)
     {
         var pkt = Jakosc(p);
         rozpiska = pkt.Tekst("pl");

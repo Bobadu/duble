@@ -17,7 +17,7 @@ public class GrupyKomendyTests
         var tmp = Sciezki.Tymczasowy("grupy");
         var wyslane = new List<string>();
         var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-        var s = new Sesja(); s.Nowy("G", Path.Combine(tmp, "G.duble"));
+        var s = TestSession.Create(); s.Nowy("G", Path.Combine(tmp, "G.duble"));
         Sztuczne.SiedemZeZrodlami(s, tmp);
         s.Porownaj(default, null);
         s.Zapisz();

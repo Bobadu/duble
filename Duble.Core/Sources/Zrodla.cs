@@ -1,9 +1,9 @@
 // Zrodla.cs — ponowne siegniecie po plik, ktory byl indeksowany.
 //
-// Katalog trzyma dla kazdej tekstury `Sciezka`. Dla luznych plikow to zwykla sciezka,
-// dla wpisu w archiwum: "sciezka\do\archiwum.rpf|sciezka\wewnetrzna". Raport musi umiec
-// wydobyc te same bajty drugi raz, zeby zrobic miniature — takze wtedy, gdy zrodlem
-// byla paczka .rpf prosto z internetu, a nie rozpakowany folder.
+// The catalog keeps a Path for every texture: a plain path for a loose file, and
+// "path\to\archive.rpf|path\inside" for an entry in an archive. A report has to read the same bytes a
+// second time to build a thumbnail — including when the source was an .rpf straight off the internet
+// rather than an unpacked folder.
 using System;
 using System.Collections.Generic;
 using System.IO;

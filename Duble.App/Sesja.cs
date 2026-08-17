@@ -12,9 +12,13 @@ namespace Duble.App;
 public sealed class Sesja
 {
     readonly object klucz = new();
-    Dictionary<string, Tekstura> teksturyWgSha;   // indeks sha -> Tekstura (leniwy, kasowany po zmianie katalogu)
+    readonly ICatalogStore katalogi;
+
+    public Sesja(ICatalogStore katalogi) => this.katalogi = katalogi;
+
+    Dictionary<string, TextureInfo> teksturyWgSha;   // indeks sha -> TextureInfo (leniwy, kasowany po zmianie katalogu)
     public Projekt Projekt { get; private set; }
-    public Katalog Katalog { get; private set; } = new();
+    public Catalog Catalog { get; private set; } = new();
     public WynikPorownania Wynik { get; private set; }
     public bool Otwarty => Projekt != null;
     /// <summary>Projekt/katalog/wynik sie zmienil (po zapisie, indeksowaniu, usunieciu zrodla, porownaniu).</summary>
@@ -25,7 +29,7 @@ public sealed class Sesja
         var p = Projekt.Nowy(nazwa, sciezkaPliku);
         Directory.CreateDirectory(p.FolderCache);
         p.Zapisz();
-        lock (klucz) { Projekt = p; Katalog = new Katalog(); Wynik = null; teksturyWgSha = null; }
+        lock (klucz) { Projekt = p; Catalog = new Catalog(); Wynik = null; teksturyWgSha = null; }
         Zmiana?.Invoke();
     }
 
@@ -34,10 +38,10 @@ public sealed class Sesja
         if (!File.Exists(sciezkaPliku)) throw new FileNotFoundException("brak projektu", sciezkaPliku);
         var p = Projekt.Wczytaj(sciezkaPliku);
         Directory.CreateDirectory(p.FolderCache);
-        var k = Katalog.Wczytaj(p.PlikKatalogu);
+        var k = katalogi.Load(p.PlikKatalogu);
         WynikPorownania w = null;
         try { if (File.Exists(p.PlikDubli)) w = WynikPorownania.Wczytaj(p.PlikDubli); } catch { w = null; }
-        lock (klucz) { Projekt = p; Katalog = k; Wynik = w; teksturyWgSha = null; }
+        lock (klucz) { Projekt = p; Catalog = k; Wynik = w; teksturyWgSha = null; }
         Zmiana?.Invoke();
     }
 
@@ -48,8 +52,7 @@ public sealed class Sesja
             if (Projekt == null) return;
             Directory.CreateDirectory(Projekt.FolderCache);
             Projekt.Zapisz();
-            Katalog.Zbudowany = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            Katalog.Zapisz(Projekt.PlikKatalogu);
+            katalogi.Save(Catalog, Projekt.PlikKatalogu);
             Wynik?.Zapisz(Projekt.PlikDubli);
         }
         Zmiana?.Invoke();
@@ -57,21 +60,21 @@ public sealed class Sesja
 
     public void Zamknij()
     {
-        lock (klucz) { Projekt = null; Katalog = new Katalog(); Wynik = null; teksturyWgSha = null; }
+        lock (klucz) { Projekt = null; Catalog = new Catalog(); Wynik = null; teksturyWgSha = null; }
         Zmiana?.Invoke();
     }
 
     /// <summary>Wykonaj zmiane katalogu pod blokada (indeksowanie z watku roboczego).</summary>
-    public void ZmienKatalog(Action<Katalog> akcja) { lock (klucz) { akcja(Katalog); teksturyWgSha = null; } }
+    public void ZmienKatalog(Action<Catalog> akcja) { lock (klucz) { akcja(Catalog); teksturyWgSha = null; } }
 
     /// <summary>Kopia katalogu z pozycjami WLACZONYCH zrodel (to porownujemy i kalibrujemy).</summary>
-    public Katalog KatalogWlaczony()
+    public Catalog KatalogWlaczony()
     {
         lock (klucz)
         {
             var projekt = Projekt ?? throw new InvalidOperationException("brak projektu");
             var wlaczone = new HashSet<string>(projekt.Zrodla.Where(z => z.Wlaczone).Select(z => z.Id));
-            return new Katalog { Pozycje = Katalog.Pozycje.Where(p => p.ZrodloId == null || wlaczone.Contains(p.ZrodloId)).ToList() };
+            return new Catalog { Garments = Catalog.Garments.Where(p => p.SourceId == null || wlaczone.Contains(p.SourceId)).ToList() };
         }
     }
 
@@ -133,10 +136,10 @@ public sealed class Sesja
     // ---------------- zastosowanie: zrodlo pozycji, kosz, plan ----------------
 
     /// <summary>Zrodlo projektu, z ktorego pochodzi pozycja (po ZrodloId; starsze katalogi — po nazwie paczki).</summary>
-    public ZrodloProjektu ZrodloPozycji(Pozycja p)
+    public ZrodloProjektu ZrodloPozycji(Garment p)
     {
         var pr = Projekt; if (pr == null || p == null) return null;
-        return pr.Zrodla.Find(z => z.Id == p.ZrodloId) ?? pr.Zrodla.Find(z => string.Equals(z.Nazwa, p.Paczka, StringComparison.OrdinalIgnoreCase));
+        return pr.Zrodla.Find(z => z.Id == p.SourceId) ?? pr.Zrodla.Find(z => string.Equals(z.Nazwa, p.PackName, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Folder kosza dla zrodla: `Ustawienia.Kosz` (wskazany folder) albo `_odrzucone` obok zrodla — w obu przypadkach z podfolderem o nazwie zrodla.</summary>
@@ -161,7 +164,7 @@ public sealed class Sesja
     }
 
     /// <summary>Cel przenosin dla pozycji (null = zrodla nie ma w projekcie albo na dysku).</summary>
-    public CelPozycji Cel(Pozycja p)
+    public CelPozycji Cel(Garment p)
     {
         var z = ZrodloPozycji(p);
         if (z == null || z.Sciezka == null || !(Directory.Exists(z.Sciezka) || File.Exists(z.Sciezka))) return null;
@@ -170,7 +173,7 @@ public sealed class Sesja
 
     public PlanZastosowania Zaplanuj(IEnumerable<string> odrzucone)
     {
-        lock (klucz) return Zastosowanie.Zaplanuj(Katalog, odrzucone, Cel);
+        lock (klucz) return Zastosowanie.Zaplanuj(Catalog, odrzucone, Cel);
     }
 
     /// <summary>Pliki historii zastosowan (najnowsze pierwsze).</summary>
@@ -199,8 +202,8 @@ public sealed class Sesja
             return new
             {
                 nazwa = Projekt.Nazwa, sciezka = Projekt.Sciezka,
-                zrodla = Projekt.Zrodla.Count, pozycje = Katalog.Pozycje.Count,
-                tekstury = Katalog.Pozycje.Sum(p => p.Tekstury.Count),
+                zrodla = Projekt.Zrodla.Count, pozycje = Catalog.Garments.Count,
+                tekstury = Catalog.Garments.Sum(p => p.Textures.Count),
                 duplikaty, porownano = Wynik?.Zbudowany,
             };
         }
@@ -211,27 +214,27 @@ public sealed class Sesja
     {
         lock (klucz)
         {
-            var poz = Katalog.Pozycje.Where(p => p.ZrodloId == zrodloId).ToList();
-            var perSlot = poz.GroupBy(p => p.Typ).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.Count());
-            int tekstury = poz.Sum(p => p.Tekstury.Count);
-            int bc7 = poz.Sum(p => p.Tekstury.Count(t => t.Format == "BC7"));
-            string format = poz.Count == 0 ? null : poz.All(p => p.Gen9) ? "gen9" : poz.All(p => !p.Gen9) ? "legacy" : "mieszany";
-            int wArchiwum = poz.Count(p => p.SciezkaYdd != null && p.SciezkaYdd.Contains('|'));
+            var poz = Catalog.Garments.Where(p => p.SourceId == zrodloId).ToList();
+            var perSlot = poz.GroupBy(p => p.Slot).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.Count());
+            int tekstury = poz.Sum(p => p.Textures.Count);
+            int bc7 = poz.Sum(p => p.Textures.Count(t => t.Format == "BC7"));
+            string format = poz.Count == 0 ? null : poz.All(p => p.GameFormat == GameFormat.Enhanced) ? "gen9" : poz.All(p => p.GameFormat == GameFormat.Legacy) ? "legacy" : "mieszany";
+            int wArchiwum = poz.Count(p => p.ModelPath != null && p.ModelPath.Contains('|'));
             return (poz.Count, tekstury, perSlot, bc7, format, wArchiwum);
         }
     }
 
-    public Pozycja ZnajdzPozycje(string id) { lock (klucz) return Katalog.Pozycje.FirstOrDefault(p => p.Id == id); }
+    public Garment ZnajdzPozycje(string id) { lock (klucz) return Catalog.Garments.FirstOrDefault(p => p.Id == id); }
 
-    public Tekstura ZnajdzTeksture(string sha)
+    public TextureInfo ZnajdzTeksture(string sha)
     {
         if (string.IsNullOrEmpty(sha)) return null;
         lock (klucz)
         {
             if (teksturyWgSha == null)
             {
-                teksturyWgSha = new Dictionary<string, Tekstura>(StringComparer.OrdinalIgnoreCase);
-                foreach (var t in Katalog.Pozycje.SelectMany(p => p.Tekstury)) if (t.Sha != null && !teksturyWgSha.ContainsKey(t.Sha)) teksturyWgSha[t.Sha] = t;
+                teksturyWgSha = new Dictionary<string, TextureInfo>(StringComparer.OrdinalIgnoreCase);
+                foreach (var t in Catalog.Garments.SelectMany(p => p.Textures)) if (t.Sha256 != null && !teksturyWgSha.ContainsKey(t.Sha256)) teksturyWgSha[t.Sha256] = t;
             }
             return teksturyWgSha.TryGetValue(sha, out var w) ? w : null;
         }
@@ -279,13 +282,13 @@ public sealed class Sesja
         try
         {
             var poz = ZnajdzPozycje(idPozycji);
-            if (poz == null || string.IsNullOrEmpty(poz.SciezkaYdd)) return null;
-            var tex = poz.Tekstury.FirstOrDefault(t => litera != null && string.Equals(Nazwy.Tekstura(t.Plik)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
-                      ?? poz.Tekstury.FirstOrDefault();
+            if (poz == null || string.IsNullOrEmpty(poz.ModelPath)) return null;
+            var tex = poz.Textures.FirstOrDefault(t => litera != null && string.Equals(Nazwy.ParseTexture(t.FileName)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
+                      ?? poz.Textures.FirstOrDefault();
             string Krotki(string sha) => string.IsNullOrEmpty(sha) ? "brak" : sha.Length > 16 ? sha.Substring(0, 16) : sha;
-            var plik = Path.Combine(Projekt.FolderSiatek, $"{Krotki(poz.ShaYdd)}_{Krotki(tex?.Sha)}.glb");
+            var plik = Path.Combine(Projekt.FolderSiatek, $"{Krotki(poz.ModelSha256)}_{Krotki(tex?.Sha256)}.glb");
             if (File.Exists(plik)) return plik;
-            var glb = Podglad3D.Glb(poz, tex != null ? Nazwy.Tekstura(tex.Plik)?.Litera : null);
+            var glb = Podglad3D.Glb(poz, tex != null ? Nazwy.ParseTexture(tex.FileName)?.Litera : null);
             Directory.CreateDirectory(Projekt.FolderSiatek);
             var tmp = plik + "." + Guid.NewGuid().ToString("N").Substring(0, 6) + ".tmp";
             File.WriteAllBytes(tmp, glb);
@@ -301,8 +304,8 @@ public sealed class Sesja
         try
         {
             var t = ZnajdzTeksture(sha);
-            if (t?.Sciezka == null) return false;
-            var bajty = Zrodla.Bajty(t.Sciezka);
+            if (t?.Path == null) return false;
+            var bajty = Zrodla.Bajty(t.Path);
             if (bajty == null) return false;
             CodeWalkerRuntime.Initialize();
             var ytd = new YtdFile();

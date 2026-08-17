@@ -33,6 +33,7 @@ try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
 // Core services; resolving CodeWalkerRuntime puts CodeWalker in gen9 mode before any command touches a game file.
 using var uslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
 uslugi.GetRequiredService<CodeWalkerRuntime>();
+var katalogi = uslugi.GetRequiredService<ICatalogStore>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -82,11 +83,11 @@ switch (cmd)
     case "odswiez":
     case "indeks":
         {
-            var katalog = Katalog.Wczytaj(sciezkaKatalogu);
+            var katalog = katalogi.Load(sciezkaKatalogu);
             if (cmd == "odswiez")
             {
-                if (katalog.Zrodla.Count == 0) { Console.Error.WriteLine("[blad] katalog nie zna zadnych zrodel — uzyj `duble indeks <folder>`"); return 1; }
-                argv = katalog.Zrodla.Values.ToList();
+                if (katalog.Sources.Count == 0) { Console.Error.WriteLine("[blad] katalog nie zna zadnych zrodel — uzyj `duble indeks <folder>`"); return 1; }
+                argv = katalog.Sources.Values.ToList();
             }
             if (argv.Count == 0) { Console.Error.WriteLine("[blad] podaj co najmniej jedno zrodlo"); return 2; }
             foreach (var zrodlo in argv)
@@ -97,35 +98,34 @@ switch (cmd)
                 var start = DateTime.Now;
                 // przyrostowo: pliki bez zmian (rozmiar|data) biora odcisk z poprzedniego katalogu; --wymus liczy wszystko
                 var pozycje = Indeks.Zrodlo(zrodlo, nazwa, new OpcjeIndeksu { Log = Log, Poprzedni = katalog, Wymus = wymus, FolderMiniatur = miniatury });
-                katalog.UsunPaczke(nazwa);
-                katalog.Wstaw(pozycje);
-                katalog.Zrodla[nazwa] = Path.GetFullPath(zrodlo);
-                var tex = pozycje.Sum(p => p.Tekstury.Count);
-                var nieodczytane = pozycje.Sum(p => p.Tekstury.Count(t => !t.Zdekodowana));
+                katalog.RemovePack(nazwa);
+                katalog.Upsert(pozycje);
+                katalog.Sources[nazwa] = Path.GetFullPath(zrodlo);
+                var tex = pozycje.Sum(p => p.Textures.Count);
+                var nieodczytane = pozycje.Sum(p => p.Textures.Count(t => !t.IsDecoded));
                 Log($"  {pozycje.Count} pozycji, {tex} tekstur"
                     + (nieodczytane > 0 ? $" ({nieodczytane} nie do zdekodowania)" : "")
                     + $", {(DateTime.Now - start).TotalSeconds:F0} s");
             }
-            katalog.Zbudowany = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            katalog.Zapisz(sciezkaKatalogu);
-            Log($"katalog: {sciezkaKatalogu} ({katalog.Pozycje.Count} pozycji)");
+            katalogi.Save(katalog, sciezkaKatalogu);
+            Log($"katalog: {sciezkaKatalogu} ({katalog.Garments.Count} pozycji)");
             return 0;
         }
 
     case "lista":
         {
-            var katalog = Katalog.Wczytaj(sciezkaKatalogu);
-            foreach (var g in katalog.Pozycje.GroupBy(p => p.Paczka))
+            var katalog = katalogi.Load(sciezkaKatalogu);
+            foreach (var g in katalog.Garments.GroupBy(p => p.PackName))
             {
-                Log($"{g.Key,-28} {g.Count(),5} pozycji, {g.Sum(p => p.Tekstury.Count),6} tekstur");
-                foreach (var t in g.GroupBy(p => p.Typ).OrderBy(x => x.Key))
+                Log($"{g.Key,-28} {g.Count(),5} pozycji, {g.Sum(p => p.Textures.Count),6} tekstur");
+                foreach (var t in g.GroupBy(p => p.Slot).OrderBy(x => x.Key))
                     Log($"    {t.Key,-10} {t.Count(),4}");
             }
             return 0;
         }
 
     case "kalibruj":
-        return Kalibracja.Uruchom(Katalog.Wczytaj(sciezkaKatalogu), Log);
+        return Kalibracja.Uruchom(katalogi.Load(sciezkaKatalogu), Log);
 
     case "obj":
         {
@@ -134,7 +134,7 @@ switch (cmd)
             // waniliowe vs Killstore). Format (legacy/gen9) z naglowka RSC7; tryb gen9 czyta oba (Format.cs).
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble obj <plik.ydd> [--out plik.obj]"); return 2; }
             var bajty = File.ReadAllBytes(argv[0]);
-            YddFile ydd = null; string fmt = CodeWalkerRuntime.FormatLabel(Rsc7.Gen9(bajty, ".ydd"));
+            YddFile ydd = null; string fmt = Rsc7.Gen9(bajty, ".ydd") is bool g9 ? GameFormats.FromHeader(g9).ToLabel() : "?";
             try
             {
                 var y = new YddFile();
@@ -325,7 +325,7 @@ switch (cmd)
         {
             // model + tekstura do glTF-Binary 2.0 (podglad 3D w aplikacji / Blenderze / three.js)
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble glb <plik.ydd> [--ytd plik.ytd] [--out plik.glb]"); return 2; }
-            var glb = Podglad3D.Glb(File.ReadAllBytes(argv[0]), ytdOpc != null ? File.ReadAllBytes(ytdOpc) : null, null, Log);
+            var glb = Podglad3D.Glb(File.ReadAllBytes(argv[0]), ytdOpc != null ? File.ReadAllBytes(ytdOpc) : null, Log);
             var glbOut = wyjscie ?? Path.ChangeExtension(argv[0], ".glb");
             File.WriteAllBytes(glbOut, glb);
             Log($"GLB: {glbOut} ({glb.Length} B)");
@@ -342,20 +342,20 @@ switch (cmd)
             RpfFile.LoadResourceFile(ytd, File.ReadAllBytes(argv[0]), 13);   // tryb gen9 czyta oba formaty po naglowku
             var tx = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
             if (tx == null) { Console.Error.WriteLine("[blad] brak tekstury w pliku"); return 1; }
-            var odc = new Tekstura();
-            var rgb = Odciski.Tekstura(tx, odc, 256);
+            var odc = new TextureInfo();
+            var rgb = Odciski.FingerprintTexture(tx, odc, 256);
             if (rgb == null) { Console.Error.WriteLine("[blad] nie udalo sie zdekodowac (BC7?)"); return 1; }
             var png = wyjscie ?? Path.ChangeExtension(argv[0], ".png");
             File.WriteAllBytes(png, Png.Rgb(rgb, 256, 256));
-            Log($"{odc.Nazwa}  {odc.W}x{odc.H} {odc.Format} mipy={odc.Mipy} alfa={odc.Alfa:P1}");
+            Log($"{odc.Name}  {odc.Width}x{odc.Height} {odc.Format} mipy={odc.MipLevels} alfa={odc.AlphaShare:P1}");
             Log($"PNG: {png}");
             return 0;
         }
 
     case "porownaj":
         {
-            var katalog = Katalog.Wczytaj(sciezkaKatalogu);
-            if (katalog.Pozycje.Count == 0) { Console.Error.WriteLine("[blad] pusty katalog — najpierw `duble indeks`"); return 1; }
+            var katalog = katalogi.Load(sciezkaKatalogu);
+            if (katalog.Garments.Count == 0) { Console.Error.WriteLine("[blad] pusty katalog — najpierw `duble indeks`"); return 1; }
             var wynik = Porownanie.Znajdz(katalog, Log);
             wynik.Zapisz(sciezkaDubli);
             Zastosowanie.ZapiszDecyzje(wynik, katalog, sciezkaDecyzji);
@@ -365,7 +365,7 @@ switch (cmd)
         }
 
     case "zastosuj":
-        return Zastosowanie.Zastosuj(Katalog.Wczytaj(sciezkaKatalogu), sciezkaDecyzji,
+        return Zastosowanie.Zastosuj(katalogi.Load(sciezkaKatalogu), sciezkaDecyzji,
             Path.Combine(korzenProjektu, "staging", "wardrobe2", "_odrzucone"), sciezkaCofki, Log);
 
     case "cofnij":
@@ -373,7 +373,7 @@ switch (cmd)
 
     case "raport":
         {
-            var katalog = Katalog.Wczytaj(sciezkaKatalogu);
+            var katalog = katalogi.Load(sciezkaKatalogu);
             var wynik = WynikPorownania.Wczytaj(sciezkaDubli);
             if (wynik.Grupy.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");

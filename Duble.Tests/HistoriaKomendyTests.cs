@@ -22,7 +22,7 @@ public class HistoriaKomendyTests
             var wyslane = new List<string>();
             var ust = new Ustawienia { Jezyk = "en" };
             var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), ust, wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-            var s = new Sesja(); s.Nowy("Moj projekt", Path.Combine(tmp, "proj", "Moj projekt.duble"));
+            var s = TestSession.Create(); s.Nowy("Moj projekt", Path.Combine(tmp, "proj", "Moj projekt.duble"));
             Sztuczne.SiedemZeZrodlami(s, tmp);
             var jr = new JobRunner(m.Zdarzenie);
             Duble.App.Komendy.Grupy.Zarejestruj(m, s, jr);

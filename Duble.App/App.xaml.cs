@@ -19,7 +19,7 @@ public partial class App : Application
         Argumenty = Argumenty.Parsuj(e.Args);
         if (!string.IsNullOrEmpty(Argumenty.DevIcon)) { Komendy.Ikona.Zapisz(Argumenty.DevIcon); Shutdown(0); return; }
         Ustawienia = Ustawienia.Wczytaj();
-        Services = new ServiceCollection().AddDubleCore().BuildServiceProvider();
+        Services = new ServiceCollection().AddDubleCore().AddSingleton<Sesja>().BuildServiceProvider();
         // --lang/--theme NIE nadpisuja ustawien uzytkownika (tryb kontrolny) — ida do UI jako parametry adresu (MainWindow)
         DispatcherUnhandledException += (s, ex) =>
         {

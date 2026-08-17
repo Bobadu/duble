@@ -26,19 +26,19 @@ public static class Odciski
     // ===================== GEOMETRIA =====================
 
     /// <summary>Odcisk modelu: liczby + histogram ksztaltu + hash pozycji.</summary>
-    public static Geo Geometria(Drawable d)
+    public static GeometryFingerprint FingerprintGeometry(Drawable d)
     {
-        var g = new Geo();
+        var g = new GeometryFingerprint();
         if (d == null) return g;
 
         var dm = d.DrawableModels;
         if (dm != null)
         {
             foreach (var arr in new[] { dm.High, dm.Med, dm.Low, dm.VLow })
-                if (arr != null && arr.Length > 0) g.Lody++;
+                if (arr != null && arr.Length > 0) g.LodLevels++;
         }
-        g.Kosci = d.Skeleton?.Bones?.Items?.Length ?? 0;
-        g.Bbox = new[]
+        g.Bones = d.Skeleton?.Bones?.Items?.Length ?? 0;
+        g.BoundingBox = new[]
         {
             d.BoundingBoxMax.X - d.BoundingBoxMin.X,
             d.BoundingBoxMax.Y - d.BoundingBoxMin.Y,
@@ -57,15 +57,15 @@ public static class Odciski
             foreach (var geo in m.Geometries)
             {
                 if (geo == null) continue;
-                g.Geometrie++;
-                g.Trojkaty += (int)(geo.IndicesCount / 3);
+                g.Meshes++;
+                g.Triangles += (int)(geo.IndicesCount / 3);
                 var vd = geo.VertexBuffer?.Data1 ?? geo.VertexBuffer?.Data2;
                 if (vd?.VertexBytes == null || vd.Info == null) continue;
                 g.Stride = vd.Info.Stride;
                 int stride = vd.Info.Stride;
                 int off = vd.Info.GetComponentOffset(0);   // skladowa 0 = pozycja
                 int n = vd.VertexCount;
-                g.Wierzcholki += n;
+                g.Vertices += n;
                 var b = vd.VertexBytes;
                 for (int v = 0; v < n; v++)
                 {
@@ -91,18 +91,18 @@ public static class Odciski
             suma += odl[i];
         }
         double srednia = suma / poz.Count;
-        var hist = new float[Geo.Kubelki];
+        var hist = new float[GeometryFingerprint.HistogramBuckets];
         if (srednia > 1e-9)
         {
             foreach (var o in odl)
             {
-                int k = (int)(o / srednia / Geo.ZakresHist * Geo.Kubelki);
-                if (k < 0) k = 0; else if (k >= Geo.Kubelki) k = Geo.Kubelki - 1;
+                int k = (int)(o / srednia / GeometryFingerprint.HistogramRange * GeometryFingerprint.HistogramBuckets);
+                if (k < 0) k = 0; else if (k >= GeometryFingerprint.HistogramBuckets) k = GeometryFingerprint.HistogramBuckets - 1;
                 hist[k]++;
             }
-            for (int i = 0; i < Geo.Kubelki; i++) hist[i] /= poz.Count;
+            for (int i = 0; i < GeometryFingerprint.HistogramBuckets; i++) hist[i] /= poz.Count;
         }
-        g.Hist = hist;
+        g.ShapeHistogram = hist;
 
         // --- hash z posortowanych pozycji zaokraglonych do 1 mm ---
         // 1 mm, nie 0,1 mm: ponowny eksport przez Blendera/Maxa wnosi szum wiekszy niz
@@ -116,7 +116,7 @@ public static class Odciski
         Array.Sort(klucze);
         var bajty = new byte[klucze.Length * 8];
         Buffer.BlockCopy(klucze, 0, bajty, 0, bajty.Length);
-        g.HashPozycji = Convert.ToHexString(SHA256.HashData(bajty)).Substring(0, 32);
+        g.PositionHash = Convert.ToHexString(SHA256.HashData(bajty)).Substring(0, 32);
         return g;
     }
 
@@ -188,14 +188,14 @@ public static class Odciski
     /// Dekoduje teksture i wypelnia odcisk: PHash, sygnature koloru, udzial alfy.
     /// Zwraca piksele RGB miniatury (do raportu) albo null, gdy sie nie udalo.
     /// </summary>
-    public static byte[] Tekstura(Texture t, Tekstura wy, int bokMiniatury = 128, Action<byte[], int, int> piksele = null)
+    public static byte[] FingerprintTexture(Texture t, TextureInfo wy, int bokMiniatury = 128, Action<byte[], int, int> piksele = null)
     {
-        wy.Nazwa = t.Name;
-        wy.W = t.Width;
-        wy.H = t.Height;
-        wy.Mipy = t.Levels;
+        wy.Name = t.Name;
+        wy.Width = t.Width;
+        wy.Height = t.Height;
+        wy.MipLevels = t.Levels;
         wy.Format = NazwaFormatu(t);
-        wy.Zdekodowana = false;
+        wy.IsDecoded = false;
 
         var px = Dekoduj(t, out int w, out int h);
         if (px == null) return null;
@@ -211,7 +211,7 @@ public static class Odciski
         sr /= szare.Length;
         double war = 0;
         foreach (var s0 in szare) war += (s0 - sr) * (s0 - sr);
-        wy.Wariancja = (float)Math.Sqrt(war / szare.Length);
+        wy.Variance = (float)Math.Sqrt(war / szare.Length);
 
         var posrednie = new double[NPh * KPh];         // [x, v]
         for (int x = 0; x < NPh; x++)
@@ -238,18 +238,18 @@ public static class Odciski
         double mediana = (bezDc[bezDc.Length / 2 - 1] + bezDc[bezDc.Length / 2]) / 2.0;
         var hash = new ulong[4];
         for (int i = 0; i < 256; i++) if (wsp[i] > mediana) hash[i >> 6] |= 1UL << (i & 63);
-        wy.PHash = hash;
+        wy.PerceptualHash = hash;
 
         // --- sygnatura koloru 8x8 RGB ---
         var maly = SkalujRgb(px, w, h, BokKoloru, BokKoloru);
-        wy.Kolor = Convert.ToBase64String(maly);
+        wy.ColorSignature = Convert.ToBase64String(maly);
 
         // --- udzial pikseli z alfa ---
         int zAlfa = 0, wszystkie = w * h;
         for (int i = 3; i < px.Length; i += 4) if (px[i] < 250) zAlfa++;
-        wy.Alfa = wszystkie > 0 ? (float)zAlfa / wszystkie : 0f;
+        wy.AlphaShare = wszystkie > 0 ? (float)zAlfa / wszystkie : 0f;
 
-        wy.Zdekodowana = true;
+        wy.IsDecoded = true;
         return SkalujRgb(px, w, h, bokMiniatury, bokMiniatury);
     }
 

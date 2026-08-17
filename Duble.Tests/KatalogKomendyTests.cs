@@ -22,7 +22,7 @@ public class KatalogKomendyTests
         {
             var wyslane = new List<string>();
             var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-            var s = new Sesja(); s.Nowy("K", Path.Combine(tmp, "proj", "K.duble"));
+            var s = TestSession.Create(); s.Nowy("K", Path.Combine(tmp, "proj", "K.duble"));
             Sztuczne.SiedemZeZrodlami(s, tmp);
             s.Porownaj(default, null); s.Zapisz();
             Duble.App.Komendy.Grupy.Zarejestruj(m, s, new JobRunner(m.Zdarzenie));

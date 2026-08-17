@@ -19,12 +19,12 @@ public class SesjaPorownanieTests
         var tmp = Sciezki.Tymczasowy("sesja-por");
         try
         {
-            var s = new Sesja();
+            var s = TestSession.Create();
             s.Nowy("P", Path.Combine(tmp, "P.duble"));
             var z = s.Projekt.DodajZrodlo(Sciezki.Dlc("studio_body"));
             var poz = Indeks.Zrodlo(z.Sciezka, z.Nazwa, new OpcjeIndeksu { FolderMiniatur = s.Projekt.FolderMiniatur });
-            foreach (var p in poz) p.ZrodloId = z.Id;
-            s.ZmienKatalog(k => k.Wstaw(poz));
+            foreach (var p in poz) p.SourceId = z.Id;
+            s.ZmienKatalog(k => k.Upsert(poz));
             s.Porownaj(default, null);
             Assert.NotNull(s.Wynik);
             Assert.True(File.Exists(s.Projekt.PlikDubli));
@@ -32,7 +32,7 @@ public class SesjaPorownanieTests
             Assert.Contains("\"duplikaty\":", pod);
             s.Zapisz();
 
-            var sha = s.Katalog.Pozycje.SelectMany(p => p.Tekstury).First(t => t.Zdekodowana).Sha;
+            var sha = s.Catalog.Garments.SelectMany(p => p.Textures).First(t => t.IsDecoded).Sha256;
             Assert.NotNull(s.ZnajdzTeksture(sha));
             using (var st = s.Zasob("tex", sha))
             {
@@ -47,7 +47,7 @@ public class SesjaPorownanieTests
             Assert.Null(s.Zasob("tex", "NIEMA"));
 
             // mesh: GLB pozycji z wariantem tekstury, w cache mesh\ (nazwa z SHA ydd i tekstury)
-            var uppr = s.Katalog.Pozycje.First(p => p.Typ == "uppr" && p.Numer == 15);
+            var uppr = s.Catalog.Garments.First(p => p.Slot == "uppr" && p.Number == 15);
             using (var st = s.Zasob("mesh", uppr.Id, "w=a"))
             {
                 Assert.NotNull(st);

@@ -25,7 +25,7 @@ public class ZrodlaKomendyTests
         {
             var wyslane = new System.Collections.Generic.List<string>();
             var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-            var s = new Sesja(); var jr = new JobRunner(m.Zdarzenie);
+            var s = TestSession.Create(); var jr = new JobRunner(m.Zdarzenie);
             Duble.App.Komendy.Projekty.Zarejestruj(m, s); Duble.App.Komendy.Zrodla.Zarejestruj(m, s, jr);
             s.Nowy("T", Path.Combine(tmp, "T.duble"));
             var dlc = Sciezki.Dlc("studio_body").Replace("\\", "\\\\");
@@ -48,7 +48,7 @@ public class ZrodlaKomendyTests
             Assert.True(Directory.GetFiles(s.Projekt.FolderMiniatur, "*.png").Length > 0);
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"job\"") && w.Contains("\"stan\":\"koniec\""));
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"sources.changed\""));
-            Assert.All(s.Katalog.Pozycje, p => Assert.Equal(id, p.ZrodloId));
+            Assert.All(s.Catalog.Garments, p => Assert.Equal(id, p.SourceId));
             // dodanie tego samego drugi raz = pominiete
             o = Odp(await m.Obsluz("{\"id\":\"5\",\"cmd\":\"sources.add\",\"args\":{\"sciezki\":[\"" + dlc + "\",\"C:\\\\nie\\\\ma\"]}}"));
             Assert.Equal(0, o.GetProperty("result").GetProperty("dodane").GetArrayLength());
@@ -57,7 +57,7 @@ public class ZrodlaKomendyTests
             await m.Obsluz("{\"id\":\"6\",\"cmd\":\"sources.toggle\",\"args\":{\"id\":\"" + id + "\",\"wlaczone\":false}}");
             Assert.False(s.Projekt.Zrodla[0].Wlaczone);
             await m.Obsluz("{\"id\":\"7\",\"cmd\":\"sources.remove\",\"args\":{\"id\":\"" + id + "\"}}");
-            Assert.Empty(s.Katalog.Pozycje); Assert.Empty(s.Projekt.Zrodla);
+            Assert.Empty(s.Catalog.Garments); Assert.Empty(s.Projekt.Zrodla);
         }
         finally { Directory.Delete(tmp, true); }
     }
@@ -71,7 +71,7 @@ public class ZrodlaKomendyTests
         {
             var wyslane = new System.Collections.Generic.List<string>();
             var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-            var s = new Sesja(); var jr = new JobRunner(m.Zdarzenie);
+            var s = TestSession.Create(); var jr = new JobRunner(m.Zdarzenie);
             Duble.App.Komendy.Projekty.Zarejestruj(m, s); Duble.App.Komendy.Zrodla.Zarejestruj(m, s, jr);
             s.Nowy("U", Path.Combine(tmp, "U.duble"));
             var z = s.Projekt.DodajZrodlo(Sciezki.Dlc("studio_body"));   // Nazwa = studio_body (dlc.rpf -> folder paczki)
@@ -95,8 +95,8 @@ public class ZrodlaKomendyTests
             Assert.False(z.Wlaczone);                                              // oryginal wylaczony
             var nowe = s.Projekt.Zrodla.Find(x => x.Id == dodano);
             Assert.Equal("folder", nowe.Typ); Assert.True(nowe.Wlaczone);
-            Assert.Equal(10, s.Katalog.Pozycje.Count(p => p.ZrodloId == dodano));  // kopia zaindeksowana
-            Assert.All(s.Katalog.Pozycje.Where(p => p.ZrodloId == dodano), p => Assert.DoesNotContain("|", p.SciezkaYdd));
+            Assert.Equal(10, s.Catalog.Garments.Count(p => p.SourceId == dodano));  // kopia zaindeksowana
+            Assert.All(s.Catalog.Garments.Where(p => p.SourceId == dodano), p => Assert.DoesNotContain("|", p.ModelPath));
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"compare.done\""));
             // drugi raz w to samo miejsce -> io (folder niepusty)
             o = Odp(await m.Obsluz("{\"id\":\"3\",\"cmd\":\"sources.unpack\",\"args\":{\"id\":\"" + z.Id + "\",\"folder\":\"" + folder + "\"}}"));

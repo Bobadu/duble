@@ -22,7 +22,7 @@ public class UstawieniaKomendyTests
         {
             var wyslane = new List<string>();
             var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-            var s = new Sesja(); s.Nowy("U", Path.Combine(tmp, "proj", "U.duble"));
+            var s = TestSession.Create(); s.Nowy("U", Path.Combine(tmp, "proj", "U.duble"));
             Sztuczne.SiedemZeZrodlami(s, tmp);
             s.Porownaj(default, null); s.Zapisz();
             var jr = new JobRunner(m.Zdarzenie);

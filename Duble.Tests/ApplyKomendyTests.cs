@@ -16,7 +16,7 @@ public class ApplyKomendyTests
         var tmp = Sciezki.Tymczasowy("apply");
         var wyslane = new List<string>();
         var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-        var s = new Sesja(); s.Nowy("A", Path.Combine(tmp, "proj", "A.duble"));
+        var s = TestSession.Create(); s.Nowy("A", Path.Combine(tmp, "proj", "A.duble"));
         Sztuczne.SiedemZeZrodlami(s, tmp);
         s.Porownaj(default, null);
         s.Zapisz();
@@ -98,7 +98,7 @@ public class ApplyKomendyTests
             Assert.True(h.GetProperty("wpisy")[0].GetProperty("czesciowo").GetBoolean());
             Assert.True(h.GetProperty("wpisy")[0].GetProperty("moznaCofnac").GetBoolean());
             // b wrocilo do katalogu (ponowne indeksowanie p2) -> grupa a=b znow zywa, b znow do odrzucenia (1 pozycja, ale pliki-atrapy bez geometrii => grupa NIE powstanie)
-            Assert.Contains(s.Katalog.Pozycje, p => p.Id == "p2|k.rpf|jbib|7|u");
+            Assert.Contains(s.Catalog.Garments, p => p.Id == "p2|k.rpf|jbib|7|u");
 
             // cofnij reszte
             wyslane.Clear();

@@ -16,7 +16,7 @@ public class GlbTests
 
     static SiatkaGeo Kwadrat() => new SiatkaGeo
     {
-        Nazwa = "kwadrat", Tekstura = "diff", Przezroczysta = false,
+        Nazwa = "kwadrat", TextureInfo = "diff", Przezroczysta = false,
         Pozycje = new float[] { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 },
         Normalne = new float[] { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
         Uv = new float[] { 0, 1, 1, 1, 1, 0, 0, 0 },
@@ -68,7 +68,7 @@ public class GlbTests
     [Fact]
     public void Geometria_bez_tekstury_i_przezroczysta_dostaje_odpowiedni_material()
     {
-        var a = Kwadrat(); a.Tekstura = null;
+        var a = Kwadrat(); a.TextureInfo = null;
         var b = Kwadrat(); b.Przezroczysta = true;
         var glb = Glb.Zapisz(new[] { a, b }, new Dictionary<string, byte[]> { ["diff"] = Png2x2() });
         var json = Json(glb);
@@ -91,7 +91,7 @@ public class GlbTests
     {
         if (!Sciezki.JestGra) { wyj.WriteLine("POMINIETY: brak studio_body\\dlc.rpf"); return; }
         var poz = Indeks.Zrodlo(Sciezki.Dlc("studio_body"), "studio_body", s => { });
-        var uppr = poz.First(p => p.Typ == "uppr" && p.Numer == 15);
+        var uppr = poz.First(p => p.Slot == "uppr" && p.Number == 15);
         var glb = Podglad3D.Glb(uppr, null, wyj.WriteLine);
         Assert.True(glb.Length > 10000);
         var json = Json(glb);

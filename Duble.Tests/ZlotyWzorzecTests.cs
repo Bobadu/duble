@@ -117,9 +117,9 @@ public class ZlotyWzorzecTests
     public void Legacy4_z_downloads_daje_zloty_wynik()
     {
         if (!Sciezki.SaLegacy4) { wyj.WriteLine("POMINIETY: brak downloads\\vrp_clothes_f_civil01 itd."); return; }
-        var katalog = new Katalog();
+        var katalog = new Catalog();
         foreach (var p in new[] { "vrp_clothes_f_civil01", "vrp_clothes_f_civil02", "vrp_clothes_f_civil03", "civil_f_premium" })
-            katalog.Wstaw(Indeks.Zrodlo(Sciezki.Downloads(p), p, s => { }));
+            katalog.Upsert(Indeks.Zrodlo(Sciezki.Downloads(p), p, s => { }));
         var wynik = Porownanie.Znajdz(katalog, s => { });
         Porownaj(WczytajZloty("legacy4-duble.json"), NaZloty(wynik));
     }
@@ -129,8 +129,8 @@ public class ZlotyWzorzecTests
     {
         var dlc = Sciezki.Dlc("studio_wardrobe");
         if (dlc == null || !File.Exists(dlc)) { wyj.WriteLine("POMINIETY: brak studio_wardrobe\\dlc.rpf"); return; }
-        var katalog = new Katalog();
-        katalog.Wstaw(Indeks.Zrodlo(dlc, "studio_wardrobe", s => { }));
+        var katalog = new Catalog();
+        katalog.Upsert(Indeks.Zrodlo(dlc, "studio_wardrobe", s => { }));
         var wynik = Porownanie.Znajdz(katalog, s => { });
         Porownaj(WczytajZloty("gen9-duble.json"), NaZloty(wynik));
     }

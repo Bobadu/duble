@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
 
@@ -13,7 +14,7 @@ public partial class MainWindow : Window, IOkno, IDialogi
 {
     public Zasoby Zasoby { get; private set; }
     public Mostek Mostek { get; private set; }
-    public Sesja Sesja { get; } = new Sesja();
+    public Sesja Sesja { get; } = App.Services.GetRequiredService<Sesja>();
     public bool UiGotowe { get; private set; }
 
     /// <summary>Dziennik trybu dev: %TEMP%\duble-app\duble-log.txt (diagnostyka startu WebView2 i mostka).</summary>

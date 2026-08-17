@@ -65,11 +65,11 @@ public class TeksturyTests
         var dlc = Sciezki.Dlc("studio_wardrobe");
         if (dlc == null || !File.Exists(dlc)) { wyj.WriteLine("POMINIETY: brak studio_wardrobe"); return; }
         var poz = Indeks.Zrodlo(dlc, "studio_wardrobe", s => { });
-        var tex = poz.SelectMany(p => p.Tekstury).FirstOrDefault(t => t.Format == "BC7");
+        var tex = poz.SelectMany(p => p.Textures).FirstOrDefault(t => t.Format == "BC7");
         if (tex == null) { wyj.WriteLine("POMINIETY: brak BC7 w studio_wardrobe"); return; }
-        Assert.True(tex.Zdekodowana, "po Zadaniu 7 tekstury BC7 maja odcisk");
+        Assert.True(tex.IsDecoded, "po Zadaniu 7 tekstury BC7 maja odcisk");
         var ytd = new YtdFile();
-        RpfFile.LoadResourceFile(ytd, Zrodla.Bajty(tex.Sciezka), 13);
+        RpfFile.LoadResourceFile(ytd, Zrodla.Bajty(tex.Path), 13);
         var t0 = ytd.TextureDict.Textures.data_items.First();
         var px = Tekstury.Piksele(t0, 0, out int w, out int h);
         Assert.NotNull(px); Assert.Equal(w * h * 4, px.Length);
@@ -78,6 +78,6 @@ public class TeksturyTests
         var png = Path.Combine(Path.GetTempPath(), "duble-tests", "bc7-gen9-podglad.png");
         Directory.CreateDirectory(Path.GetDirectoryName(png));
         File.WriteAllBytes(png, Png.Rgb(rgb, w, h));
-        wyj.WriteLine("PNG: " + png + " (" + tex.Plik + ")");
+        wyj.WriteLine("PNG: " + png + " (" + tex.FileName + ")");
     }
 }

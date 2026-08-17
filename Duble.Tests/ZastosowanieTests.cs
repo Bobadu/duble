@@ -11,35 +11,35 @@ namespace Duble.Tests;
 public class ZastosowanieTests
 {
     /// <summary>Sztuczna pozycja z plikami na dysku: &lt;tmp&gt;\src\&lt;kontener&gt;\&lt;typ&gt;_NNN_u.ydd + tekstury.</summary>
-    static Pozycja Poz(string src, string kontener, string typ, int numer, params string[] litery)
+    static Garment Poz(string src, string kontener, string typ, int numer, params string[] litery)
     {
         var folder = Path.Combine(src, kontener); Directory.CreateDirectory(folder);
         var ydd = Path.Combine(folder, $"{typ}_{numer:d3}_u.ydd"); File.WriteAllBytes(ydd, new byte[100]);
-        var p = new Pozycja { Id = $"z1|{kontener}|{typ}|{numer}|u", Paczka = "z1", Kontener = kontener, Typ = typ, Numer = numer, Sufiks = "u", ZrodloId = "id1", SciezkaYdd = ydd, BajtyYdd = 100 };
+        var p = new Garment { Id = $"z1|{kontener}|{typ}|{numer}|u", PackName = "z1", Container = kontener, Slot = typ, Number = numer, Suffix = "u", SourceId = "id1", ModelPath = ydd, ModelSize = 100 };
         foreach (var l in litery)
         {
             var plik = Path.Combine(folder, $"{typ}_diff_{numer:d3}_{l}_uni.ytd");
             if (!File.Exists(plik)) File.WriteAllBytes(plik, new byte[50]);
-            p.Tekstury.Add(new Tekstura { Plik = Path.GetFileName(plik), Sciezka = plik, Sha = "S" + typ + numer + l, Bajty = 50 });
+            p.Textures.Add(new TextureInfo { FileName = Path.GetFileName(plik), Path = plik, Sha256 = "S" + typ + numer + l, Size = 50 });
         }
         return p;
     }
 
-    static (string tmp, string src, string kosz, Katalog kat, Func<Pozycja, CelPozycji> cel) Swiat()
+    static (string tmp, string src, string kosz, Catalog kat, Func<Garment, CelPozycji> cel) Swiat()
     {
         var tmp = Sciezki.Tymczasowy("zastosuj");
         var src = Path.Combine(tmp, "z1"); Directory.CreateDirectory(src);
         var kosz = Path.Combine(tmp, "_odrzucone", "z1");
-        var kat = new Katalog();
+        var kat = new Catalog();
         var a = Poz(src, "k.rpf", "jbib", 1, "a", "b");           // zostaje
         var b = Poz(src, "k.rpf", "jbib", 7, "a");                // odrzucona
         var f1 = Poz(src, "k.rpf", "feet", 50, "a");              // feet_050 zostaje...
-        var f2 = Poz(src, "k.rpf", "feet", 50, "a"); f2.Id = "z1|k.rpf|feet|50|u_1"; f2.Sufiks = "u_1";
-        f2.SciezkaYdd = Path.Combine(src, "k.rpf", "feet_050_u_1.ydd"); File.WriteAllBytes(f2.SciezkaYdd, new byte[100]);   // ...feet_050_1 odrzucona, wspolna tekstura
-        var arch = new Pozycja { Id = "z1|x.rpf|hair|3|u", Paczka = "z1", Kontener = "x.rpf", Typ = "hair", Numer = 3, Sufiks = "u", ZrodloId = "id1", SciezkaYdd = Path.Combine(src, "x.rpf") + "|x.rpf\\hair_003_u.ydd", BajtyYdd = 10 };
-        var brak = Poz(src, "k.rpf", "lowr", 9, "a"); File.Delete(brak.SciezkaYdd);   // ydd zniknal z dysku
-        kat.Wstaw(new[] { a, b, f1, f2, arch, brak });
-        Func<Pozycja, CelPozycji> cel = p => new CelPozycji { Korzen = src, Kosz = kosz, Zrodlo = "z1", ZrodloId = "id1" };
+        var f2 = Poz(src, "k.rpf", "feet", 50, "a"); f2.Id = "z1|k.rpf|feet|50|u_1"; f2.Suffix = "u_1";
+        f2.ModelPath = Path.Combine(src, "k.rpf", "feet_050_u_1.ydd"); File.WriteAllBytes(f2.ModelPath, new byte[100]);   // ...feet_050_1 odrzucona, wspolna tekstura
+        var arch = new Garment { Id = "z1|x.rpf|hair|3|u", PackName = "z1", Container = "x.rpf", Slot = "hair", Number = 3, Suffix = "u", SourceId = "id1", ModelPath = Path.Combine(src, "x.rpf") + "|x.rpf\\hair_003_u.ydd", ModelSize = 10 };
+        var brak = Poz(src, "k.rpf", "lowr", 9, "a"); File.Delete(brak.ModelPath);   // ydd zniknal z dysku
+        kat.Upsert(new[] { a, b, f1, f2, arch, brak });
+        Func<Garment, CelPozycji> cel = p => new CelPozycji { Korzen = src, Kosz = kosz, Zrodlo = "z1", ZrodloId = "id1" };
         return (tmp, src, kosz, kat, cel);
     }
 

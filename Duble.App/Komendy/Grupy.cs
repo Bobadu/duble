@@ -21,11 +21,11 @@ public static class Grupy
     };
 
     /// <summary>Grupy z wyniku, ktorych wszyscy czlonkowie nadal sa w katalogu (usuniete zrodlo = grupa znika), z rozstrzygnieciami; posortowane.</summary>
-    public static List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)> Zywe(Sesja s)
+    public static List<(Grupa g, List<Garment> czl, Rozstrzygniecie r)> Zywe(Sesja s)
     {
         var wynik = s.Wynik; if (wynik == null || s.Projekt == null) return new();
-        var wg = s.Katalog.Pozycje.ToDictionary(p => p.Id);
-        var wy = new List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)>();
+        var wg = s.Catalog.Garments.ToDictionary(p => p.Id);
+        var wy = new List<(Grupa g, List<Garment> czl, Rozstrzygniecie r)>();
         foreach (var g in wynik.Grupy)
         {
             if (g.Pozycje == null || g.Pozycje.Count == 0 || !g.Pozycje.All(wg.ContainsKey)) continue;
@@ -39,12 +39,12 @@ public static class Grupy
         => Rozstrzygniecie.Policz(g, s.Projekt.Decyzje.TryGetValue(g.Id ?? "", out var d) ? d : null);
 
     /// <summary>Id pozycji odrzuconych we wszystkich zywych grupach (bez zignorowanych).</summary>
-    public static HashSet<string> Odrzucone(List<(Grupa g, List<Pozycja> czl, Rozstrzygniecie r)> zywe)
+    public static HashSet<string> Odrzucone(List<(Grupa g, List<Garment> czl, Rozstrzygniecie r)> zywe)
         => new(zywe.Where(x => !x.r.Ignoruj).SelectMany(x => x.r.Odrzucone));
 
     public static object PlanJson(Sesja s, PlanZastosowania plan, bool lista)
     {
-        var wg = s.Katalog.Pozycje.ToDictionary(p => p.Id);
+        var wg = s.Catalog.Garments.ToDictionary(p => p.Id);
         var o = new Dictionary<string, object>
         {
             ["pozycje"] = plan.Pozycje.Count, ["pliki"] = plan.Pliki, ["bajty"] = plan.Bajty,
@@ -66,9 +66,9 @@ public static class Grupy
     public static void Zarejestruj(Mostek m, Sesja s, JobRunner jr)
     {
         Sesja Wymag() => s.Otwarty ? s : throw new BladMostka("no_project", "brak otwartego projektu");
-        string Zrodlo(Pozycja p) => s.Projekt.Zrodla.Find(z => z.Id == p.ZrodloId)?.Nazwa ?? p.Paczka;
+        string Zrodlo(Garment p) => s.Projekt.Zrodla.Find(z => z.Id == p.SourceId)?.Nazwa ?? p.PackName;
 
-        object Grupa1(Grupa g, List<Pozycja> czl, Rozstrzygniecie r, bool szczegoly)
+        object Grupa1(Grupa g, List<Garment> czl, Rozstrzygniecie r, bool szczegoly)
         {
             var o = new Dictionary<string, object>
             {
@@ -85,11 +85,11 @@ public static class Grupy
                     {
                         var pary = new List<string[]>();
                         var uzyte = new HashSet<int>();
-                        foreach (var ta in czl[i].Tekstury)
-                            for (int k = 0; k < czl[j].Tekstury.Count; k++)
+                        foreach (var ta in czl[i].Textures)
+                            for (int k = 0; k < czl[j].Textures.Count; k++)
                             {
                                 if (uzyte.Contains(k)) continue;
-                                if (Porownanie.TaSamaGrafika(ta, czl[j].Tekstury[k], progi)) { uzyte.Add(k); pary.Add(new[] { ta.Sha, czl[j].Tekstury[k].Sha }); break; }
+                                if (Porownanie.TaSamaGrafika(ta, czl[j].Textures[k], progi)) { uzyte.Add(k); pary.Add(new[] { ta.Sha256, czl[j].Textures[k].Sha256 }); break; }
                             }
                         dop.Add(new { a = czl[i].Id, b = czl[j].Id, pary });
                     }
@@ -126,14 +126,14 @@ public static class Grupy
                 zignorowane = zywe.Count(x => x.r.Ignoruj), porownano = wynik?.Zbudowany,
                 doOdrzucenia = PlanJson(s, s.Zaplanuj(Odrzucone(zywe)), false),
             };
-            var filtrySloty = zywe.SelectMany(x => x.czl.Select(p => p.Typ)).GroupBy(t => t).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
-            var filtryZrodla = zywe.SelectMany(x => x.czl.Select(p => p.ZrodloId ?? "")).GroupBy(t => t).Select(g => new { id = g.Key, nazwa = s.Projekt.Zrodla.Find(z => z.Id == g.Key)?.Nazwa ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
+            var filtrySloty = zywe.SelectMany(x => x.czl.Select(p => p.Slot)).GroupBy(t => t).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
+            var filtryZrodla = zywe.SelectMany(x => x.czl.Select(p => p.SourceId ?? "")).GroupBy(t => t).Select(g => new { id = g.Key, nazwa = s.Projekt.Zrodla.Find(z => z.Id == g.Key)?.Nazwa ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
             var grupy = zywe.Where(x =>
                 (zignorowane || !x.r.Ignoruj)
                 && (werdykty.Count == 0 || werdykty.Contains(x.g.Werdykt))
-                && (sloty.Count == 0 || x.czl.Any(p => sloty.Contains(p.Typ)))
-                && (zrodla.Count == 0 || x.czl.Any(p => zrodla.Contains(p.ZrodloId ?? "")))
-                && (szukaj.Length == 0 || x.czl.Any(p => ($"{p.Typ}_{p.Numer:d3} {p.Paczka} {p.Kontener} {Zrodlo(p)} {p.Id}").ToLowerInvariant().Contains(szukaj)))
+                && (sloty.Count == 0 || x.czl.Any(p => sloty.Contains(p.Slot)))
+                && (zrodla.Count == 0 || x.czl.Any(p => zrodla.Contains(p.SourceId ?? "")))
+                && (szukaj.Length == 0 || x.czl.Any(p => ($"{p.Slot}_{p.Number:d3} {p.PackName} {p.Container} {Zrodlo(p)} {p.Id}").ToLowerInvariant().Contains(szukaj)))
             ).Select(x => Grupa1(x.g, x.czl, x.r, false)).ToList();
             return new { podsumowanie, filtry = new { sloty = filtrySloty, zrodla = filtryZrodla }, grupy };
         });

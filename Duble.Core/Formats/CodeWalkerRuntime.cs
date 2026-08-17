@@ -26,7 +26,4 @@ public sealed class CodeWalkerRuntime
     {
         if (Interlocked.Exchange(ref initialized, 1) == 0) RpfManager.IsGen9 = true;
     }
-
-    /// <summary>"gen9" / "legacy" / "?" for the flag read from a file header. Becomes the GameFormat enum in pull request 3.</summary>
-    public static string FormatLabel(bool? gen9) => gen9 == true ? "gen9" : gen9 == false ? "legacy" : "?";
 }

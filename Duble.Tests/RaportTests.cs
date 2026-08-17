@@ -8,10 +8,10 @@ namespace Duble.Tests;
 /// <summary>Raport HTML w jezyku UI z rozstrzygnieciami (decyzje uzytkownika) i CSV grup/decyzji — na sztucznym katalogu.</summary>
 public class RaportTests
 {
-    static (Katalog kat, WynikPorownania wynik, string tmp) Swiat()
+    static (Catalog kat, WynikPorownania wynik, string tmp) Swiat()
     {
         var tmp = Sciezki.Tymczasowy("raport");
-        var kat = new Katalog(); kat.Wstaw(Sztuczne.Siedem(tmp));
+        var kat = new Catalog(); kat.Upsert(Sztuczne.Siedem(tmp));
         var wynik = Porownanie.Znajdz(kat, null);
         return (kat, wynik, tmp);
     }

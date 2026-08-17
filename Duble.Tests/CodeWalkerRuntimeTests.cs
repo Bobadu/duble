@@ -21,11 +21,4 @@ public class CodeWalkerRuntimeTests
         Assert.NotNull(new CodeWalkerRuntime());
         Assert.True(RpfManager.IsGen9);
     }
-
-    [Theory]
-    [InlineData(true, "gen9")]
-    [InlineData(false, "legacy")]
-    [InlineData(null, "?")]
-    public void FormatLabel_names_the_format_read_from_a_file_header(bool? gen9, string expected)
-        => Assert.Equal(expected, CodeWalkerRuntime.FormatLabel(gen9));
 }
