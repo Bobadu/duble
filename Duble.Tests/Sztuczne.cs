@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Duble;
 
 namespace Duble.Tests;
 
@@ -63,4 +62,11 @@ public static class Sztuczne
         foreach (var t in f.Tekstury) t.Sha = e.Tekstury[0].Sha; foreach (var t in g.Tekstury) t.Sha = e.Tekstury[0].Sha;
         return new List<Pozycja> { a, b, c, d, e, f, g };
     }
+}
+
+/// <summary>A clock stuck at one instant, for tests that assert on a written timestamp.</summary>
+public sealed class FixedClock : Duble.Core.Time.IClock
+{
+    public FixedClock(DateTimeOffset now) => Now = now;
+    public DateTimeOffset Now { get; }
 }

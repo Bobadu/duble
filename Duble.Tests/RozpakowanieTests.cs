@@ -1,7 +1,6 @@
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
-using Duble;
 using Xunit;
 using Xunit.Abstractions;
 

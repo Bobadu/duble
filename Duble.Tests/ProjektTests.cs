@@ -1,6 +1,5 @@
 using System.IO;
 using System.Linq;
-using Duble;
 using Xunit;
 
 namespace Duble.Tests;

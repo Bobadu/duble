@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Duble;
 
 namespace Duble.App.Komendy;
 
@@ -83,7 +82,7 @@ public static class UstawieniaKomendy
         {
             Wymag();
             var pr = s.Projekt;
-            pr.Ustawienia ??= new Duble.UstawieniaProjektu();
+            pr.Ustawienia ??= new Duble.Core.Projects.UstawieniaProjektu();
             bool zmianaProgow = false;
             if (a.ValueKind == JsonValueKind.Object && a.TryGetProperty("kosz", out var k))
                 pr.Ustawienia.Kosz = k.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(k.GetString()) ? k.GetString() : null;

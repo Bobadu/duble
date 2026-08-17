@@ -23,12 +23,16 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
+using Microsoft.Extensions.DependencyInjection;
 using CodeWalker.Utils;
-using Duble;
 
 var argv = args.ToList();
 // teksty PL maja ogonki (od etapu 6) — konsola Windows domyslnie ma strone kodowa OEM, wiec ustawiamy UTF-8
 try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
+
+// Core services; resolving CodeWalkerRuntime puts CodeWalker in gen9 mode before any command touches a game file.
+using var uslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
+uslugi.GetRequiredService<CodeWalkerRuntime>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -130,7 +134,7 @@ switch (cmd)
             // waniliowe vs Killstore). Format (legacy/gen9) z naglowka RSC7; tryb gen9 czyta oba (Format.cs).
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble obj <plik.ydd> [--out plik.obj]"); return 2; }
             var bajty = File.ReadAllBytes(argv[0]);
-            YddFile ydd = null; string fmt = Format.Nazwa(Rsc7.Gen9(bajty, ".ydd"));
+            YddFile ydd = null; string fmt = CodeWalkerRuntime.FormatLabel(Rsc7.Gen9(bajty, ".ydd"));
             try
             {
                 var y = new YddFile();
