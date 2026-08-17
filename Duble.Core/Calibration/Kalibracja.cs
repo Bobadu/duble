@@ -19,8 +19,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using Duble.Core.Comparison;
+using Duble.Core.Fingerprints;
+using Duble.Core.Model;
 
-namespace Duble;
+namespace Duble.Core.Calibration;
 
 /// <summary>Rozklad wartosci: percentyle + histogram w zadanym zakresie (ostatni kubelek zbiera wszystko powyzej Do).</summary>
 public sealed class Rozklad

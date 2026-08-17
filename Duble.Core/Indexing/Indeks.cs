@@ -17,8 +17,12 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using CodeWalker.GameFiles;
+using Duble.Core.Fingerprints;
+using Duble.Core.Formats;
+using Duble.Core.Model;
+using Duble.Core.Naming;
 
-namespace Duble;
+namespace Duble.Core.Indexing;
 
 public static class Indeks
 {
@@ -51,7 +55,7 @@ public static class Indeks
 
         // FORMAT: CodeWalker w trybie gen9 czyta oba formaty po naglowku RSC7 kazdego pliku (Format.cs),
         // wiec tryb ustawiamy raz i nie dotykamy; etykieta Legacy/Enhanced per pozycja z naglowka (Rsc7.Gen9).
-        Format.Przygotuj();
+        CodeWalkerRuntime.Initialize();
 
         // PRZYROSTOWOSC: pliki o tej samej sciezce i znaczniku (rozmiar|data) bierzemy z poprzedniego katalogu.
         var stareModele = new Dictionary<string, Pozycja>(StringComparer.OrdinalIgnoreCase);

@@ -9,7 +9,7 @@ using BCnEncoder.Shared;
 using CodeWalker.GameFiles;
 using CodeWalker.Utils;
 
-namespace Duble;
+namespace Duble.Core.Formats;
 
 public static class Tekstury
 {

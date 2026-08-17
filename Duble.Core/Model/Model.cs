@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Duble;
+namespace Duble.Core.Model;
 
 /// <summary>Odcisk geometrii modelu — liczby, ktore przezywaja ponowny eksport.</summary>
 public class Geo

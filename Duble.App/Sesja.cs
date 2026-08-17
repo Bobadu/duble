@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using CodeWalker.GameFiles;
-using Duble;
 
 namespace Duble.App;
 
@@ -305,7 +304,7 @@ public sealed class Sesja
             if (t?.Sciezka == null) return false;
             var bajty = Zrodla.Bajty(t.Sciezka);
             if (bajty == null) return false;
-            Format.Przygotuj();
+            CodeWalkerRuntime.Initialize();
             var ytd = new YtdFile();
             RpfFile.LoadResourceFile(ytd, bajty, 13);
             var tex = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();

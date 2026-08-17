@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Duble;
 using Xunit;
 
 namespace Duble.Tests;
@@ -132,8 +131,8 @@ public class ZastosowanieTests
             using var cts = new CancellationTokenSource();
             var cofka = Zastosowanie.Wykonaj(plan, "test", p => { if (p.Zrobione == 1) cts.Cancel(); }, cts.Token);
             Assert.True(cofka.Przerwano);
-            Assert.Equal(1, cofka.Ruchy.Count);
-            Assert.Equal(1, Directory.GetFiles(kosz, "*", SearchOption.AllDirectories).Length);
+            Assert.Single(cofka.Ruchy);
+            Assert.Single(Directory.GetFiles(kosz, "*", SearchOption.AllDirectories));
             Zastosowanie.Cofnij(cofka);
             Assert.NotNull(cofka.Cofnieto);
         }

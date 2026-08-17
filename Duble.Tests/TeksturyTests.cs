@@ -1,7 +1,6 @@
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
-using Duble;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -17,6 +16,7 @@ public class TeksturyTests
     public void Bc7_dekoduje_sie_do_pikseli()
     {
         if (!Sciezki.SaLegacy4) { wyj.WriteLine("POMINIETY: brak downloads"); return; }
+        CodeWalkerRuntime.Initialize();   // no longer done by a module initializer
         var folder = Sciezki.Downloads("vrp_clothes_f_civil01");
         Texture bc7 = null; string plik = null;
         foreach (var f in Directory.EnumerateFiles(folder, "*.ytd", SearchOption.AllDirectories))

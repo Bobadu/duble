@@ -1,8 +1,9 @@
 // OpcjeIndeksu.cs — parametry indeksowania dla aplikacji: postep, anulowanie, przyrostowosc, miniatury.
 using System;
 using System.Threading;
+using Duble.Core.Model;
 
-namespace Duble;
+namespace Duble.Core.Indexing;
 
 public sealed record Postep(string Etap, int Zrobione, int Wszystkie, string Kontener);
 
