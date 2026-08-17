@@ -1,144 +1,156 @@
 <div align="center">
 
-<img src="docs/logo.png" alt="Duble" width="88" height="88">
+<img src="docs/logo.png" alt="" width="80" height="80">
 
 # Duble
 
-**Find duplicate clothing in GTA V packs — and clean it up without losing a file.**
+Duplicate clothing finder for GTA V mod packs.
 
 [![build](https://github.com/Bobadu/duble/actions/workflows/build.yml/badge.svg)](https://github.com/Bobadu/duble/actions/workflows/build.yml)
 [![release](https://img.shields.io/github/v/release/Bobadu/duble?display_name=tag&sort=semver)](https://github.com/Bobadu/duble/releases/latest)
 [![downloads](https://img.shields.io/github/downloads/Bobadu/duble/total)](https://github.com/Bobadu/duble/releases)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![windows](https://img.shields.io/badge/Windows-10%2F11-0078d4)](https://github.com/Bobadu/duble/releases/latest)
-[![.NET](https://img.shields.io/badge/.NET-10-512bd4)](https://dotnet.microsoft.com/download)
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4)](https://github.com/Bobadu/duble/releases/latest)
 
 [Download](https://github.com/Bobadu/duble/releases/latest) ·
 [Website](https://qorion.net/duble) ·
-[How it works](docs/how-it-works.md)
-
-<img src="docs/screenshots/en/duplicates.png" alt="Duble — the Duplicates screen" width="900">
+[How comparison works](docs/how-it-works.md)
 
 </div>
 
----
+![The Duplicates screen: groups of garments with a verdict, the reason behind it and the proposed winner](docs/screenshots/duplicates.png)
 
-Duble reads clothing packs for GTA V (folders, `.rpf` archives, FiveM resources), finds garments that are
-**the same model with the same textures**, shows them side by side in 2D and 3D, and lets you decide which copy
-to keep. Nothing disappears without your decision: rejected files are **moved** to a bin next to the source, and
-one click (**Undo**) brings them back.
+Duble reads clothing packs for GTA V (folders, `.rpf` archives and FiveM resources) and finds garments that are
+the same model with the same textures. It shows the candidates side by side in 2D and 3D, proposes which copy to
+keep, and moves the rejected files to a bin folder. Nothing is deleted, every operation can be undone, and `.rpf`
+archives are opened read-only.
 
-> **Rule #1: duplicate = same model + same textures.** The same model with a different texture is a
-> **retexture** — a separate garment that Duble never proposes for removal.
+Both game formats are supported: GTA V Legacy (`.ydd` v165 / `.ytd` v13) and Enhanced, also called gen9
+(v159 / v5).
 
-## Why
+## Verdicts
 
-Mod libraries grow by copying. The same jacket ends up in three packs under three numbers, a pack gets
-re-released with two textures added, a "premium" bundle repeats half of a free one. Manually, the only way to
-tell a duplicate from a retexture is to open both in OpenIV and stare at them. Duble does that comparison on
-fingerprints — of the mesh and of every texture — and shows you the evidence instead of just a verdict.
+| Verdict | What it means | Proposed for removal |
+|---|---|---|
+| Duplicate | Same model, same textures | Yes, all but the best copy |
+| Duplicate (superset) | Same model, one texture set contains the other | Yes, the smaller set |
+| Needs review | Similar model or partial texture overlap | No, you decide |
+| Retexture | Same model, different textures | Never, it is a separate garment |
 
-## Features
+Each verdict carries the numbers behind it: how many textures matched on each side and how far apart the models
+are. [docs/how-it-works.md](docs/how-it-works.md) explains the fingerprints and where the thresholds come from.
 
-- **Reads both game formats** — Legacy (`.ydd` v165 / `.ytd` v13) and Enhanced / gen9 (v159 / v5), plus FiveM
-  resources and `.rpf` archives. BC1–BC5 and BC7 textures are decoded for previews and fingerprints.
-- **Four verdicts, not one** — duplicate, duplicate (superset), needs review, retexture. Each comes with the
-  numbers behind it (how many textures matched, how far apart the models are).
-- **A quality score (0–100)** proposes which copy to keep — resolution, mipmaps, colour variants, texture format
-  and LODs, with the breakdown visible so you can disagree.
-- **Compare properly** — textures side by side with matching pairs linked, a full-size A/B view with a wipe
-  slider, and a 3D tab: models next to each other with synchronised orbit, or overlaid with an A→B blend.
-- **Nothing is deleted** — Apply *moves* files to a bin and writes History; Undo restores everything, or one
-  item. Files shared with a garment that stays are never touched, and `.rpf` archives are opened read-only.
-- **Catalog** of everything indexed, with filters (source, slot, format, "with problems", "in duplicate groups").
-- **Reports** — a self-contained HTML report with thumbnails, and CSV.
-- **Yours, offline** — Polish and English interface, light/dark theme, no telemetry, no account, no network.
+## Requirements
+
+- Windows 10 or 11, 64-bit
+- [WebView2 runtime](https://developer.microsoft.com/microsoft-edge/webview2/), preinstalled on Windows 11 and on
+  most Windows 10 machines; Duble links to it if it is missing
+- No GTA V installation required, Duble works on the pack files
 
 ## Install
 
-1. Download `Duble.exe` from the [latest release](https://github.com/Bobadu/duble/releases/latest) — one
-   file, ~60 MB, .NET included, no installer.
-2. Run it. Windows SmartScreen warns about unsigned apps: **More info → Run anyway**. The first start takes a few
-   seconds longer (the file unpacks itself into `%TEMP%\.net\Duble\`).
-3. Requirements: Windows 10/11 (64-bit) and the
-   [WebView2 runtime](https://developer.microsoft.com/microsoft-edge/webview2/) — already present on Windows 11
-   and on most Windows 10 machines; Duble tells you with a link if it is missing.
+Download `Duble.exe` from the [latest release](https://github.com/Bobadu/duble/releases/latest) and run it. It is
+a single self-contained file of about 60 MB, with no installer. The executable is not code signed, so SmartScreen
+asks for confirmation on the first run (More info → Run anyway). Every release publishes a `Duble.exe.sha256`
+checksum next to the binary.
 
-Settings live in `%AppData%\Bobadu\Duble\`, projects go to `Documents\Duble\` by default. Verify the download
-against the `Duble.exe.sha256` published with each release.
+Settings live in `%AppData%\Bobadu\Duble\`, projects default to `Documents\Duble\`.
 
 ## Using it
 
-1. **New project** — a `.duble` file holding your sources, results and decisions (plus a `.duble.cache` folder
-   for thumbnails, safe to delete).
-2. **Sources → add** a folder of packs, an `.rpf` file or a FiveM resource (drag & drop works; "Find games"
-   locates an installed GTA V). **Index all** reads the models and textures and compares everything at once.
-   Re-indexing later only re-reads what changed.
-3. **Duplicates** — groups with a verdict and a reason. Open one to see the comparison card: textures, quality
-   breakdown, 3D. Decide: *keep this*, *reject*, *not a duplicate*, add a note. Nothing has touched the disk yet.
-4. **Apply** — the dialog lists exactly which files move where. Then Duble re-indexes and compares again.
-5. **History** — undo an apply as a whole or item by item; export the HTML report or CSV.
-6. **Settings** — language, theme, bin location, comparison thresholds, and **Calibration**: the distance
-   distributions measured on your own catalog, so you can see whether the defaults fit your packs.
+1. **New project.** A `.duble` file holds your sources, comparison results and decisions. The `.duble.cache`
+   folder next to it holds thumbnails and previews and can be deleted at any time.
+2. **Add sources.** A folder of packs, a single `.rpf` file or a FiveM resource. Drag and drop works, and
+   *Find games* locates an installed GTA V. *Index all* reads models and textures and compares everything;
+   later runs only re-read the files that changed.
+3. **Review the duplicates.** Groups carry a verdict and a reason. Open one for the full comparison.
+4. **Apply.** The dialog lists every file that will move and where to. Indexing and comparison then run again.
+5. **Undo if needed.** History keeps every apply and restores all of it, or a single item.
 
-**`.rpf` archives are read-only.** To clean up a pack that lives in an archive, use
-**Sources → … → Unpack to folder**: you get a copy with the archives laid out as folders (RSC7 files, like an
-OpenIV/CodeWalker export), which you can tidy and repack with your own tool.
+### Comparison card
 
-**After removing garments**, the game's slot numbering has a gap (`jbib_001` missing). That is harmless in game,
-but the pack's `.ymt`/`.meta` still lists the old numbering — rebuild it with the tool the pack was made with.
-The Apply dialog explains this under "What does that mean?".
+![Three copies of one pair of shoes compared side by side, with the quality breakdown and matched textures](docs/screenshots/comparison.png)
 
-## How the comparison works
+Every candidate gets a quality score out of 100 with a visible breakdown: texture resolution, mipmaps, colour
+variants, texture format and LOD levels. The highest score is proposed as the one to keep. The decision stays
+yours: *Keep this one*, *Reject*, *Not a duplicate*, plus a note.
 
-Short version: a model fingerprint (counts + shape histogram + vertex hash) decides *same mesh or not*; a texture
-fingerprint (256-bit perceptual hash **and** an 8×8 colour grid, both required) decides *same image or not*; the
-overlap between texture sets decides *duplicate, superset, review or retexture*. The thresholds come from a
-calibration run over 1132 garments and 9437 textures, and Settings → Calibration re-runs it on your data.
+### Model (3D)
 
-The full reasoning, including the measurements that made each threshold what it is:
-**[docs/how-it-works.md](docs/how-it-works.md)**.
+![The 3D tab with model A blended into model B and a same mesh badge](docs/screenshots/model-3d.png)
 
-## Building from source
+Models can sit next to each other with a synchronised camera, or overlap with an A to B blend slider. In a group
+of three or more you choose which two to compare, and a badge appears when the meshes are identical.
 
-Requirements: Windows, [.NET 10 SDK](https://dotnet.microsoft.com/download), git.
+### Texture comparison
+
+![Two textures compared with a wipe slider, marked as the same graphic](docs/screenshots/textures.png)
+
+Textures open in a wipe comparison with a movable split, the colour variant of each side, its size and format,
+and a badge when both sides are the same image pixel for pixel.
+
+### Catalog
+
+![The catalog grid with thumbnails, texture counts and problem markers](docs/screenshots/catalog.png)
+
+Every indexed garment in one grid, filtered by source, slot, game format, membership in a duplicate group, or
+problems worth fixing such as textures without mipmaps and BC1 with alpha.
+
+### Apply
+
+![The apply dialog listing which files move to which folder](docs/screenshots/apply.png)
+
+Applying moves files to a bin, either `_odrzucone` next to the source or a folder you pick. Files shared with a
+garment that stays are left alone, and files inside `.rpf` archives are skipped because archives are read-only.
+*Sources → Unpack to folder* produces a writable copy of an archived pack.
+
+Removing a garment leaves a gap in the game's slot numbering, for example a missing `jbib_001`. That is harmless
+in game, but the pack's `.ymt` or `.meta` still lists the old numbering, so rebuild it with the tool the pack was
+made with.
+
+## Also included
+
+- HTML report with thumbnails, and CSV export
+- Unpacking an `.rpf` source into a folder of RSC7 files, like an OpenIV or CodeWalker export
+- Calibration: comparison thresholds measured on your own catalog and drawn as distribution charts
+- Polish and English interface, light and dark theme
+- No telemetry, no account, no network access
+
+## Build from source
 
 ```powershell
 git clone --recurse-submodules https://github.com/Bobadu/duble
 ```
 
-Open `Duble.sln` in Visual Studio or Rider and build - that is the whole setup. Set `Duble.App` as the startup
-project and pick the **Duble (developer mode)** profile to run with the interface loaded from `Duble.App/ui`,
-so HTML/CSS/JS changes only need a page reload, with DevTools available.
+Open `Duble.sln` in Visual Studio or Rider and build. The only external dependency,
+[CodeWalker](https://github.com/dexyfex/CodeWalker), is a git submodule in `external/CodeWalker` pinned to one
+commit. Run `Duble.App` with the *Duble (developer mode)* profile to load the interface from `Duble.App/ui`,
+which puts HTML, CSS and JS changes one page reload away.
 
-[CodeWalker](https://github.com/dexyfex/CodeWalker) (dexyfex, MIT) is a git submodule in `external/CodeWalker`
-pinned to one commit - cloning through the IDE brings it along. If you already cloned without submodules, run
-`git submodule update --init --recursive`; the build says so as well.
-
-From the command line the same work is three commands:
+The same from a terminal:
 
 ```powershell
 dotnet build Duble.sln -c Release
 dotnet test Duble.Tests -c Release
-dotnet publish Duble.App -p:PublishProfile=win-x64    # -> publish\Duble.exe, the shipping build
+dotnet publish Duble.App -p:PublishProfile=win-x64   # -> publish\Duble.exe
 ```
 
-| Project | What it is |
+| Project | Contents |
 |---|---|
-| `Duble.Core` | the engine: indexing, fingerprints, comparison, decisions, apply/undo, report, unpacking |
-| `Duble.App` | WPF + WebView2 shell; the whole interface lives in `Duble.App/ui` (HTML/CSS/JS, three.js) |
-| `Duble.Cli` | command line: `duble indeks / porownaj / raport / zastosuj / cofnij / kalibruj` |
-| `Duble.Tests` | xunit tests; tests needing real packs skip themselves when the data is absent |
+| `Duble.Core` | Engine: indexing, fingerprints, comparison, decisions, apply and undo, report, unpacking |
+| `Duble.App` | WPF and WebView2 shell; the interface lives in `Duble.App/ui` (HTML, CSS, JS, three.js) |
+| `Duble.Cli` | Command line: `duble indeks / porownaj / raport / zastosuj / cofnij / kalibruj` |
+| `Duble.Tests` | xunit tests; the ones that need real packs skip themselves when the data is absent |
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the house rules (one of them: the code is
-written in Polish) and [CHANGELOG.md](CHANGELOG.md) for what changed when.
+Pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the house rules, [CHANGELOG.md](CHANGELOG.md)
+records what changed when, and [SECURITY.md](SECURITY.md) explains how to report a vulnerability.
 
 ## Credits
 
-Duble stands on [CodeWalker.Core](https://github.com/dexyfex/CodeWalker) by dexyfex (reading `.rpf` / `.ydd` /
-`.ytd`), [BCnEncoder.Net](https://github.com/Nominom/BCnEncoder.NET) (BC7 decoding) and
-[three.js](https://threejs.org) (3D preview). Thank you.
+[CodeWalker.Core](https://github.com/dexyfex/CodeWalker) by dexyfex reads `.rpf`, `.ydd` and `.ytd` files.
+[BCnEncoder.Net](https://github.com/Nominom/BCnEncoder.NET) decodes BC7 textures.
+[three.js](https://threejs.org) draws the 3D preview.
 
 ## License
 
-[MIT](LICENSE) © 2026 Bobadu.
+[MIT](LICENSE) © 2026 Bobadu
