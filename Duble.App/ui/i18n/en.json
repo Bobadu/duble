@@ -285,7 +285,6 @@
   "help.renumber1": "The game numbers garments in a slot consecutively: jbib_000, jbib_001, jbib_002… When you remove jbib_001, number 1 becomes a gap — the character menu shows nothing under it and jbib_002 is still number 2. By itself this breaks nothing.",
   "help.renumber2": "FiveM/DLC packs also list garments in a .ymt (or .meta) file: it tells the game how many garments a slot has and which textures they use. After removing files this list still names the old numbers — the game shows an empty entry or the last garment may not load. Safest: rebuild the .ymt with the tool the pack was made with (or one that regenerates it from files).",
   "help.renumber3": "If you want continuous numbering (no gaps): after Apply, renumber the remaining files in the slot (the ydd and every ytd of the same number) and rebuild the .ymt. Do it one slot at a time and keep a copy — Duble records only its own moves (History), not renumbering.",
-  "help.renumber4": "In our studio: the studio_body / studio_wardrobe packs are built by build-body.ps1 / build-wardrobe.ps1, which regenerate the .ymt from files on disk — after Apply just run the build again.",
   "history.title": "History",
   "history.subtitle": "Every Apply is an entry: what, when, where to. Undo puts the files back.",
   "history.empty": "Nothing has been applied yet.",
