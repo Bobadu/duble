@@ -23,11 +23,16 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
+using Microsoft.Extensions.DependencyInjection;
 using CodeWalker.Utils;
 
 var argv = args.ToList();
 // teksty PL maja ogonki (od etapu 6) — konsola Windows domyslnie ma strone kodowa OEM, wiec ustawiamy UTF-8
 try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
+
+// Uslugi Core; resolwowanie CodeWalkerRuntime ustawia tryb gen9, zanim ktorakolwiek komenda tknie plik gry.
+using var uslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
+uslugi.GetRequiredService<CodeWalkerRuntime>();
 
 string Opcja(string nazwa, string domyslnie)
 {

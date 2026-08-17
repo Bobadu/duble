@@ -1,5 +1,6 @@
 // Duble.Core is organised into one namespace per stage of the pipeline. This project consumes most of them, so
 // they are imported once here instead of at the top of every file.
+global using Duble.Core;
 global using Duble.Core.Apply;
 global using Duble.Core.Calibration;
 global using Duble.Core.Comparison;
