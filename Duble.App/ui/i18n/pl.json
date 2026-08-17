@@ -285,7 +285,6 @@
   "help.renumber1": "Gra numeruje ubrania w slocie po kolei: jbib_000, jbib_001, jbib_002… Kiedy usuniesz jbib_001, numer 1 staje się dziurą — w menu postaci pod tym numerem nic się nie wyświetla, a jbib_002 dalej jest dwójką. To samo w sobie niczego nie psuje.",
   "help.renumber2": "W paczkach FiveM/DLC lista ubrań siedzi też w pliku .ymt (albo .meta): mówi on grze, ile jest ubrań w slocie i jakie mają tekstury. Po usunięciu plików ten opis dalej wymienia stare numery — gra pokaże pustą pozycję albo ostatnie ubranie „nie zaskoczy”. Najbezpieczniej: przebuduj .ymt narzędziem, którym paczka była robiona (albo tym, które odbudowuje go z plików).",
   "help.renumber3": "Jeśli chcesz mieć ciągłą numerację (bez dziur): po Zastosuj przenumeruj pozostałe pliki w slocie (ydd i wszystkie ytd tego samego numeru) i odbuduj .ymt. Rób to po jednym slocie i trzymaj kopię — Duble zapisuje tylko własne przenosiny (Historia), nie przenumerowania.",
-  "help.renumber4": "U nas (studio): paczki studio_body / studio_wardrobe są budowane skryptami build-body.ps1 / build-wardrobe.ps1, które odbudowują .ymt z plików na dysku — po Zastosuj wystarczy uruchomić budowę od nowa.",
   "history.title": "Historia",
   "history.subtitle": "Każde Zastosuj to wpis: co, kiedy, dokąd. Cofnięcie przywraca pliki na miejsce.",
   "history.empty": "Jeszcze niczego nie zastosowano.",
