@@ -37,7 +37,7 @@ public class SesjaPorownanieTests
             using (var st = s.Zasob("tex", sha))
             {
                 Assert.NotNull(st);
-                var b = new byte[8]; st.Read(b, 0, 8);
+                var b = new byte[8]; st.ReadExactly(b, 0, 8);
                 Assert.Equal(0x89, b[0]); Assert.Equal((byte)'P', b[1]);
             }
             var plik = Path.Combine(s.Projekt.FolderTekstur, sha + ".png");
@@ -51,7 +51,7 @@ public class SesjaPorownanieTests
             using (var st = s.Zasob("mesh", uppr.Id, "w=a"))
             {
                 Assert.NotNull(st);
-                var b = new byte[4]; st.Read(b, 0, 4);
+                var b = new byte[4]; st.ReadExactly(b, 0, 4);
                 Assert.Equal("glTF", System.Text.Encoding.ASCII.GetString(b));
             }
             var glby = Directory.GetFiles(s.Projekt.FolderSiatek, "*.glb");

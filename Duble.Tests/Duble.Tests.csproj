@@ -5,6 +5,7 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsPackable>false</IsPackable>
     <NoWarn>$(NoWarn);xUnit1004</NoWarn>
     <!-- jak CLI: liczby formatowane niezaleznie od jezyka Windows (zloty wzorzec ma "100 %" z kultury niezmiennej) -->
