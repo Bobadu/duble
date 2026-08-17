@@ -1,4 +1,5 @@
 #nullable enable
+using Duble.Core.Decisions;
 using Duble.Core.Formats;
 using Duble.Core.Storage;
 using Duble.Core.Time;
@@ -21,6 +22,8 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<CodeWalkerRuntime>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<ICatalogStore, JsonCatalogStore>();
+        services.AddSingleton<IProjectStore, JsonProjectStore>();
+        services.AddSingleton<IResolutionService, ResolutionService>();
         return services;
     }
 }

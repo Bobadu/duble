@@ -31,7 +31,7 @@ public static class Sztuczne
         return p;
     }
 
-    /// <summary>Projekt sesji z trzema zrodlami-folderami p1/p2/p3 (&lt;tmp&gt;\p1 …; Id "z-p1"…) i siedmioma pozycjami o pasujacych ZrodloId —
+    /// <summary>Project sesji z trzema zrodlami-folderami p1/p2/p3 (&lt;tmp&gt;\p1 …; Id "z-p1"…) i siedmioma pozycjami o pasujacych ZrodloId —
     /// tak jak w aplikacji (Paczka == nazwa zrodla), zeby ponowne indeksowanie po Zastosuj podmienialo wlasciwe pozycje.</summary>
     public static List<Garment> SiedemZeZrodlami(Duble.App.Sesja s, string tmp)
     {
@@ -39,7 +39,7 @@ public static class Sztuczne
         foreach (var paczka in new[] { "p1", "p2", "p3" })
         {
             Directory.CreateDirectory(Path.Combine(tmp, paczka));
-            s.Projekt.Zrodla.Add(new ZrodloProjektu { Id = "z-" + paczka, Nazwa = paczka, Sciezka = Path.Combine(tmp, paczka), Typ = "folder", Wlaczone = true });
+            s.Project.Sources.Add(new ProjectSource { Id = "z-" + paczka, Name = paczka, Path = Path.Combine(tmp, paczka), Kind = SourceKind.Folder, Enabled = true });
         }
         foreach (var p in poz) p.SourceId = "z-" + p.PackName;
         s.ZmienKatalog(k => k.Upsert(poz));

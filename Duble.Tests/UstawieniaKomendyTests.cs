@@ -41,7 +41,7 @@ public class UstawieniaKomendyTests
             var kosz = Path.Combine(tmp, "kosz").Replace("\\", "\\\\");
             g = (await Wywolaj(m, "project.settings.set", $"{{\"kosz\":\"{kosz}\"}}")).GetProperty("result");
             Assert.Equal(Path.Combine(tmp, "kosz"), g.GetProperty("kosz").GetString());
-            Assert.Contains(Path.Combine(tmp, "kosz").Replace("\\", "\\\\"), File.ReadAllText(s.Projekt.Sciezka));
+            Assert.Contains(Path.Combine(tmp, "kosz").Replace("\\", "\\\\"), File.ReadAllText(s.Project.Path));
             g = (await Wywolaj(m, "project.settings.set", "{\"kosz\":\"\"}")).GetProperty("result");
             Assert.False(g.TryGetProperty("kosz", out kz) && kz.ValueKind != JsonValueKind.Null);
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"settings.changed\""));
@@ -56,7 +56,7 @@ public class UstawieniaKomendyTests
             Assert.True(g.GetProperty("porownanie").GetBoolean());
             for (int i = 0; i < 200 && !wyslane.Any(w => w.Contains("\"event\":\"compare.done\"")); i++) await Task.Delay(50);
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"compare.done\""));
-            Assert.Equal(24, s.Projekt.Ustawienia.Thresholds.TextureHashDistance);
+            Assert.Equal(24, s.Project.Settings.Thresholds.TextureHashDistance);
             // te same wartosci drugi raz -> bez porownania (porownanie == null)
             g = (await Wywolaj(m, "project.settings.set", "{\"progi\":{\"textureHashDistance\":24}}")).GetProperty("result");
             Assert.False(g.TryGetProperty("porownanie", out var por) && por.ValueKind != JsonValueKind.Null);
@@ -64,25 +64,25 @@ public class UstawieniaKomendyTests
             var blad = await Wywolaj(m, "project.settings.set", "{\"progi\":{\"textureHashDistance\":999}}");
             Assert.Equal("bad_args", blad.GetProperty("error").GetProperty("code").GetString());
             Assert.Contains("TextureHashDistance", blad.GetProperty("error").GetProperty("message").GetString());
-            Assert.Equal(24, s.Projekt.Ustawienia.Thresholds.TextureHashDistance);
+            Assert.Equal(24, s.Project.Settings.Thresholds.TextureHashDistance);
             // reset -> domyslne (null w projekcie), porownanie
             for (int i = 0; i < 100 && jr.Zajety; i++) await Task.Delay(50);
             wyslane.Clear();
             g = (await Wywolaj(m, "project.settings.resetProgi")).GetProperty("result");
             Assert.False(g.GetProperty("progiZmienione").GetBoolean());
-            Assert.Null(s.Projekt.Ustawienia.Thresholds);
+            Assert.Null(s.Project.Settings.Thresholds);
             Assert.True(g.GetProperty("porownanie").GetBoolean());
             for (int i = 0; i < 100 && jr.Zajety; i++) await Task.Delay(50);
 
             // cache: podlozony plik w tex\ -> usuniety, thumbs nietkniete
-            Directory.CreateDirectory(s.Projekt.FolderTekstur); File.WriteAllBytes(Path.Combine(s.Projekt.FolderTekstur, "a.png"), new byte[300]);
-            Directory.CreateDirectory(s.Projekt.FolderMiniatur); File.WriteAllBytes(Path.Combine(s.Projekt.FolderMiniatur, "b.png"), new byte[100]);
+            Directory.CreateDirectory(s.Project.TextureFolder); File.WriteAllBytes(Path.Combine(s.Project.TextureFolder, "a.png"), new byte[300]);
+            Directory.CreateDirectory(s.Project.ThumbnailFolder); File.WriteAllBytes(Path.Combine(s.Project.ThumbnailFolder, "b.png"), new byte[100]);
             g = (await Wywolaj(m, "project.settings.get")).GetProperty("result");
             Assert.Equal(300, g.GetProperty("cache").GetProperty("tex").GetProperty("bajty").GetInt64());
             var c = (await Wywolaj(m, "cache.clear", "{}")).GetProperty("result");
             Assert.Equal(1, c.GetProperty("usunieto").GetInt32()); Assert.Equal(300, c.GetProperty("bajty").GetInt64());
-            Assert.False(File.Exists(Path.Combine(s.Projekt.FolderTekstur, "a.png")));
-            Assert.True(File.Exists(Path.Combine(s.Projekt.FolderMiniatur, "b.png")));
+            Assert.False(File.Exists(Path.Combine(s.Project.TextureFolder, "a.png")));
+            Assert.True(File.Exists(Path.Combine(s.Project.ThumbnailFolder, "b.png")));
 
             // kalibracja
             wyslane.Clear();

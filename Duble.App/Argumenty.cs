@@ -11,7 +11,7 @@ public sealed class Argumenty
 {
     public bool Dev { get; set; }
     public string UiFolder { get; set; }
-    public string Projekt { get; set; }
+    public string Project { get; set; }
     public string Widok { get; set; }
     public string Jezyk { get; set; }
     public string Motyw { get; set; }
@@ -31,11 +31,11 @@ public sealed class Argumenty
             var v = l[i + 1]; l.RemoveRange(i, 2); return v;
         }
         a.Dev = l.Remove("--dev");
-        a.UiFolder = Wartosc("--ui-folder"); a.Projekt = Wartosc("--project"); a.Widok = Wartosc("--view");
+        a.UiFolder = Wartosc("--ui-folder"); a.Project = Wartosc("--project"); a.Widok = Wartosc("--view");
         a.Jezyk = Wartosc("--lang"); a.Motyw = Wartosc("--theme"); a.Zrzut = Wartosc("--screenshot"); a.Exec = Wartosc("--exec"); a.DevIcon = Wartosc("--dev-icon");
         var op = Wartosc("--screenshot-delay"); if (op != null && int.TryParse(op, out var ms)) a.ZrzutOpoznienie = ms;
         foreach (var reszta in l)
-            if (reszta.EndsWith(".duble", StringComparison.OrdinalIgnoreCase)) a.Projekt ??= reszta;   // dwuklik na pliku projektu
+            if (reszta.EndsWith(".duble", StringComparison.OrdinalIgnoreCase)) a.Project ??= reszta;   // dwuklik na pliku projektu
         return a;
     }
 }

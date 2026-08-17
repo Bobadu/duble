@@ -55,22 +55,22 @@ public static class UstawieniaKomendy
 
         object Stan(bool? porownanie = null)
         {
-            var pr = s.Projekt;
-            var progi = pr.Ustawienia?.Thresholds;
+            var pr = s.Project;
+            var progi = pr.Settings?.Thresholds;
             var cache = s.RozmiarCache();
             return new
             {
-                kosz = pr.Ustawienia?.Kosz,
+                kosz = pr.Settings?.BinFolder,
                 progi = ProgiJson(progi ?? Thresholds.Default), progiDomyslne = ProgiJson(Thresholds.Default),
                 progiZmienione = progi != null && !progi.SameAs(Thresholds.Default),
                 cache = cache.ToDictionary(k => k.Key, k => new { pliki = k.Value.pliki, bajty = k.Value.bajty }),
-                folderCache = pr.FolderCache,
-                zrodla = pr.Zrodla.Count, pozycje = s.Catalog.Garments.Count,
+                folderCache = pr.CacheFolder,
+                zrodla = pr.Sources.Count, pozycje = s.Catalog.Garments.Count,
                 porownanie,   // true = ruszylo ponowne porownanie, false = zajety, null = niepotrzebne
             };
         }
 
-        bool Porownaj() => jr.SprobujUruchom("porownaj", s.Projekt.Nazwa, async (ct, postep) =>
+        bool Porownaj() => jr.SprobujUruchom("porownaj", s.Project.Name, async (ct, postep) =>
         {
             await Task.Yield();
             Zrodla.PorownajIZapisz(s, m, ct, postep);
@@ -81,22 +81,22 @@ public static class UstawieniaKomendy
         m.Rejestruj("project.settings.set", a =>
         {
             Wymag();
-            var pr = s.Projekt;
-            pr.Ustawienia ??= new Duble.Core.Projects.UstawieniaProjektu();
+            var pr = s.Project;
+            pr.Settings ??= new Duble.Core.Projects.ProjectSettings();
             bool zmianaProgow = false;
             if (a.ValueKind == JsonValueKind.Object && a.TryGetProperty("kosz", out var k))
-                pr.Ustawienia.Kosz = k.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(k.GetString()) ? k.GetString() : null;
+                pr.Settings.BinFolder = k.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(k.GetString()) ? k.GetString() : null;
             if (a.ValueKind == JsonValueKind.Object && a.TryGetProperty("progi", out var pj) && pj.ValueKind == JsonValueKind.Object)
             {
-                var nowe = (pr.Ustawienia.Thresholds ?? Thresholds.Default).Clone();
+                var nowe = (pr.Settings.Thresholds ?? Thresholds.Default).Clone();
                 WczytajProgi(nowe, pj);
                 var bledy = nowe.Validate();
                 if (bledy.Count > 0) throw new BladMostka("bad_args", string.Join(",", bledy));
-                var stare = pr.Ustawienia.Thresholds ?? Thresholds.Default;
+                var stare = pr.Settings.Thresholds ?? Thresholds.Default;
                 zmianaProgow = !nowe.SameAs(stare);
-                pr.Ustawienia.Thresholds = nowe.SameAs(Thresholds.Default) ? null : nowe;
+                pr.Settings.Thresholds = nowe.SameAs(Thresholds.Default) ? null : nowe;
             }
-            pr.Zapisz();
+            s.ZapiszProjekt();
             m.Zdarzenie("settings.changed", new { zrodlo = "project" });
             bool? por = zmianaProgow && s.Wynik != null ? Porownaj() : null;
             return Stan(por);
@@ -105,10 +105,10 @@ public static class UstawieniaKomendy
         m.Rejestruj("project.settings.resetProgi", _ =>
         {
             Wymag();
-            var pr = s.Projekt;
-            bool bylo = pr.Ustawienia?.Thresholds != null && !pr.Ustawienia.Thresholds.SameAs(Thresholds.Default);
-            if (pr.Ustawienia != null) pr.Ustawienia.Thresholds = null;
-            pr.Zapisz();
+            var pr = s.Project;
+            bool bylo = pr.Settings?.Thresholds != null && !pr.Settings.Thresholds.SameAs(Thresholds.Default);
+            if (pr.Settings != null) pr.Settings.Thresholds = null;
+            s.ZapiszProjekt();
             m.Zdarzenie("settings.changed", new { zrodlo = "project" });
             bool? por = bylo && s.Wynik != null ? Porownaj() : null;
             return Stan(por);
@@ -129,7 +129,7 @@ public static class UstawieniaKomendy
             var katalog = s.KatalogWlaczony();
             if (katalog.Garments.Count(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0) < 2) throw new BladMostka("not_found", "za malo pozycji");
             var progi = s.ProgiProjektu;
-            bool ok = jr.SprobujUruchom("kalibracja", s.Projekt.Nazwa, async (ct, postep) =>
+            bool ok = jr.SprobujUruchom("kalibracja", s.Project.Name, async (ct, postep) =>
             {
                 await Task.Yield();
                 postep(new Postep("kalibracja", 0, 0, null));

@@ -22,7 +22,7 @@ public class SesjaTests
             Assert.True(s.Otwarty); Assert.Empty(s.Catalog.Garments);
             s.Zamknij(); Assert.False(s.Otwarty);
             s.Otworz(Path.Combine(tmp, "Moje studio.duble"));
-            Assert.Equal("Moje studio", s.Projekt.Nazwa);
+            Assert.Equal("Moje studio", s.Project.Name);
             var pod = JsonSerializer.Serialize(s.Podsumowanie(), Mostek.Json);
             Assert.Contains("\"zrodla\":0", pod); Assert.Contains("\"pozycje\":0", pod);
         }

@@ -16,27 +16,32 @@ namespace Duble.App.Komendy;
 
 public static class Zrodla
 {
+    /// <summary>Krotkie id zrodla; zostaje w pliku projektu i w katalogu (Garment.SourceId).</summary>
+    static string NoweId() => Guid.NewGuid().ToString("N").Substring(0, 8);
+
     /// <summary>Indeksuje podane zrodla (przyrostowo; wymus = od nowa) i podmienia ich pozycje w katalogu sesji. Bez porownania.</summary>
-    public static void Indeksuj(Sesja s, Mostek m, IList<ZrodloProjektu> zrodla, bool wymus, CancellationToken ct, Action<Postep> postep)
+    public static void Indeksuj(Sesja s, Mostek m, IList<ProjectSource> zrodla, bool wymus, CancellationToken ct, Action<Postep> postep)
     {
         foreach (var z in zrodla)
         {
             ct.ThrowIfCancellationRequested();
-            if (!Directory.Exists(z.Sciezka) && !File.Exists(z.Sciezka)) continue;
+            if (!Directory.Exists(z.Path) && !File.Exists(z.Path)) continue;
             Catalog poprzedni = null;
             s.ZmienKatalog(k => poprzedni = new Catalog { Garments = k.Garments.ToList() });
             var opcje = new OpcjeIndeksu
             {
                 Log = _ => { }, Anuluj = ct, Poprzedni = poprzedni, Wymus = wymus,
-                FolderMiniatur = s.Projekt.FolderMiniatur,
-                Postep = p => postep(new Postep(p.Etap, p.Zrobione, p.Wszystkie, z.Nazwa)),
+                FolderMiniatur = s.Project.ThumbnailFolder,
+                Postep = p => postep(new Postep(p.Etap, p.Zrobione, p.Wszystkie, z.Name)),
             };
-            postep(new Postep("start", 0, 0, z.Nazwa));
-            var pozycje = Indeks.Zrodlo(z.Sciezka, z.Nazwa, opcje);
+            postep(new Postep("start", 0, 0, z.Name));
+            var pozycje = Indeks.Zrodlo(z.Path, z.Name, opcje);
             foreach (var p in pozycje) p.SourceId = z.Id;
-            s.ZmienKatalog(k => { k.RemovePack(z.Nazwa); k.Upsert(pozycje); k.Sources[z.Nazwa] = z.Sciezka; });
-            z.Zaindeksowano = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            z.Format = pozycje.Count == 0 ? null : pozycje.All(p => p.GameFormat == GameFormat.Enhanced) ? "gen9" : pozycje.All(p => p.GameFormat == GameFormat.Legacy) ? "legacy" : "mieszany";
+            s.ZmienKatalog(k => { k.RemovePack(z.Name); k.Upsert(pozycje); k.Sources[z.Name] = z.Path; });
+            z.IndexedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            z.Format = pozycje.Count == 0 ? SourceFormat.Unknown
+                : pozycje.All(p => p.GameFormat == GameFormat.Enhanced) ? SourceFormat.Enhanced
+                : pozycje.All(p => p.GameFormat == GameFormat.Legacy) ? SourceFormat.Legacy : SourceFormat.Mixed;
             m.Zdarzenie("sources.changed", new { id = z.Id });
             m.Zdarzenie("project.changed", new { projekt = s.Podsumowanie() });
         }
@@ -56,18 +61,18 @@ public static class Zrodla
     public static void Zarejestruj(Mostek m, Sesja s, JobRunner jr)
     {
         Sesja Wymag() => s.Otwarty ? s : throw new BladMostka("no_project", "brak otwartego projektu");
-        object Zrodlo(ZrodloProjektu z)
+        object Zrodlo(ProjectSource z)
         {
             var st = s.Statystyki(z.Id);
-            bool istnieje = Directory.Exists(z.Sciezka) || File.Exists(z.Sciezka);
+            bool istnieje = Directory.Exists(z.Path) || File.Exists(z.Path);
             return new
             {
-                id = z.Id, nazwa = z.Nazwa, sciezka = z.Sciezka, typ = z.Typ, format = st.format ?? z.Format, wlaczone = z.Wlaczone,
-                zaindeksowano = z.Zaindeksowano, istnieje, pozycje = st.pozycje, tekstury = st.tekstury, perSlot = st.perSlot, bc7 = st.bc7,
+                id = z.Id, nazwa = z.Name, sciezka = z.Path, typ = z.Kind.ToLabel(), format = st.format ?? z.Format.ToLabel(), wlaczone = z.Enabled,
+                zaindeksowano = z.IndexedAt, istnieje, pozycje = st.pozycje, tekstury = st.tekstury, perSlot = st.perSlot, bc7 = st.bc7,
                 archiwa = st.wArchiwum, kosz = s.KoszDla(z),
             };
         }
-        object Lista() => new { zrodla = Wymag().Projekt.Zrodla.Select(Zrodlo).ToList() };
+        object Lista() => new { zrodla = Wymag().Project.Sources.Select(Zrodlo).ToList() };
         void Zmienilo(string id = null)
         {
             m.Zdarzenie("sources.changed", new { id });
@@ -81,12 +86,12 @@ public static class Zrodla
             {
                 if (!Directory.Exists(p) && !File.Exists(p)) { pominiete.Add(p); continue; }
                 if (File.Exists(p) && !p.EndsWith(".rpf", StringComparison.OrdinalIgnoreCase)) { pominiete.Add(p); continue; }
-                int przed = s.Projekt.Zrodla.Count;
-                var z = s.Projekt.DodajZrodlo(p);
-                if (s.Projekt.Zrodla.Count == przed) { pominiete.Add(p); continue; }   // juz bylo
+                int przed = s.Project.Sources.Count;
+                var z = s.Project.AddSource(p, NoweId());
+                if (s.Project.Sources.Count == przed) { pominiete.Add(p); continue; }   // juz bylo
                 dodane.Add(Zrodlo(z));
             }
-            if (dodane.Count > 0) { s.Projekt.Zapisz(); Zmienilo(); }
+            if (dodane.Count > 0) { s.ZapiszProjekt(); Zmienilo(); }
             return new { dodane, pominiete };
         }
 
@@ -97,9 +102,9 @@ public static class Zrodla
         m.Rejestruj("sources.remove", a =>
         {
             var id = Mostek.Tekst(a, "id", true);
-            var z = Wymag().Projekt.Zrodla.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
-            s.Projekt.Zrodla.Remove(z);
-            s.ZmienKatalog(k => { k.Garments.RemoveAll(p => p.SourceId == id); k.Sources.Remove(z.Nazwa); });
+            var z = Wymag().Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
+            s.Project.Sources.Remove(z);
+            s.ZmienKatalog(k => { k.Garments.RemoveAll(p => p.SourceId == id); k.Sources.Remove(z.Name); });
             s.Zapisz();
             Zmienilo(id);
             return new { };
@@ -107,11 +112,11 @@ public static class Zrodla
         m.Rejestruj("sources.toggle", a =>
         {
             var id = Mostek.Tekst(a, "id", true);
-            var z = Wymag().Projekt.Zrodla.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
-            z.Wlaczone = Mostek.Flaga(a, "wlaczone", !z.Wlaczone);
-            s.Projekt.Zapisz();
+            var z = Wymag().Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
+            z.Enabled = Mostek.Flaga(a, "wlaczone", !z.Enabled);
+            s.ZapiszProjekt();
             Zmienilo(id);
-            return new { wlaczone = z.Wlaczone };
+            return new { wlaczone = z.Enabled };
         });
         m.Rejestruj("sources.cancel", _ => { jr.Anuluj(); return new { }; });
         m.Rejestruj("sources.detectGames", _ => new
@@ -122,9 +127,9 @@ public static class Zrodla
         {
             Wymag();
             var ids = Mostek.Lista(a, "ids"); bool wymus = Mostek.Flaga(a, "wymus");
-            var zrodla = s.Projekt.Zrodla.Where(z => ids.Count == 0 ? z.Wlaczone : ids.Contains(z.Id)).ToList();
+            var zrodla = s.Project.Sources.Where(z => ids.Count == 0 ? z.Enabled : ids.Contains(z.Id)).ToList();
             if (zrodla.Count == 0) return new { uruchomiono = false };
-            var opis = string.Join(", ", zrodla.Select(z => z.Nazwa));
+            var opis = string.Join(", ", zrodla.Select(z => z.Name));
             bool ok = jr.SprobujUruchom("indeks", opis, async (ct, postep) =>
             {
                 await Task.Yield();
@@ -143,21 +148,21 @@ public static class Zrodla
             var id = Mostek.Tekst(a, "id", true);
             var folder = Mostek.Tekst(a, "folder", true);
             bool dodaj = Mostek.Flaga(a, "dodajZrodlo", true);
-            var z = s.Projekt.Zrodla.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
-            if (!Directory.Exists(z.Sciezka) && !File.Exists(z.Sciezka)) throw new BladMostka("not_found", z.Sciezka);
+            var z = s.Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
+            if (!Directory.Exists(z.Path) && !File.Exists(z.Path)) throw new BladMostka("not_found", z.Path);
             var cel = Path.Combine(folder, NazwaFolderuKopii(z));
             if (Directory.Exists(cel) && Directory.EnumerateFileSystemEntries(cel).Any()) throw new BladMostka("io", "folder juz istnieje i nie jest pusty: " + cel);
-            bool ok = jr.SprobujUruchom("rozpakuj", z.Nazwa, async (ct, postep) =>
+            bool ok = jr.SprobujUruchom("rozpakuj", z.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                var w = Rozpakowanie.Zrodlo(z.Sciezka, cel, postep, ct);
+                var w = Rozpakowanie.Zrodlo(z.Path, cel, postep, ct);
                 string dodano = null;
                 if (dodaj && w.Pliki > 0)
                 {
-                    var nowe = s.Projekt.DodajZrodlo(cel);
-                    z.Wlaczone = false;
+                    var nowe = s.Project.AddSource(cel, NoweId());
+                    z.Enabled = false;
                     dodano = nowe.Id;
-                    s.Projekt.Zapisz();
+                    s.ZapiszProjekt();
                     m.Zdarzenie("sources.changed", new { id = (string)null });
                     Indeksuj(s, m, new[] { nowe }, false, ct, postep);
                     PorownajIZapisz(s, m, ct, postep);
@@ -170,13 +175,13 @@ public static class Zrodla
     }
 
     /// <summary>Nazwa podfolderu kopii: dla `dlc.rpf` nazwa zrodla (= folder paczki), dla innego archiwum nazwa pliku (folder `x.rpf`), dla folderu nazwa zrodla.</summary>
-    public static string NazwaFolderuKopii(ZrodloProjektu z)
+    public static string NazwaFolderuKopii(ProjectSource z)
     {
-        if (z.Typ == "rpf")
+        if (z.Kind == SourceKind.Archive)
         {
-            var plik = Path.GetFileName(z.Sciezka);
-            return plik.Equals("dlc.rpf", StringComparison.OrdinalIgnoreCase) ? z.Nazwa : plik;
+            var plik = Path.GetFileName(z.Path);
+            return plik.Equals("dlc.rpf", StringComparison.OrdinalIgnoreCase) ? z.Name : plik;
         }
-        return z.Nazwa;
+        return z.Name;
     }
 }

@@ -61,7 +61,7 @@ public class GrupyKomendyTests
             Assert.Equal(idA, r.GetProperty("odrzucone")[0].GetString());
             Assert.False(r.GetProperty("domyslna").GetBoolean());
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"groups.changed\""));
-            Assert.Contains(idAb, File.ReadAllText(s.Projekt.Sciezka));   // decyzja zapisana w .duble
+            Assert.Contains(idAb, File.ReadAllText(s.Project.Path));   // decyzja zapisana w .duble
 
             // grupa e=f=g: to nie duplikat
             var gefg = (await Wywolaj(m, "groups.list", "{\"sloty\":[\"feet\"]}")).GetProperty("grupy")[0];

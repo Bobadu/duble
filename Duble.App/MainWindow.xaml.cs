@@ -171,11 +171,11 @@ public partial class MainWindow : Window, IOkno, IDialogi
         _ = Dispatcher.InvokeAsync(async () =>
         {
             // projekt z argumentow (dwuklik na .duble albo --project) — dopiero teraz, bo UI juz nasluchuje zdarzen
-            if (!string.IsNullOrEmpty(App.Argumenty.Projekt))
+            if (!string.IsNullOrEmpty(App.Argumenty.Project))
             {
                 try
                 {
-                    var odp = await Mostek.Obsluz(System.Text.Json.JsonSerializer.Serialize(new { id = "start", cmd = "project.open", args = new { sciezka = App.Argumenty.Projekt } }));
+                    var odp = await Mostek.Obsluz(System.Text.Json.JsonSerializer.Serialize(new { id = "start", cmd = "project.open", args = new { sciezka = App.Argumenty.Project } }));
                     Log("projekt z argumentow: " + odp);
                 }
                 catch (Exception e) { Log("projekt z argumentow BLAD: " + e.Message); }

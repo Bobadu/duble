@@ -11,7 +11,7 @@ namespace Duble.App.Komendy;
 public static class Widoki
 {
     public static object Powod(Powod p) => p == null ? null : new { kod = p.Kod, p = p.P };
-    public static object Rozstrz(Rozstrzygniecie r) => new { zwyciezca = r.Zwyciezca, odrzucone = r.Odrzucone, ignoruj = r.Ignoruj, domyslna = r.Domyslna, notatka = r.Notatka };
+    public static object Rozstrz(Resolution r) => new { zwyciezca = r.Winner, odrzucone = r.Rejected, ignoruj = r.Ignored, domyslna = r.IsDefault, notatka = r.Note };
     public static object Punkt(Punktacja p) => p == null ? null : new { razem = p.Razem, rozdz = p.Rozdz, mipy = p.Mipy, warianty = p.Warianty, format = p.Format, lod = p.Lod, rozdzPx = p.RozdzPx, udzialMipow = p.UdzialMipow, liczbaWariantow = p.LiczbaWariantow, zlyFormat = p.ZlyFormat, lody = p.Lody, brakTekstur = p.BrakTekstur };
 
     public static bool WArchiwum(Garment p) => p.ModelPath != null && p.ModelPath.Contains('|');

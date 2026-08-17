@@ -55,7 +55,7 @@ public class ApplyKomendyTests
             var kosz = Path.Combine(tmp, "kosz").Replace("\\", "\\\\");
             var r = await Wywolaj(m, "apply.run", $"{{\"kosz\":\"{kosz}\",\"ustawKosz\":true}}");
             Assert.True(r.GetProperty("uruchomiono").GetBoolean());
-            Assert.Equal(Path.Combine(tmp, "kosz"), s.Projekt.Ustawienia.Kosz);
+            Assert.Equal(Path.Combine(tmp, "kosz"), s.Project.Settings.BinFolder);
             await Poczekaj(jr, wyslane, "apply.done");
             var done = JsonDocument.Parse(wyslane.Last(w => w.Contains("\"event\":\"apply.done\""))).RootElement.GetProperty("data");
             Assert.Equal(7, done.GetProperty("przeniesione").GetInt32());
@@ -70,7 +70,7 @@ public class ApplyKomendyTests
             // po ponownym indeksowaniu i porownaniu nic nie zostaje do odrzucenia, plik historii jest
             var l = await Wywolaj(m, "groups.list", "{}");
             Assert.Equal(0, l.GetProperty("podsumowanie").GetProperty("doOdrzucenia").GetProperty("pliki").GetInt32());
-            Assert.Single(Directory.GetFiles(s.Projekt.FolderHistorii, "*.json"));
+            Assert.Single(Directory.GetFiles(s.Project.HistoryFolder, "*.json"));
 
             // historia
             var h = await Wywolaj(m, "history.list");
@@ -125,7 +125,7 @@ public class ApplyKomendyTests
         try
         {
             // wszystkie grupy zignorowane -> plan pusty
-            foreach (var g in Duble.App.Komendy.Grupy.Zywe(s)) s.Projekt.Decyzje[g.g.Id] = new Decyzja { Ignoruj = true };
+            foreach (var g in Duble.App.Komendy.Grupy.Zywe(s)) s.Project.Decisions[g.g.Id] = new Decision { Ignored = true };
             var r = await Wywolaj(m, "apply.run", "{}");
             Assert.False(r.GetProperty("uruchomiono").GetBoolean());
             Assert.Equal(0, r.GetProperty("plan").GetProperty("pliki").GetInt32());
