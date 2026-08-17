@@ -64,3 +64,10 @@ public static class Sztuczne
         return new List<Pozycja> { a, b, c, d, e, f, g };
     }
 }
+
+/// <summary>A clock stuck at one instant, for tests that assert on a written timestamp.</summary>
+public sealed class FixedClock : Duble.Core.Time.IClock
+{
+    public FixedClock(DateTimeOffset now) => Now = now;
+    public DateTimeOffset Now { get; }
+}
