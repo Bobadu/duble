@@ -19,12 +19,14 @@ public static class Podglad3D
 {
     const int MaksBok = 1024;
 
-    public static byte[] Glb(Garment p, string litera = null, Action<string> log = null)
+    public static byte[] Glb(IArchiveCache archiwa, Garment p, string litera = null, Action<string> log = null)
     {
-        var ydd = Zrodla.Bajty(p.ModelPath) ?? throw new FileNotFoundException("brak modelu: " + p.ModelPath);
-        var tex = p.Textures.FirstOrDefault(t => litera == null || string.Equals(Nazwy.ParseTexture(t.FileName)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
+        var model = archiwa.Read(p.ModelPath);
+        var ydd = model.IsSuccess ? model.Value : throw new FileNotFoundException(model.Error.Message, p.ModelPath);
+        var tex = p.Textures.FirstOrDefault(t => litera == null || string.Equals(ClothingFileName.ParseTexture(t.FileName)?.Letter, litera, StringComparison.OrdinalIgnoreCase))
                   ?? p.Textures.FirstOrDefault();
-        var ytd = tex == null ? null : Zrodla.Bajty(tex.Path);
+        byte[] ytd = null;
+        if (tex != null) { var t = archiwa.Read(tex.Path); if (t.IsSuccess) ytd = t.Value; }
         return Glb(ydd, ytd, log);
     }
 
@@ -58,7 +60,7 @@ public static class Podglad3D
                 var yt = new YtdFile(); RpfFile.LoadResourceFile(yt, ytd, 13);
                 var t0 = yt.TextureDict?.Textures?.data_items?.FirstOrDefault();
                 var png = t0 == null ? null : PngZTekstury(t0);
-                if (png != null) pngi["diff"] = png; else log("[uwaga] tekstura diffuse bez podgladu (" + (t0 == null ? "pusty ytd" : Odciski.NazwaFormatu(t0)) + ")");
+                if (png != null) pngi["diff"] = png; else log("[uwaga] tekstura diffuse bez podgladu (" + (t0 == null ? "pusty ytd" : TextureFingerprinter.FormatName(t0)) + ")");
             }
             catch (Exception e) { log("[uwaga] nie odczytalam ytd: " + e.Message); }
         }
@@ -66,6 +68,6 @@ public static class Podglad3D
         return Duble.Core.Formats.Glb.Zapisz(geos, pngi);
     }
 
-    static byte[] PngZTekstury(Texture t) => Tekstury.PngRgba(t, MaksBok);
+    static byte[] PngZTekstury(Texture t) => TextureDecoder.PngRgba(t, MaksBok);
 
 }

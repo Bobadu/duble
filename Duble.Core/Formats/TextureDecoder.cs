@@ -1,4 +1,4 @@
-// Tekstury.cs — dekodowanie pikseli tekstury: CodeWalker (BC1-BC5, nieskompresowane) + BCnEncoder.Net (BC7).
+// TextureDecoder.cs — dekodowanie pikseli tekstury: CodeWalker (BC1-BC5, nieskompresowane) + BCnEncoder.Net (BC7).
 //
 // CodeWalker.DDSIO.GetPixels ma `case BC7: //TODO` i zwraca null; u nas BC7 to ~5 % tekstur, ktore
 // dotad nie mialy odcisku ani podgladu. BC7 dekodujemy z surowych blokow (16 B na blok 4x4) lezacych
@@ -11,7 +11,7 @@ using CodeWalker.Utils;
 
 namespace Duble.Core.Formats;
 
-public static class Tekstury
+public static class TextureDecoder
 {
     static readonly BcDecoder Bc = new();
 
@@ -39,7 +39,7 @@ public static class Tekstury
         if (px == null) return null;
         var rgba = new byte[px.Length];
         for (int i = 0; i < px.Length; i += 4) { rgba[i] = px[i + 2]; rgba[i + 1] = px[i + 1]; rgba[i + 2] = px[i]; rgba[i + 3] = px[i + 3]; }
-        return Png.Rgba(rgba, w, h);
+        return PngWriter.Rgba(rgba, w, h);
     }
 
     static byte[] Bc7(Texture t, int mip, int w, int h)

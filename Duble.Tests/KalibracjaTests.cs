@@ -30,7 +30,7 @@ public class KalibracjaTests
             var kat = new Catalog(); kat.Upsert(Sztuczne.Siedem(tmp));
             var w = Kalibracja.Policz(kat);
             Assert.Equal(7, w.Pozycje); Assert.Equal(7, w.PozycjeZGeometria);
-            Assert.Equal(9, w.Tekstury); Assert.Equal(9, w.TeksturyZdekodowane);
+            Assert.Equal(9, w.TextureDecoder); Assert.Equal(9, w.TeksturyZdekodowane);
             // ten sam mesh (H1: a=b, H3: c=d, H5: e=f=g) -> pary o tym samym hashu: 1 + 1 + 3 = 5; brak identycznych plikow ydd (SHA null == null? -> ShaYdd null u obu = "identyczne")
             Assert.True(w.GeoTenSamHash.N + w.GeoIdentyczneSha.N >= 5);
             Assert.Equal(7, w.GeoNajblizszyObcy.N);

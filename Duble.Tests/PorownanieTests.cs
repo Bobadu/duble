@@ -90,9 +90,9 @@ public class PorownanieTests
         var b = Poz("p2", "jbib", 2, "H2", 1000, 600, Hist(20), "S2");
         var c = Poz("p3", "jbib", 3, "H3", 1000, 600, Hist(30), "S3");
         var k = new Catalog(); k.Upsert(new[] { a, b, c });
-        var postepy = new List<Postep>();
+        var postepy = new List<ProgressReport>();
         Porownanie.Znajdz(k, null, null, postepy.Add, default);
-        Assert.Contains(postepy, p => p.Etap == "porownaj" && p.Zrobione == 3 && p.Wszystkie == 3);
+        Assert.Contains(postepy, p => p.Stage == "porownaj" && p.Done == 3 && p.Total == 3);
         var cts = new System.Threading.CancellationTokenSource(); cts.Cancel();
         Assert.ThrowsAny<OperationCanceledException>(() => Porownanie.Znajdz(k, null, null, null, cts.Token));
     }

@@ -20,7 +20,7 @@ public static class Zrodla
     static string NoweId() => Guid.NewGuid().ToString("N").Substring(0, 8);
 
     /// <summary>Indeksuje podane zrodla (przyrostowo; wymus = od nowa) i podmienia ich pozycje w katalogu sesji. Bez porownania.</summary>
-    public static void Indeksuj(Sesja s, Mostek m, IList<ProjectSource> zrodla, bool wymus, CancellationToken ct, Action<Postep> postep)
+    public static void Indeksuj(Sesja s, Mostek m, IList<ProjectSource> zrodla, bool wymus, CancellationToken ct, Action<ProgressReport> postep)
     {
         foreach (var z in zrodla)
         {
@@ -28,14 +28,17 @@ public static class Zrodla
             if (!Directory.Exists(z.Path) && !File.Exists(z.Path)) continue;
             Catalog poprzedni = null;
             s.ZmienKatalog(k => poprzedni = new Catalog { Garments = k.Garments.ToList() });
-            var opcje = new OpcjeIndeksu
+            var opcje = new IndexOptions
             {
-                Log = _ => { }, Anuluj = ct, Poprzedni = poprzedni, Wymus = wymus,
-                FolderMiniatur = s.Project.ThumbnailFolder,
-                Postep = p => postep(new Postep(p.Etap, p.Zrobione, p.Wszystkie, z.Name)),
+                PreviousCatalog = poprzedni,
+                Force = wymus,
+                ThumbnailFolder = s.Project.ThumbnailFolder,
             };
-            postep(new Postep("start", 0, 0, z.Name));
-            var pozycje = Indeks.Zrodlo(z.Path, z.Name, opcje);
+            postep(new ProgressReport("start", 0, 0, z.Name));
+            var raport = s.Indeksator.Index(z.Path, z.Name, opcje,
+                new Progress<ProgressReport>(p => postep(new ProgressReport(p.Stage, p.Done, p.Total, z.Name))), ct);
+            if (raport.IsFailure) throw new BladMostka("io", raport.Error.Message);
+            var pozycje = raport.Value.Garments;
             foreach (var p in pozycje) p.SourceId = z.Id;
             s.ZmienKatalog(k => { k.RemovePack(z.Name); k.Upsert(pozycje); k.Sources[z.Name] = z.Path; });
             z.IndexedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -48,9 +51,9 @@ public static class Zrodla
     }
 
     /// <summary>Porownanie + zapis projektu/katalogu/wyniku + zdarzenia (widok Duplikaty ma byc zawsze aktualny).</summary>
-    public static void PorownajIZapisz(Sesja s, Mostek m, CancellationToken ct, Action<Postep> postep)
+    public static void PorownajIZapisz(Sesja s, Mostek m, CancellationToken ct, Action<ProgressReport> postep)
     {
-        postep(new Postep("porownaj", 0, 0, null));
+        postep(new ProgressReport("porownaj", 0, 0, null));
         s.Porownaj(ct, postep);
         s.Zapisz();
         m.Zdarzenie("sources.changed", new { id = (string)null });
@@ -141,7 +144,7 @@ public static class Zrodla
             return new { uruchomiono = true, zrodla = zrodla.Select(z => z.Id).ToList() };
         });
 
-        // Rozpakuj do folderu: kopia zrodla z rozlozonymi archiwami (Rozpakowanie), opcjonalnie dodana jako nowe zrodlo (oryginal wylaczony)
+        // Rozpakuj do folderu: kopia zrodla z rozlozonymi archiwami (RpfArchiveExtractor), opcjonalnie dodana jako nowe zrodlo (oryginal wylaczony)
         m.Rejestruj("sources.unpack", a =>
         {
             Wymag();
@@ -155,7 +158,7 @@ public static class Zrodla
             bool ok = jr.SprobujUruchom("rozpakuj", z.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                var w = Rozpakowanie.Zrodlo(z.Path, cel, postep, ct);
+                var w = RpfArchiveExtractor.Zrodlo(z.Path, cel, postep, ct);
                 string dodano = null;
                 if (dodaj && w.Pliki > 0)
                 {

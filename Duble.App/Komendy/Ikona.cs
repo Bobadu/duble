@@ -17,7 +17,7 @@ public static class Ikona
     public static void Zapisz(string plik)
     {
         var pngi = new List<byte[]>();
-        foreach (var r in Rozmiary) pngi.Add(Png(r));
+        foreach (var r in Rozmiary) pngi.Add(PngWriter(r));
         using var ms = new MemoryStream();
         var bw = new BinaryWriter(ms);
         bw.Write((ushort)0); bw.Write((ushort)1); bw.Write((ushort)Rozmiary.Length);
@@ -35,7 +35,7 @@ public static class Ikona
     }
 
     /// <summary>PNG o boku r: tlo grafit z zaokragleniem 22 %, kafelki koral (viewBox 64 jak w logo.svg).</summary>
-    public static byte[] Png(int r)
+    public static byte[] PngWriter(int r)
     {
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())

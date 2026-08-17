@@ -1,4 +1,4 @@
-// Rozpakowanie.cs — kopia zrodla z rozlozonymi archiwami: .rpf -> folder "<nazwa>.rpf\" z plikami na dysku.
+// RpfArchiveExtractor.cs — kopia zrodla z rozlozonymi archiwami: .rpf -> folder "<nazwa>.rpf\" z plikami na dysku.
 //
 // Po co: do archiwum .rpf nie piszemy (tylko czytamy), wiec Zastosuj nie moze przeniesc pliku, ktory w nim siedzi.
 // Rozpakowana kopia to zwykly folder — mozna ja indeksowac jak dzis (kontener = folder o nazwie *.rpf), porzadkowac
@@ -17,7 +17,7 @@ using Duble.Core.Indexing;
 
 namespace Duble.Core.Sources;
 
-public static class Rozpakowanie
+public static class RpfArchiveExtractor
 {
     public sealed class Wynik
     {
@@ -36,7 +36,7 @@ public static class Rozpakowanie
     }
 
     /// <summary>Rozpakowuje jedno archiwum (z zagniezdzonymi) do `folder` (folder = zawartosc korzenia archiwum).</summary>
-    public static Wynik Archiwum(string rpf, string folder, Action<Postep> postep = null, CancellationToken ct = default)
+    public static Wynik Archiwum(string rpf, string folder, Action<ProgressReport> postep = null, CancellationToken ct = default)
     {
         var wynik = new Wynik { Folder = folder };
         if (!File.Exists(rpf)) { wynik.Bledy.Add("brak archiwum: " + rpf); return wynik; }
@@ -48,18 +48,18 @@ public static class Rozpakowanie
 
     /// <summary>Kopia zrodla-folderu do `folder`: zwykle pliki kopiowane, archiwa .rpf rozkladane do podfolderow o tej samej nazwie.
     /// Pomija kosz `_odrzucone`. Zrodlo-plik .rpf -> jak Archiwum.</summary>
-    public static Wynik Zrodlo(string sciezka, string folder, Action<Postep> postep = null, CancellationToken ct = default)
+    public static Wynik Zrodlo(string sciezka, string folder, Action<ProgressReport> postep = null, CancellationToken ct = default)
     {
         if (File.Exists(sciezka)) return Archiwum(sciezka, folder, postep, ct);
         var wynik = new Wynik { Folder = folder };
         if (!Directory.Exists(sciezka)) { wynik.Bledy.Add("brak folderu: " + sciezka); return wynik; }
-        var pliki = Directory.EnumerateFiles(sciezka, "*", SearchOption.AllDirectories).Where(f => !Indeks.WKoszu(sciezka, f)).ToList();
+        var pliki = Directory.EnumerateFiles(sciezka, "*", SearchOption.AllDirectories).Where(f => !BinFolder.Contains(sciezka, f)).ToList();
         int i = 0;
         foreach (var f in pliki)
         {
             ct.ThrowIfCancellationRequested();
             var wzgl = Path.GetRelativePath(sciezka, f);
-            postep?.Invoke(new Postep("rozpakuj", i++, pliki.Count, wzgl));
+            postep?.Invoke(new ProgressReport("rozpakuj", i++, pliki.Count, wzgl));
             var cel = Path.Combine(folder, wzgl);
             try
             {
@@ -78,11 +78,11 @@ public static class Rozpakowanie
             catch (OperationCanceledException) { throw; }
             catch (Exception e) { wynik.Bledy.Add($"{wzgl}: {e.Message}"); }
         }
-        postep?.Invoke(new Postep("rozpakuj", pliki.Count, pliki.Count, null));
+        postep?.Invoke(new ProgressReport("rozpakuj", pliki.Count, pliki.Count, null));
         return wynik;
     }
 
-    static void Rozloz(RpfFile plik, string folder, Wynik wynik, Action<Postep> postep, CancellationToken ct)
+    static void Rozloz(RpfFile plik, string folder, Wynik wynik, Action<ProgressReport> postep, CancellationToken ct)
     {
         wynik.Archiwa++;
         // wpisy plikow tego archiwum i wszystkich zagniezdzonych; sciezka wzgledna = Path bez prefiksu korzenia
@@ -106,7 +106,7 @@ public static class Rozpakowanie
             var sciezka = e.Path ?? e.Name;
             if (sciezka.StartsWith(korzen + "\\", StringComparison.OrdinalIgnoreCase)) sciezka = sciezka.Substring(korzen.Length + 1);
             else if (sciezka.Equals(korzen, StringComparison.OrdinalIgnoreCase)) sciezka = e.Name;
-            postep?.Invoke(new Postep("rozpakuj", i++, wszystkie.Count, sciezka));
+            postep?.Invoke(new ProgressReport("rozpakuj", i++, wszystkie.Count, sciezka));
             try
             {
                 var dane = f.ExtractFile(e);
@@ -122,6 +122,6 @@ public static class Rozpakowanie
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { wynik.Bledy.Add($"{sciezka}: {ex.Message}"); }
         }
-        postep?.Invoke(new Postep("rozpakuj", wszystkie.Count, wszystkie.Count, null));
+        postep?.Invoke(new ProgressReport("rozpakuj", wszystkie.Count, wszystkie.Count, null));
     }
 }

@@ -1,4 +1,4 @@
-// Rsc7.cs — dyskowy format zasobu RSC7 (naglowek 16 B + ladunek deflate) dla wpisow z archiwum.
+// Rsc7Header.cs — dyskowy format zasobu RSC7 (naglowek 16 B + ladunek deflate) dla wpisow z archiwum.
 //
 // RpfFile.ExtractFile oddaje zasoby ZDEKOMPRESOWANE i BEZ naglowka; nasze czytanie idzie przez
 // RpfFile.LoadResourceFile, ktory naglowka wymaga (bierze z niego wersje i flagi stron). Zamiast
@@ -9,7 +9,7 @@ using CodeWalker.GameFiles;
 
 namespace Duble.Core.Formats;
 
-public static class Rsc7
+public static class Rsc7Header
 {
     const uint Magia = 0x37435352; // "RSC7"
 

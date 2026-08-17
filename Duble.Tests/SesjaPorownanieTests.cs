@@ -1,6 +1,9 @@
 using System.IO;
 using System.Linq;
 using Duble.App;
+using System;
+using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -9,6 +12,10 @@ namespace Duble.Tests;
 /// <summary>Sesja: porownanie, cache wyniku, generowanie tex/&lt;sha&gt;.png (studio_body — pomijany bez gry).</summary>
 public class SesjaPorownanieTests
 {
+    static readonly IServiceProvider CoreUslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
+    static IReadOnlyList<Garment> Indeksuj(string zrodlo, string nazwa, IndexOptions opcje = null)
+        => CoreUslugi.GetRequiredService<IGarmentIndexer>().Index(zrodlo, nazwa, opcje ?? new IndexOptions()).Value.Garments;
+
     readonly ITestOutputHelper wyj;
     public SesjaPorownanieTests(ITestOutputHelper wyj) { this.wyj = wyj; }
 
@@ -22,7 +29,7 @@ public class SesjaPorownanieTests
             var s = TestSession.Create();
             s.Nowy("P", Path.Combine(tmp, "P.duble"));
             var z = s.Project.AddSource(Sciezki.Dlc("studio_body"), "src1");
-            var poz = Indeks.Zrodlo(z.Path, z.Name, new OpcjeIndeksu { FolderMiniatur = s.Project.ThumbnailFolder });
+            var poz = Indeksuj(z.Path, z.Name, new IndexOptions { ThumbnailFolder = s.Project.ThumbnailFolder });
             foreach (var p in poz) p.SourceId = z.Id;
             s.ZmienKatalog(k => k.Upsert(poz));
             s.Porownaj(default, null);

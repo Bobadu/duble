@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -15,6 +16,10 @@ namespace Duble.Tests;
 /// </summary>
 public class ZlotyWzorzecTests
 {
+    static readonly IServiceProvider CoreUslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
+    static IReadOnlyList<Garment> Indeksuj(string zrodlo, string nazwa, IndexOptions opcje = null)
+        => CoreUslugi.GetRequiredService<IGarmentIndexer>().Index(zrodlo, nazwa, opcje ?? new IndexOptions()).Value.Garments;
+
     readonly ITestOutputHelper wyj;
     public ZlotyWzorzecTests(ITestOutputHelper wyj) { this.wyj = wyj; }
 
@@ -119,7 +124,7 @@ public class ZlotyWzorzecTests
         if (!Sciezki.SaLegacy4) { wyj.WriteLine("POMINIETY: brak downloads\\vrp_clothes_f_civil01 itd."); return; }
         var katalog = new Catalog();
         foreach (var p in new[] { "vrp_clothes_f_civil01", "vrp_clothes_f_civil02", "vrp_clothes_f_civil03", "civil_f_premium" })
-            katalog.Upsert(Indeks.Zrodlo(Sciezki.Downloads(p), p, s => { }));
+            katalog.Upsert(Indeksuj(Sciezki.Downloads(p), p));
         var wynik = Porownanie.Znajdz(katalog, s => { });
         Porownaj(WczytajZloty("legacy4-duble.json"), NaZloty(wynik));
     }
@@ -130,7 +135,7 @@ public class ZlotyWzorzecTests
         var dlc = Sciezki.Dlc("studio_wardrobe");
         if (dlc == null || !File.Exists(dlc)) { wyj.WriteLine("POMINIETY: brak studio_wardrobe\\dlc.rpf"); return; }
         var katalog = new Catalog();
-        katalog.Upsert(Indeks.Zrodlo(dlc, "studio_wardrobe", s => { }));
+        katalog.Upsert(Indeksuj(dlc, "studio_wardrobe"));
         var wynik = Porownanie.Znajdz(katalog, s => { });
         Porownaj(WczytajZloty("gen9-duble.json"), NaZloty(wynik));
     }
