@@ -55,7 +55,7 @@ public static class Indeks
 
         // FORMAT: CodeWalker w trybie gen9 czyta oba formaty po naglowku RSC7 kazdego pliku (Format.cs),
         // wiec tryb ustawiamy raz i nie dotykamy; etykieta Legacy/Enhanced per pozycja z naglowka (Rsc7.Gen9).
-        Format.Przygotuj();
+        CodeWalkerRuntime.Initialize();
 
         // PRZYROSTOWOSC: pliki o tej samej sciezce i znaczniku (rozmiar|data) bierzemy z poprzedniego katalogu.
         var stareModele = new Dictionary<string, Pozycja>(StringComparer.OrdinalIgnoreCase);

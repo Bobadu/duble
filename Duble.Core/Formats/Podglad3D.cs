@@ -30,7 +30,7 @@ public static class Podglad3D
     public static byte[] Glb(byte[] ydd, byte[] ytd, bool? gen9, Action<string> log = null)
     {
         log ??= _ => { };
-        Format.Przygotuj();   // tryb gen9 czyta oba formaty (po naglowku RSC7); parametr gen9 zostaje dla zgodnosci
+        CodeWalkerRuntime.Initialize();   // tryb gen9 czyta oba formaty (po naglowku RSC7); parametr gen9 zostaje dla zgodnosci
         Drawable dr;
         try
         {

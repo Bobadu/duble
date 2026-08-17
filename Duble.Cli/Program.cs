@@ -129,7 +129,7 @@ switch (cmd)
             // waniliowe vs Killstore). Format (legacy/gen9) z naglowka RSC7; tryb gen9 czyta oba (Format.cs).
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble obj <plik.ydd> [--out plik.obj]"); return 2; }
             var bajty = File.ReadAllBytes(argv[0]);
-            YddFile ydd = null; string fmt = Format.Nazwa(Rsc7.Gen9(bajty, ".ydd"));
+            YddFile ydd = null; string fmt = CodeWalkerRuntime.FormatLabel(Rsc7.Gen9(bajty, ".ydd"));
             try
             {
                 var y = new YddFile();

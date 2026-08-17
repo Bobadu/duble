@@ -142,7 +142,7 @@ public static class Raport
         if (bajty == null) { bezPliku++; return null; }
         try
         {
-            Format.Przygotuj();   // tryb gen9 czyta oba formaty po naglowku RSC7 (parametr gen9 zostal dla zgodnosci)
+            CodeWalkerRuntime.Initialize();   // tryb gen9 czyta oba formaty po naglowku RSC7 (parametr gen9 zostal dla zgodnosci)
             var ytd = new YtdFile();
             RpfFile.LoadResourceFile(ytd, bajty, 13);
             var tex = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
