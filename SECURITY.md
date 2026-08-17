@@ -13,7 +13,7 @@ The latest release is the supported one. Fixes go into a new release; there are 
 
 Please **do not open a public issue** for a security problem.
 
-Use GitHub's private reporting: **[Security → Report a vulnerability](https://github.com/qorion-net/duble/security/advisories/new)**.
+Use GitHub's private reporting: **[Security → Report a vulnerability](https://github.com/Bobadu/duble/security/advisories/new)**.
 You will get a reply within a few days. If the report is valid, you will be credited in the release notes unless
 you prefer otherwise.
 

@@ -6,14 +6,14 @@
 
 **Find duplicate clothing in GTA V packs — and clean it up without losing a file.**
 
-[![build](https://github.com/qorion-net/duble/actions/workflows/build.yml/badge.svg)](https://github.com/qorion-net/duble/actions/workflows/build.yml)
-[![release](https://img.shields.io/github/v/release/qorion-net/duble?display_name=tag&sort=semver)](https://github.com/qorion-net/duble/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/qorion-net/duble/total)](https://github.com/qorion-net/duble/releases)
+[![build](https://github.com/Bobadu/duble/actions/workflows/build.yml/badge.svg)](https://github.com/Bobadu/duble/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/Bobadu/duble?display_name=tag&sort=semver)](https://github.com/Bobadu/duble/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Bobadu/duble/total)](https://github.com/Bobadu/duble/releases)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![windows](https://img.shields.io/badge/Windows-10%2F11-0078d4)](https://github.com/qorion-net/duble/releases/latest)
+[![windows](https://img.shields.io/badge/Windows-10%2F11-0078d4)](https://github.com/Bobadu/duble/releases/latest)
 [![.NET](https://img.shields.io/badge/.NET-10-512bd4)](https://dotnet.microsoft.com/download)
 
-[Download](https://github.com/qorion-net/duble/releases/latest) ·
+[Download](https://github.com/Bobadu/duble/releases/latest) ·
 [Website](https://qorion.net/duble) ·
 [How it works](docs/how-it-works.md) ·
 [Wersja polska](README.pl.md)
@@ -57,7 +57,7 @@ fingerprints — of the mesh and of every texture — and shows you the evidence
 
 ## Install
 
-1. Download `Duble.exe` from the [latest release](https://github.com/qorion-net/duble/releases/latest) — one
+1. Download `Duble.exe` from the [latest release](https://github.com/Bobadu/duble/releases/latest) — one
    file, ~60 MB, .NET included, no installer.
 2. Run it. Windows SmartScreen warns about unsigned apps: **More info → Run anyway**. The first start takes a few
    seconds longer (the file unpacks itself into `%TEMP%\.net\Duble\`).
@@ -105,7 +105,7 @@ The full reasoning, including the measurements that made each threshold what it 
 Requirements: Windows, [.NET 10 SDK](https://dotnet.microsoft.com/download), git.
 
 ```powershell
-git clone https://github.com/qorion-net/duble
+git clone https://github.com/Bobadu/duble
 cd duble
 .\build.ps1            # clones CodeWalker (pinned commit) next to the repo, builds Release, runs the tests
 .\build.ps1 -Publish   # single-file publish\Duble.exe (self-contained, win-x64)

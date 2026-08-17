@@ -46,8 +46,8 @@ representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the maintainer privately
-through GitHub — open a [private report](https://github.com/qorion-net/duble/security/advisories/new) or contact
-[@qorion-net](https://github.com/qorion-net). All complaints will be reviewed and investigated promptly and
+through GitHub — open a [private report](https://github.com/Bobadu/duble/security/advisories/new) or contact
+[@Bobadu](https://github.com/Bobadu). All complaints will be reviewed and investigated promptly and
 fairly. All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 
 ## Enforcement Guidelines
