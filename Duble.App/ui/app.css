@@ -229,10 +229,10 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 
 /* ---------- toasty ---------- */
 #warstwa-toast { position: fixed; right: 18px; bottom: calc(var(--status-h) + 14px); display: flex; flex-direction: column; gap: 8px; z-index: 60; pointer-events: none; }
-.toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-2); min-width: 240px; max-width: 420px; animation: pop .14s ease-out; color: var(--text); font-size: 13px; }
-.toast .ico { width: 18px; height: 18px; flex: none; }
+.toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-2); min-width: 240px; max-width: 470px; animation: pop .14s ease-out; color: var(--text); font-size: 13px; }
+.toast .ico { width: 18px; height: 18px; flex: none; margin-top: 1px; }
 .toast.ok .ico { color: var(--ok); } .toast.warn .ico { color: var(--warn); } .toast.error .ico { color: var(--err); } .toast.info .ico { color: var(--info); }
-.toast .close { margin-left: auto; border: 0; background: transparent; color: var(--text-3); padding: 2px; display: grid; place-items: center; }
+.toast .close { flex: none; border: 0; background: transparent; color: var(--text-3); padding: 2px; display: grid; place-items: center; }
 .toast .close:hover { color: var(--text); }
 
 /* ---------- menu kontekstowe (prosty popover) ---------- */
@@ -442,11 +442,13 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .wipe-bar { display: flex; align-items: center; gap: 12px; }
 .wipe-side { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 0; }
 .wipe-side.right { justify-content: flex-end; text-align: right; }
-.wipe-side .who { display: grid; gap: 1px; min-width: 0; }
+.wipe-side .who { display: grid; gap: 3px; min-width: 0; }
+.wipe-side .who .row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wipe-side.right .who .row { justify-content: flex-end; }
 .wipe-side .nm { font-family: var(--mono); font-weight: 600; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wipe-side .meta { font-size: 11.5px; color: var(--text-3); }
 .wipe-side .cap { width: 22px; height: 22px; flex: none; border-radius: 6px; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; }
-.wipe-eq[hidden] { display: none; }
+.badge[hidden] { display: none; }
 .wipe-stage { position: relative; height: min(52vh, 560px); overflow: auto; border-radius: var(--radius-s); border: 1px solid var(--border); background: var(--bg-2); display: grid; place-items: center; }
 .wipe-imgs { position: relative; user-select: none; }
 .wipe-imgs img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -469,20 +471,21 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 
 /* ---------- 3D ---------- */
 .v3d-root { display: grid; gap: 12px; }
-.v3d-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.v3d-tools .seg button { display: inline-flex; align-items: center; gap: 6px; }
+.v3d-tools { margin-bottom: 0; }
 .v3d-hint { margin-left: auto; font-size: 12px; }
 .v3d-grid { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(320px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: start; }
 .v3d-grid.single { grid-template-columns: 1fr; }
-.v3d-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px 14px; display: grid; gap: 10px; }
+.v3d-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: none; padding: 12px 14px 14px; display: grid; gap: 10px; min-width: 0; }
+.v3d-cmp .wipe-bar { padding: 0 2px; }
+.v3d-cmp .v3d { height: min(48vh, 560px); }
 .v3d-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .v3d-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .v3d-title .nm { font-family: var(--mono); font-weight: 700; font-size: 15px; }
 .v3d-title .nm sub { font-size: 10px; color: var(--text-3); margin-left: 2px; }
-.v3d-ctl { display: flex; align-items: center; gap: 12px; font-size: 12.5px; }
+.v3d-ctl { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
 .v3d-ctl label { display: inline-flex; align-items: center; gap: 6px; }
 .input.sm { width: auto; padding: 7px 10px; font-size: 13px; line-height: 20px; height: 36px; }
-.v3d { position: relative; height: 560px; border-radius: 10px; overflow: hidden; background: radial-gradient(ellipse at 50% 35%, #2b2a31 0%, #1B1A1F 70%); border: 1px solid var(--border); }
+.v3d { position: relative; height: min(52vh, 560px); border-radius: 10px; overflow: hidden; background: radial-gradient(ellipse at 50% 35%, #2b2a31 0%, #1B1A1F 70%); border: 1px solid var(--border); }
 .v3d.light { background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, #E9E3DA 75%); }
 .v3d canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; }
 .v3d-overlay { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-2); font-size: 13px; background: rgba(0,0,0,.15); pointer-events: none; z-index: 2; }
@@ -492,9 +495,10 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .v3d-ab-nazwa { font-size: 12.5px; }
 
 /* ---------- toast z akcja ---------- */
-.toast .txt { flex: 1; }
-.toast .act { border: 1px solid var(--border-2); background: var(--panel-2); color: var(--accent); font-weight: 600; padding: 4px 10px; border-radius: 7px; white-space: nowrap; }
-.toast .act:hover { background: var(--accent-soft); border-color: var(--accent); }
+.toast .txt { flex: 1; min-width: 0; display: grid; gap: 2px; line-height: 1.4; }
+.toast .opis { color: var(--text-3); font-size: 12px; overflow-wrap: anywhere; }
+.toast .act { flex: none; border: 1px solid var(--border-2); background: transparent; color: var(--text); font-weight: 500; padding: 4px 10px; border-radius: var(--radius-s); white-space: nowrap; }
+.toast .act:hover { background: var(--panel-2); border-color: var(--text-3); color: var(--accent); }
 .rot180 { transform: rotate(180deg); }
 .rot270 { transform: rotate(270deg); }
 .check-row, .radio-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: var(--text); font-size: 13.5px; }

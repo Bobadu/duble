@@ -15,10 +15,10 @@ export function zarejestruj(ctx) {
   });
   bridge.on('undo.done', d => toast(t('history.undoDone', { n: fmt.liczba(d.wrocilo) }) + (d.pominieto ? ` (${t('history.skipped', { n: d.pominieto })})` : ''), { typ: 'ok' }));
   bridge.on('unpack.done', d => {
-    toast(t('unpack.done', { pliki: fmt.liczba(d.pliki), archiwa: fmt.liczba(d.archiwa), folder: fmt.sciezkaKrotka(d.folder, 50) }), { typ: d.bledy?.length ? 'warn' : 'ok', akcja: { tekst: t('history.showFolder'), fn: () => bridge.call('shell.openFolder', { sciezka: d.folder }).catch(() => {}) } });
+    toast(t('unpack.done', { pliki: fmt.liczba(d.pliki), archiwa: fmt.liczba(d.archiwa) }), { typ: d.bledy?.length ? 'warn' : 'ok', opis: fmt.sciezkaKrotka(d.folder, 48), akcja: { tekst: t('history.showFolder'), fn: () => bridge.call('shell.openFolder', { sciezka: d.folder }).catch(() => {}) } });
     if (d.bledy?.length) toast(t('unpack.errors', { n: d.bledy.length }) + ' ' + d.bledy[0], { typ: 'warn', czas: 10000 });
   });
-  bridge.on('report.done', d => toast(t('history.exported', { plik: fmt.sciezkaKrotka(d.plik, 50) }), { typ: 'ok', akcja: { tekst: t('history.show'), fn: () => bridge.call('shell.showInExplorer', { sciezka: d.plik }).catch(() => {}) } }));
+  bridge.on('report.done', d => toast(t('history.exported'), { typ: 'ok', opis: fmt.sciezkaKrotka(d.plik, 48), akcja: { tekst: t('history.show'), fn: () => bridge.call('shell.showInExplorer', { sciezka: d.plik }).catch(() => {}) } }));
   bridge.on('job', d => {
     const nazwy = { zastosuj: 'apply.failed', cofnij: 'history.undoFailed', rozpakuj: 'unpack.failed', raport: 'history.exportFailed' };
     if (!nazwy[d.typ]) return;
