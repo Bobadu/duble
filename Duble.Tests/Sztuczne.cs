@@ -11,7 +11,7 @@ public static class Sztuczne
 {
     public static float[] Hist(int szczyt) { var h = new float[GeometryFingerprint.HistogramBuckets]; h[szczyt] = 0.7f; h[Math.Min(GeometryFingerprint.HistogramBuckets - 1, szczyt + 1)] = 0.3f; return h; }
 
-    /// <summary>Garment w &lt;tmp&gt;\&lt;paczka&gt;\k.rpf\ z plikami .ydd (100 B) i .ytd (50 B); ZrodloId = zrodloId.</summary>
+    /// <summary>Garment w &lt;tmp&gt;\&lt;paczka&gt;\k.rpf\ z plikami .ydd (100 B) i .ytd (50 B); SourceId = zrodloId.</summary>
     public static Garment Poz(string tmp, string paczka, string typ, int numer, string hashPoz, float[] hist, string zrodloId, params string[] shaTekstur)
     {
         var folder = Path.Combine(tmp, paczka, "k.rpf"); Directory.CreateDirectory(folder);
@@ -69,4 +69,16 @@ public sealed class FixedClock : Duble.Core.Time.IClock
 {
     public FixedClock(DateTimeOffset now) => Now = now;
     public DateTimeOffset Now { get; }
+}
+
+/// <summary>
+/// An IProgress that calls back on the thread that reported, unlike Progress&lt;T&gt;, which posts to the
+/// synchronisation context. Tests that act on a report — cancelling after the first file, for instance — need
+/// to see it before the next one starts.
+/// </summary>
+public sealed class SyncProgress<T> : IProgress<T>
+{
+    readonly Action<T> onReport;
+    public SyncProgress(Action<T> onReport) => this.onReport = onReport;
+    public void Report(T value) => onReport(value);
 }

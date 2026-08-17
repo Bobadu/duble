@@ -65,7 +65,7 @@ public sealed class Rozklad
 
 public sealed class WynikKalibracji
 {
-    public string Kiedy { get; set; }
+    public string When { get; set; }
     public int Pozycje { get; set; }
     public int PozycjeZGeometria { get; set; }
     public int TextureDecoder { get; set; }
@@ -109,7 +109,7 @@ public static class Kalibracja
     public static WynikKalibracji Policz(Catalog katalog, Thresholds progi = null, CancellationToken ct = default)
     {
         progi ??= Thresholds.Default;
-        var w = new WynikKalibracji { Kiedy = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), UsedThresholds = progi.Clone(), Pozycje = katalog.Garments.Count };
+        var w = new WynikKalibracji { When = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), UsedThresholds = progi.Clone(), Pozycje = katalog.Garments.Count };
         var poz = katalog.Garments.Where(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0).ToList();
         w.PozycjeZGeometria = poz.Count;
 

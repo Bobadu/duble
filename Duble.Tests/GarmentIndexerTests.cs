@@ -33,7 +33,7 @@ public class GarmentIndexerTests
         Assert.NotEmpty(uppr.Textures);
         Assert.All(uppr.Textures, t => Assert.True(t.IsDecoded, t.FileName + " " + t.Format));
         Assert.All(poz, p => Assert.Contains("|", p.ModelPath));   // sciezka "archiwum|wewnatrz"
-        // Zrodla.Bajty oddaje bajty z naglowkiem RSC7 (do miniatur/GLB)
+        // Zrodla.Bytes oddaje bajty z naglowkiem RSC7 (do miniatur/GLB)
         var b = Archiwa.Read(uppr.ModelPath).Value;
         Assert.True(Rsc7Header.JestRsc7(b)); Assert.Equal(159, Rsc7Header.Wersja(b));
     }

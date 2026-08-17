@@ -2,7 +2,7 @@
 //
 // Grupy pochodza z Sesja.Wynik (ComparisonResult z Duble.Core); "kto zostaje" liczy s.Rozstrzygniecia.Resolve(grupa, decyzja z projektu).
 // Powody werdyktow ida do UI jako kody {kod, p} — UI formatuje je z i18n (slownik Core jest zlaczony ze slownikiem UI).
-// Zastosuj: plan z Sesja.Zaplanuj (Zastosowanie w Core), wykonanie w JobRunner "zastosuj", cofka do historia\<czas>.json,
+// Zastosuj: plan z Sesja.Plan (ApplyPlanner w Core), wykonanie w JobRunner "zastosuj", cofka do historia\<czas>.json,
 // potem ponowne indeksowanie dotknietych zrodel + porownanie (Zrodla.Indeksuj/PorownajIZapisz).
 using System;
 using System.Collections.Generic;
@@ -42,23 +42,23 @@ public static class Grupy
     public static HashSet<string> Odrzucone(List<(DuplicateGroup g, List<Garment> czl, Resolution r)> zywe)
         => new(zywe.Where(x => !x.r.Ignored).SelectMany(x => x.r.Rejected));
 
-    public static object PlanJson(Sesja s, PlanZastosowania plan, bool lista)
+    public static object PlanJson(Sesja s, ApplyPlan plan, bool lista)
     {
         var wg = s.Catalog.Garments.ToDictionary(p => p.Id);
         var o = new Dictionary<string, object>
         {
-            ["pozycje"] = plan.Pozycje.Count, ["pliki"] = plan.Pliki, ["bajty"] = plan.Bajty,
-            ["wArchiwum"] = plan.WArchiwum, ["wspoldzielone"] = plan.Wspoldzielone, ["brakujace"] = plan.Brakujace,
-            ["brakujaceZrodla"] = plan.BrakujaceZrodla,
+            ["pozycje"] = plan.Pozycje.Count, ["pliki"] = plan.Files, ["bajty"] = plan.Bytes,
+            ["wArchiwum"] = plan.InArchiveCount, ["wspoldzielone"] = plan.SharedCount, ["brakujace"] = plan.MissingCount,
+            ["brakujaceZrodla"] = plan.MissingSources,
             ["kosz"] = s.Project.Settings?.BinFolder,
-            ["kosze"] = plan.Kosze().Select(k => new { kosz = k.kosz, pliki = k.pliki, bajty = k.bajty }).ToList(),
+            ["kosze"] = plan.BinTotals().Select(k => new { kosz = k.kosz, pliki = k.pliki, bajty = k.bajty }).ToList(),
         };
         if (lista)
             o["lista"] = plan.Pozycje.Select(p => new
             {
-                id = p.Id, nazwa = p.Nazwa, sufiks = p.Sufiks, zrodlo = p.Zrodlo, zrodloId = p.ZrodloId, kontener = p.Kontener, kosz = p.Kosz,
+                id = p.Id, nazwa = p.Name, sufiks = p.Suffix, zrodlo = p.SourceName, zrodloId = p.SourceId, kontener = p.Container, kosz = p.BinFolder,
                 thumb = wg.TryGetValue(p.Id, out var poz) ? Widoki.Miniatura(poz) : null,
-                pliki = p.DoPrzeniesienia, bajty = p.Bajty, wspoldzielone = p.Wspoldzielone, wArchiwum = p.WArchiwum, brakujace = p.Brakujace,
+                pliki = p.MoveCount, bajty = p.Bytes, wspoldzielone = p.SharedCount, wArchiwum = p.InArchiveCount, brakujace = p.MissingCount,
             }).ToList();
         return o;
     }
@@ -124,7 +124,7 @@ public static class Grupy
                 duplikat = zywe.Count(x => x.g.Verdict == Verdict.Duplicate), nadzbior = zywe.Count(x => x.g.Verdict == Verdict.Superset),
                 wglad = zywe.Count(x => x.g.Verdict == Verdict.NeedsReview), przemalowanie = zywe.Count(x => x.g.Verdict == Verdict.Retexture),
                 zignorowane = zywe.Count(x => x.r.Ignored), porownano = wynik?.Built,
-                doOdrzucenia = PlanJson(s, s.Zaplanuj(Odrzucone(zywe)), false),
+                doOdrzucenia = PlanJson(s, s.Plan(Odrzucone(zywe)), false),
             };
             var filtrySloty = zywe.SelectMany(x => x.czl.Select(p => p.Slot)).GroupBy(t => t).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
             var filtryZrodla = zywe.SelectMany(x => x.czl.Select(p => p.SourceId ?? "")).GroupBy(t => t).Select(g => new { id = g.Key, nazwa = s.Project.Sources.Find(z => z.Id == g.Key)?.Name ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
@@ -201,7 +201,7 @@ public static class Grupy
             s.ZapiszProjekt();
         }
 
-        m.Rejestruj("apply.preview", a => { Wymag(); UstawKosz(a); return PlanJson(s, s.Zaplanuj(Odrzucone(Zywe(s))), true); });
+        m.Rejestruj("apply.preview", a => { Wymag(); UstawKosz(a); return PlanJson(s, s.Plan(Odrzucone(Zywe(s))), true); });
 
         // apply.run {kosz?: string|null, ustawKosz?: bool} — przenosi wszystko, co odrzucone (plan liczony na swiezo), zapisuje cofke,
         // ponownie indeksuje dotkniete zrodla, porownuje; zdarzenia: job (typ "zastosuj"), apply.done, history.changed
@@ -209,26 +209,27 @@ public static class Grupy
         {
             Wymag();
             UstawKosz(a);
-            var plan = s.Zaplanuj(Odrzucone(Zywe(s)));
-            if (plan.Pliki == 0) return new { uruchomiono = false, plan = PlanJson(s, plan, false) };
+            var plan = s.Plan(Odrzucone(Zywe(s)));
+            if (plan.Files == 0) return new { uruchomiono = false, plan = PlanJson(s, plan, false) };
             bool ok = jr.SprobujUruchom("zastosuj", s.Project.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                var cofka = Zastosowanie.Wykonaj(plan, s.Project.Name, postep, ct);
+                var cofka = s.Wykonawca.Execute(plan, s.Project.Name, new Progress<ProgressReport>(postep), ct);
                 var plik = s.NowyPlikHistorii();
-                cofka.Zapisz(plik);   // ZAWSZE — takze po przerwaniu (to, co juz sie przenioslo, musi dac sie cofnac)
+                // ALWAYS, an aborted apply included: whatever did move has to remain undoable
+                s.Cofki.Save(cofka, plik);
                 m.Zdarzenie("history.changed", new { plik });
                 // po przerwaniu (anulowanie) i tak porzadkujemy katalog — inaczej zostalby nieaktualny (przeniesione pliki nadal w katalogu)
-                var ct2 = cofka.Przerwano ? System.Threading.CancellationToken.None : ct;
-                var dotkniete = s.Project.Sources.Where(z => cofka.Pozycje.Any(p => p.ZrodloId == z.Id)).ToList();
+                var ct2 = cofka.Aborted ? System.Threading.CancellationToken.None : ct;
+                var dotkniete = s.Project.Sources.Where(z => cofka.Garments.Any(p => p.SourceId == z.Id)).ToList();
                 if (dotkniete.Count > 0) Zrodla.Indeksuj(s, m, dotkniete, false, ct2, postep);
                 Zrodla.PorownajIZapisz(s, m, ct2, postep);
                 m.Zdarzenie("apply.done", new
                 {
-                    plik, przeniesione = cofka.Ruchy.Count, pozycje = cofka.Pozycje.Count, bajty = cofka.Bajty,
-                    wspoldzielone = cofka.Wspoldzielone, wArchiwum = cofka.WArchiwum, brakujace = cofka.Brakujace,
-                    kosze = cofka.Pozycje.Select(p => p.Kosz).Where(k => k != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-                    przerwano = cofka.Przerwano, blad = cofka.Blad,
+                    plik, przeniesione = cofka.Moves.Count, pozycje = cofka.Garments.Count, bajty = cofka.Bytes,
+                    wspoldzielone = cofka.SharedCount, wArchiwum = cofka.InArchiveCount, brakujace = cofka.MissingCount,
+                    kosze = cofka.Garments.Select(p => p.BinFolder).Where(k => k != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    przerwano = cofka.Aborted, blad = cofka.Error,
                 });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");

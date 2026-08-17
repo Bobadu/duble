@@ -23,6 +23,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
+using Duble.Cli;
 using Microsoft.Extensions.DependencyInjection;
 using CodeWalker.Utils;
 
@@ -39,6 +40,9 @@ var archiwa = uslugi.GetRequiredService<IArchiveCache>();
 var odciskiTekstur = uslugi.GetRequiredService<ITextureFingerprinter>();
 var szukaczDupli = uslugi.GetRequiredService<IDuplicateFinder>();
 var porownania = uslugi.GetRequiredService<IComparisonStore>();
+var planista = uslugi.GetRequiredService<IApplyPlanner>();
+var wykonawca = uslugi.GetRequiredService<IApplyExecutor>();
+var cofki = uslugi.GetRequiredService<IUndoStore>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -365,18 +369,18 @@ switch (cmd)
             if (katalog.Garments.Count == 0) { Console.Error.WriteLine("[blad] pusty katalog — najpierw `duble indeks`"); return 1; }
             var wynik = szukaczDupli.Find(katalog);
             porownania.Save(wynik, sciezkaDubli);
-            Zastosowanie.ZapiszDecyzje(wynik, katalog, sciezkaDecyzji);
+            ApplyPlanner.ZapiszDecyzje(wynik, katalog, sciezkaDecyzji);
             Log($"duble:   {sciezkaDubli}");
             Log($"decyzje: {sciezkaDecyzji}  (mozesz poprawic TAK/NIE przed `zastosuj`)");
             return 0;
         }
 
     case "zastosuj":
-        return Zastosowanie.Zastosuj(katalogi.Load(sciezkaKatalogu), sciezkaDecyzji,
-            Path.Combine(korzenProjektu, "staging", "wardrobe2", "_odrzucone"), sciezkaCofki, Log);
+        return ApplyCommands.Apply(planista, wykonawca, cofki, katalogi.Load(sciezkaKatalogu), sciezkaDecyzji,
+            Path.Combine(korzenProjektu, "staging", "wardrobe2", BinFolder.Name), sciezkaCofki, Log);
 
     case "cofnij":
-        return Zastosowanie.Cofnij(sciezkaCofki, Log);
+        return ApplyCommands.Undo(wykonawca, cofki, sciezkaCofki, Log);
 
     case "raport":
         {

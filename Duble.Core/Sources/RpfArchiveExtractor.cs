@@ -22,9 +22,9 @@ public static class RpfArchiveExtractor
     public sealed class Wynik
     {
         public string Folder { get; set; }
-        public int Pliki { get; set; }
+        public int Files { get; set; }
         public int Archiwa { get; set; }
-        public long Bajty { get; set; }
+        public long Bytes { get; set; }
         public List<string> Bledy { get; } = new();
     }
 
@@ -48,7 +48,7 @@ public static class RpfArchiveExtractor
 
     /// <summary>Kopia zrodla-folderu do `folder`: zwykle pliki kopiowane, archiwa .rpf rozkladane do podfolderow o tej samej nazwie.
     /// Pomija kosz `_odrzucone`. Zrodlo-plik .rpf -> jak Archiwum.</summary>
-    public static Wynik Zrodlo(string sciezka, string folder, Action<ProgressReport> postep = null, CancellationToken ct = default)
+    public static Wynik SourceName(string sciezka, string folder, Action<ProgressReport> postep = null, CancellationToken ct = default)
     {
         if (File.Exists(sciezka)) return Archiwum(sciezka, folder, postep, ct);
         var wynik = new Wynik { Folder = folder };
@@ -66,13 +66,13 @@ public static class RpfArchiveExtractor
                 if (f.EndsWith(".rpf", StringComparison.OrdinalIgnoreCase))
                 {
                     var w = Archiwum(f, cel, null, ct);
-                    wynik.Pliki += w.Pliki; wynik.Archiwa += w.Archiwa; wynik.Bajty += w.Bajty; wynik.Bledy.AddRange(w.Bledy);
+                    wynik.Files += w.Files; wynik.Archiwa += w.Archiwa; wynik.Bytes += w.Bytes; wynik.Bledy.AddRange(w.Bledy);
                 }
                 else
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(cel));
                     File.Copy(f, cel, true);
-                    wynik.Pliki++; wynik.Bajty += new FileInfo(f).Length;
+                    wynik.Files++; wynik.Bytes += new FileInfo(f).Length;
                 }
             }
             catch (OperationCanceledException) { throw; }
@@ -117,7 +117,7 @@ public static class RpfArchiveExtractor
                 var tmp = cel + ".tmp";
                 File.WriteAllBytes(tmp, bajty);
                 File.Move(tmp, cel, true);
-                wynik.Pliki++; wynik.Bajty += bajty.Length;
+                wynik.Files++; wynik.Bytes += bajty.Length;
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { wynik.Bledy.Add($"{sciezka}: {ex.Message}"); }

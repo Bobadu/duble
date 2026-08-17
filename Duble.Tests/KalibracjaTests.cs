@@ -45,7 +45,7 @@ public class KalibracjaTests
             Assert.InRange(w.Propozycja.TextureHashDistance, 4, 256); Assert.True(w.Propozycja.TextureColorDistance >= 0);
             Assert.Empty(w.Propozycja.Validate());
             Assert.Equal(Thresholds.Default.TextureHashDistance, w.UsedThresholds.TextureHashDistance);
-            Assert.False(string.IsNullOrEmpty(w.Kiedy));
+            Assert.False(string.IsNullOrEmpty(w.When));
 
             // wydruk CLI dziala i zawiera propozycje
             var log = new System.Collections.Generic.List<string>();

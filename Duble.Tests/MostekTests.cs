@@ -19,9 +19,9 @@ public class FalszyweOkno : IOkno
 
 public class FalszyweDialogi : IDialogi
 {
-    public string Folder = @"C:\wybrany"; public string[] Pliki = { @"C:\a.rpf" };
+    public string Folder = @"C:\wybrany"; public string[] Files = { @"C:\a.rpf" };
     public string WybierzFolder(string tytul, string start) => Folder;
-    public string[] WybierzPliki(string tytul, string filtr, bool wiele, string start) => Pliki;
+    public string[] WybierzPliki(string tytul, string filtr, bool wiele, string start) => Files;
     public string ZapiszPlik(string tytul, string filtr, string domyslnaNazwa, string start) => @"C:\zapis.duble";
 }
 

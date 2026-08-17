@@ -15,7 +15,7 @@ namespace Duble.Core.Formats;
 
 public sealed class SiatkaGeo
 {
-    public string Nazwa { get; set; }
+    public string Name { get; set; }
     public float[] Pozycje { get; set; }    // 3 na wierzcholek (juz w ukladzie glTF)
     public float[] Normalne { get; set; }   // 3 na wierzcholek albo null
     public float[] Uv { get; set; }         // 2 na wierzcholek albo null
@@ -87,7 +87,7 @@ public static class Glb
             var tex = Obraz(g.TextureInfo);
             if (tex != null) pbr["baseColorTexture"] = new Dictionary<string, object> { ["index"] = tex.Value };
             else pbr["baseColorFactor"] = new[] { 0.72, 0.72, 0.74, 1.0 };
-            var mat = new Dictionary<string, object> { ["name"] = g.Nazwa ?? "geo", ["pbrMetallicRoughness"] = pbr, ["doubleSided"] = true, ["alphaMode"] = g.Przezroczysta ? "MASK" : "OPAQUE" };
+            var mat = new Dictionary<string, object> { ["name"] = g.Name ?? "geo", ["pbrMetallicRoughness"] = pbr, ["doubleSided"] = true, ["alphaMode"] = g.Przezroczysta ? "MASK" : "OPAQUE" };
             if (g.Przezroczysta) mat["alphaCutoff"] = 0.5;
             var nrm = Obraz(g.Normalna);
             if (nrm != null) mat["normalTexture"] = new Dictionary<string, object> { ["index"] = nrm.Value };
@@ -142,7 +142,7 @@ public static class Glb
                 bool maNorm = ((info.Flags >> 3) & 1) == 1, maUv = ((info.Flags >> 6) & 1) == 1;
                 int offP = info.GetComponentOffset(0), offN = info.GetComponentOffset(3), offT = info.GetComponentOffset(6);
                 var typT = info.GetComponentType(6);
-                var s = new SiatkaGeo { Nazwa = "geo_" + gi, Pozycje = new float[n * 3], Normalne = maNorm ? new float[n * 3] : null, Uv = maUv ? new float[n * 2] : null };
+                var s = new SiatkaGeo { Name = "geo_" + gi, Pozycje = new float[n * 3], Normalne = maNorm ? new float[n * 3] : null, Uv = maUv ? new float[n * 2] : null };
                 for (int v = 0; v < n; v++)
                 {
                     int o = v * stride;

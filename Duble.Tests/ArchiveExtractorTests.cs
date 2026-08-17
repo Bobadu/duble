@@ -28,7 +28,7 @@ public class ArchiveExtractorTests
         {
             var postepy = new System.Collections.Generic.List<ProgressReport>();
             var w = RpfArchiveExtractor.Archiwum(Sciezki.Dlc("studio_body"), Path.Combine(tmp, "studio_body"), postepy.Add);
-            wyj.WriteLine($"pliki={w.Pliki} archiwa={w.Archiwa} bajty={w.Bajty} bledy={w.Bledy.Count}");
+            wyj.WriteLine($"pliki={w.Files} archiwa={w.Archiwa} bajty={w.Bytes} bledy={w.Bledy.Count}");
             foreach (var b in w.Bledy.Take(5)) wyj.WriteLine("  " + b);
             Assert.Empty(w.Bledy);
             Assert.True(w.Archiwa >= 2);                                   // dlc.rpf + zagniezdzone body.rpf
@@ -58,12 +58,12 @@ public class ArchiveExtractorTests
             File.Copy(Sciezki.Dlc("studio_body"), Path.Combine(src, "paczka.rpf"));
             File.WriteAllText(Path.Combine(src, "x.meta"), "<meta/>");
             Directory.CreateDirectory(Path.Combine(tmp, "src", "_odrzucone")); File.WriteAllText(Path.Combine(tmp, "src", "_odrzucone", "a.ydd"), "x");
-            var w2 = RpfArchiveExtractor.Zrodlo(Path.Combine(tmp, "src"), Path.Combine(tmp, "kopia"));
+            var w2 = RpfArchiveExtractor.SourceName(Path.Combine(tmp, "src"), Path.Combine(tmp, "kopia"));
             Assert.Empty(w2.Bledy);
             Assert.True(File.Exists(Path.Combine(tmp, "kopia", "stream", "x.meta")));
             Assert.True(Directory.Exists(Path.Combine(tmp, "kopia", "stream", "paczka.rpf")));
             Assert.False(Directory.Exists(Path.Combine(tmp, "kopia", "_odrzucone")));
-            Assert.Equal(w.Pliki + 1, w2.Pliki);
+            Assert.Equal(w.Files + 1, w2.Files);
         }
         finally { Directory.Delete(tmp, true); }
     }

@@ -74,7 +74,7 @@ public class ZrodlaKomendyTests
             var s = TestSession.Create(); var jr = new JobRunner(m.Zdarzenie);
             Duble.App.Komendy.Projekty.Zarejestruj(m, s); Duble.App.Komendy.Zrodla.Zarejestruj(m, s, jr);
             s.Nowy("U", Path.Combine(tmp, "U.duble"));
-            var z = s.Project.AddSource(Sciezki.Dlc("studio_body"), "src1");   // Nazwa = studio_body (dlc.rpf -> folder paczki)
+            var z = s.Project.AddSource(Sciezki.Dlc("studio_body"), "src1");   // Name = studio_body (dlc.rpf -> folder paczki)
             Assert.Equal("studio_body", z.Name);
             Assert.Equal("studio_body", Duble.App.Komendy.Zrodla.NazwaFolderuKopii(z));
             var lista = Odp(await m.Obsluz("{\"id\":\"1\",\"cmd\":\"sources.list\"}")).GetProperty("result").GetProperty("zrodla");

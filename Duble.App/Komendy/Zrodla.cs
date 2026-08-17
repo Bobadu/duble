@@ -1,6 +1,6 @@
 // Komendy/Zrodla.cs — sources.list/add/remove/toggle/index/cancel/detectGames/pickFolder/pickRpf/unpack.
 //
-// Indeksowanie idzie przez JobRunner (jedno zadanie naraz): dla kazdego zrodla Indeks.Zrodlo z OpcjeIndeksu
+// Indeksowanie idzie przez JobRunner (jedno zadanie naraz): dla kazdego zrodla Indeks.SourceName z OpcjeIndeksu
 // (postep -> zdarzenie "job", anulowanie, przyrostowosc z poprzedniego katalogu, miniatury do cache projektu),
 // pozycje dostaja ZrodloId, katalog jest podmieniany per zrodlo (UsunPaczke + Wstaw) i zapisywany na koncu.
 // Indeksuj()/PorownajIZapisz() sa wspolne: uzywa ich tez Zastosuj/Cofnij (ponowne indeksowanie dotknietych zrodel) i Rozpakuj.
@@ -158,9 +158,9 @@ public static class Zrodla
             bool ok = jr.SprobujUruchom("rozpakuj", z.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                var w = RpfArchiveExtractor.Zrodlo(z.Path, cel, postep, ct);
+                var w = RpfArchiveExtractor.SourceName(z.Path, cel, postep, ct);
                 string dodano = null;
-                if (dodaj && w.Pliki > 0)
+                if (dodaj && w.Files > 0)
                 {
                     var nowe = s.Project.AddSource(cel, NoweId());
                     z.Enabled = false;
@@ -170,7 +170,7 @@ public static class Zrodla
                     Indeksuj(s, m, new[] { nowe }, false, ct, postep);
                     PorownajIZapisz(s, m, ct, postep);
                 }
-                m.Zdarzenie("unpack.done", new { id, folder = cel, pliki = w.Pliki, archiwa = w.Archiwa, bajty = w.Bajty, bledy = w.Bledy.Take(20).ToList(), dodano });
+                m.Zdarzenie("unpack.done", new { id, folder = cel, pliki = w.Files, archiwa = w.Archiwa, bajty = w.Bytes, bledy = w.Bledy.Take(20).ToList(), dodano });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
             return new { uruchomiono = true, folder = cel };
