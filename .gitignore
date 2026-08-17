@@ -1,4 +1,4 @@
-# Duble - build artefacts and local files. Build with: .\build.ps1
+# Duble - build artefacts and local files.
 bin/
 obj/
 publish/

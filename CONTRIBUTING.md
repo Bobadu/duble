@@ -35,8 +35,9 @@ not copied into this repository.
 interface is read from `Duble.App/ui` instead of the resources embedded in the executable, so HTML/CSS/JS changes
 only need a page reload (`Ctrl+R`), and DevTools (`F12`) are available.
 
-`build.ps1` does the same from the command line (submodule, build, tests, `-Publish` for the single-file
-executable) and is what CI runs - useful, but never required for working in an IDE.
+From the command line: `dotnet build Duble.sln -c Release`, `dotnet test Duble.Tests -c Release` and
+`dotnet publish Duble.App -p:PublishProfile=win-x64` for the shipping single-file executable. That is exactly
+what CI runs — there is no build script to learn.
 
 ### Tests
 
@@ -81,7 +82,7 @@ worth reading before changing anything in `Odciski.cs` or `Porownanie.cs`.
 - One topic per pull request, please.
 - **Commit messages are written in English**: a short summary line (72 characters or so) saying what changed
   from the user's point of view, then the details in the body. Commits are signed — GitHub shows them as verified.
-- Run `.\build.ps1` before pushing — the CI runs exactly that.
+- Build and run the tests before pushing — CI runs the same two commands.
 - New verdict logic or threshold changes should come with the numbers behind them (`duble kalibruj` prints the
   distributions, and Settings → Calibration shows them as charts).
 

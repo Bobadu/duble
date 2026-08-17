@@ -42,9 +42,14 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Duble $v"
 
-      - name: Build, test and publish
-        shell: pwsh
-        run: ./build.ps1 -Publish -Wersja ${{ steps.v.outputs.version }}
+      - name: Build
+        run: dotnet build Duble.sln -c Release --nologo -p:Version=${{ steps.v.outputs.version }}
+
+      - name: Test
+        run: dotnet test Duble.Tests -c Release --no-build --nologo
+
+      - name: Publish single file
+        run: dotnet publish Duble.App -p:PublishProfile=win-x64 --nologo -p:Version=${{ steps.v.outputs.version }}
 
       - name: Checksum
         shell: pwsh

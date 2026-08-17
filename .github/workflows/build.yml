@@ -38,13 +38,14 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      - name: Build and test
-        shell: pwsh
-        run: ./build.ps1
+      - name: Build
+        run: dotnet build Duble.sln -c Release --nologo
+
+      - name: Test
+        run: dotnet test Duble.Tests -c Release --no-build --nologo
 
       - name: Publish single file
-        shell: pwsh
-        run: ./build.ps1 -Publish -BezTestow
+        run: dotnet publish Duble.App -p:PublishProfile=win-x64 --nologo
 
       - name: Upload Duble.exe
         uses: actions/upload-artifact@v7

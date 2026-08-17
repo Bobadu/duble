@@ -115,11 +115,12 @@ so HTML/CSS/JS changes only need a page reload, with DevTools available.
 pinned to one commit - cloning through the IDE brings it along. If you already cloned without submodules, run
 `git submodule update --init --recursive`; the build says so as well.
 
-For the command line, or when you want the release artefact:
+From the command line the same work is three commands:
 
 ```powershell
-.\build.ps1            # submodule, Release build, tests - the same thing CI runs
-.\build.ps1 -Publish   # single-file publish\Duble.exe (self-contained, win-x64)
+dotnet build Duble.sln -c Release
+dotnet test Duble.Tests -c Release
+dotnet publish Duble.App -p:PublishProfile=win-x64    # -> publish\Duble.exe, the shipping build
 ```
 
 | Project | What it is |

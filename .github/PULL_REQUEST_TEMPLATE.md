@@ -10,7 +10,7 @@
 
 ## How it was checked
 
-- [ ] `.\build.ps1` passes (build + tests)
+- [ ] `dotnet build Duble.sln -c Release` and `dotnet test Duble.Tests -c Release` pass
 - [ ] Tried it in the app on a real pack (write which one, and what you saw)
 - [ ] UI text goes through `t('key')` and both `ui/i18n/pl.json` and `en.json` were updated
 - [ ] Screenshot attached (for anything visible in the interface)

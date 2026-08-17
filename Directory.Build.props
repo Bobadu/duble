@@ -1,7 +1,7 @@
 <Project>
   <!--
     Shared metadata for every Duble project. The release workflow overrides the version:
-      .\build.ps1 -Publish -Wersja 1.0.1   ->   dotnet build/publish -p:Version=1.0.1
+      dotnet publish Duble.App -p:PublishProfile=win-x64 -p:Version=1.0.1
     CodeWalker.Core lives outside this folder, so it does not inherit any of this.
   -->
   <PropertyGroup>
