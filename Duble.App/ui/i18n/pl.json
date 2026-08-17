@@ -166,6 +166,8 @@
   "dup.clear": "Wyczyść",
   "dup.empty": "Brak grup — żaden ciuch nie dubluje się z innym. Dobra wiadomość!",
   "dup.emptyFiltered": "Żadna grupa nie pasuje do filtrów.",
+  "dup.notIndexed": "Nic jeszcze nie zaindeksowano",
+  "dup.notIndexedHint": "Dodaj źródła i uruchom „Indeksuj wszystko\" — porównanie ruszy potem samo.",
   "dup.members": "{n} członków",
   "dup.winner": "zostaje",
   "dup.rejected": "odrzucona",

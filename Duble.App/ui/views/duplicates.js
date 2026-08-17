@@ -139,7 +139,11 @@ async function odswiez() {
   const grupy = r.grupy || [];
   if (!grupy.length) {
     const czyFiltr = filtry.werdykty.length || filtry.sloty.length || filtry.zrodla.length || filtry.szukaj;
-    listaEl.append(el(`<div class="empty">${icon(czyFiltr ? 'search' : 'ok')}<h3>${czyFiltr ? t('dup.emptyFiltered') : t('dup.empty')}</h3></div>`));
+    // nic w katalogu = jeszcze nie zaindeksowano; "brak duplikatow" bylo by wtedy nieprawda
+    const nicWKatalogu = !czyFiltr && !(store.projekt && store.projekt.pozycje);
+    if (nicWKatalogu) {
+      listaEl.append(el(`<div class="empty">${icon('duplicates')}<h3>${t('dup.notIndexed')}</h3><p>${t('dup.notIndexedHint')}</p></div>`));
+    } else listaEl.append(el(`<div class="empty">${icon(czyFiltr ? 'search' : 'ok')}<h3>${czyFiltr ? t('dup.emptyFiltered') : t('dup.empty')}</h3></div>`));
   } else {
     const lista = el('<div class="dup-grupy"></div>');
     for (const g of grupy) lista.append(kartaGrupy(g, ctx));
