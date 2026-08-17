@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using Xunit;
 
 namespace Duble.Tests;
@@ -9,13 +10,16 @@ namespace Duble.Tests;
 /// <summary>Raport HTML w jezyku UI z rozstrzygnieciami (decyzje uzytkownika) i CSV grup/decyzji — na sztucznym katalogu.</summary>
 public class RaportTests
 {
+    static readonly IDuplicateFinder Finder =
+        new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IDuplicateFinder>();
+
     static readonly IArchiveCache Archiwa = new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IArchiveCache>();
 
-    static (Catalog kat, WynikPorownania wynik, string tmp) Swiat()
+    static (Catalog kat, ComparisonResult wynik, string tmp) Swiat()
     {
         var tmp = Sciezki.Tymczasowy("raport");
         var kat = new Catalog(); kat.Upsert(Sztuczne.Siedem(tmp));
-        var wynik = Porownanie.Znajdz(kat, null);
+        var wynik = Finder.Find(kat);
         return (kat, wynik, tmp);
     }
 
@@ -25,12 +29,12 @@ public class RaportTests
         var (kat, wynik, tmp) = Swiat();
         try
         {
-            var efg = wynik.Grupy.First(g => g.Pozycje.Count == 3);
-            var ab = wynik.Grupy.First(g => g.Werdykt == Porownanie.Duplikat && g.Pozycje.Count == 2);
+            var efg = wynik.Groups.First(g => g.Members.Count == 3);
+            var ab = wynik.Groups.First(g => g.Verdict == Verdict.Duplicate && g.Members.Count == 2);
             var decyzje = new Dictionary<string, Decision>
             {
                 [efg.Id] = new Decision { Ignored = true, Note = "different boots" },
-                [ab.Id] = new Decision { Winner = ab.Pozycje[1], Rejected = { ab.Pozycje[0] } },
+                [ab.Id] = new Decision { Winner = ab.Members[1], Rejected = { ab.Members[0] } },
             };
             var plik = Path.Combine(tmp, "r.html");
             var log = new List<string>();
@@ -65,7 +69,7 @@ public class RaportTests
         var (kat, wynik, tmp) = Swiat();
         try
         {
-            var efg = wynik.Grupy.First(g => g.Pozycje.Count == 3);
+            var efg = wynik.Groups.First(g => g.Members.Count == 3);
             var decyzje = new Dictionary<string, Decision> { [efg.Id] = new Decision { Ignored = true, Note = "inne; buty" } };
             var csv = Raport.Csv(kat, wynik, g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "pl");
             Assert.StartsWith("\uFEFF", csv);

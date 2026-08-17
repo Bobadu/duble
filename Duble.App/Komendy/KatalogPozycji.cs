@@ -9,9 +9,9 @@ namespace Duble.App.Komendy;
 
 public static class KatalogPozycji
 {
-    static readonly Dictionary<string, int> Ostrosc = new()
+    static readonly Dictionary<Verdict, int> Ostrosc = new()
     {
-        [Porownanie.Duplikat] = 0, [Porownanie.Nadzbior] = 1, [Porownanie.DoWgladu] = 2, [Porownanie.Przemalowanie] = 3,
+        [Verdict.Duplicate] = 0, [Verdict.Superset] = 1, [Verdict.NeedsReview] = 2, [Verdict.Retexture] = 3,
     };
 
     public static void Zarejestruj(Mostek m, Sesja s)
@@ -20,9 +20,9 @@ public static class KatalogPozycji
         string Zrodlo(Garment p) => s.Project.Sources.Find(z => z.Id == p.SourceId)?.Name ?? p.PackName;
 
         // pozycja -> najostrzejszy werdykt zywej grupy, w ktorej jest (bez zignorowanych) + lista grup
-        Dictionary<string, List<(Grupa g, Resolution r)>> GrupyPozycji()
+        Dictionary<string, List<(DuplicateGroup g, Resolution r)>> GrupyPozycji()
         {
-            var wy = new Dictionary<string, List<(Grupa, Resolution)>>();
+            var wy = new Dictionary<string, List<(DuplicateGroup, Resolution)>>();
             foreach (var (g, czl, r) in Grupy.Zywe(s))
                 foreach (var p in czl)
                 {
@@ -31,8 +31,11 @@ public static class KatalogPozycji
                 }
             return wy;
         }
-        string Werdykt(List<(Grupa g, Resolution r)> l)
-            => l == null ? null : l.Where(x => !x.r.Ignored).Select(x => x.g.Werdykt).OrderBy(w => Ostrosc.TryGetValue(w, out var o) ? o : 9).FirstOrDefault();
+        // the interface reads a verdict key, so the sharpest verdict in the group goes across as one
+        string Werdykt(List<(DuplicateGroup g, Resolution r)> l)
+            => l == null ? null : l.Where(x => !x.r.Ignored).Select(x => x.g.Verdict)
+                .OrderBy(w => Ostrosc.TryGetValue(w, out var o) ? o : 9)
+                .Select(w => w.ToKey()).FirstOrDefault();
 
         m.Rejestruj("catalog.list", a =>
         {
@@ -86,8 +89,8 @@ public static class KatalogPozycji
                 pozycja = poz,
                 grupy = grupy.Select(x => new
                 {
-                    id = x.g.Id, werdykt = x.g.Werdykt, ignoruj = x.r.Ignored, powod = Widoki.Powod(x.g.Pary.FirstOrDefault()?.Powod ?? x.g.Powod),
-                    inni = x.g.Pozycje.Where(i => i != id && wg.ContainsKey(i)).Select(i => new { id = i, nazwa = $"{wg[i].Slot}_{wg[i].Number:d3}", sufiks = wg[i].Suffix, zrodlo = Zrodlo(wg[i]) }).ToList(),
+                    id = x.g.Id, werdykt = x.g.Verdict.ToKey(), ignoruj = x.r.Ignored, powod = Widoki.Reason(x.g.Pairs.FirstOrDefault()?.Reason ?? x.g.Reason),
+                    inni = x.g.Members.Where(i => i != id && wg.ContainsKey(i)).Select(i => new { id = i, nazwa = $"{wg[i].Slot}_{wg[i].Number:d3}", sufiks = wg[i].Suffix, zrodlo = Zrodlo(wg[i]) }).ToList(),
                     stan = x.r.Ignored ? "ignoruj" : x.r.Winner == id && x.r.Rejected.Count > 0 ? "zostaje" : x.r.Rejected.Contains(id) ? "odrzucona" : "neutral",
                 }).ToList(),
             };

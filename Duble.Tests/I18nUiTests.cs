@@ -32,9 +32,24 @@ public class I18nUiTests
             foreach (Match m in re.Matches(File.ReadAllText(f)))
             {
                 var k = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value;
-                if (!pl.ContainsKey(k) && !k.StartsWith("powod.") && !k.StartsWith("werdykt.") && !k.StartsWith("slot.")) brak.Add(Path.GetFileName(f) + ": " + k);
+                if (!pl.ContainsKey(k) && !k.StartsWith("powod.") && !k.StartsWith("verdict.") && !k.StartsWith("slot.")) brak.Add(Path.GetFileName(f) + ": " + k);
             }
         Assert.Empty(brak);
+    }
+
+    /// <summary>
+    /// The interface builds a verdict label as t('verdict.' + key), where the key comes from the Verdict enum
+    /// over the bridge. Both halves have to agree, and only Core's dictionary can answer for the second one.
+    /// </summary>
+    [Fact]
+    public void Every_verdict_has_a_label_in_both_languages()
+    {
+        foreach (var verdict in new[] { Verdict.Duplicate, Verdict.Superset, Verdict.NeedsReview, Verdict.Retexture })
+            foreach (var language in Texts.Languages)
+            {
+                var label = Texts.Verdict(verdict, language);
+                Assert.False(label.StartsWith("["), $"{language}: no label for verdict.{verdict.ToKey()}");
+            }
     }
 
     [Fact]

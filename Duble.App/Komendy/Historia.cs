@@ -90,7 +90,7 @@ public static class Historia
 
         // ---- eksport ----
         string Jezyk() => m.Ustawienia?.JezykEfektywny ?? "pl";
-        Func<Grupa, Resolution> Rozstrzygnij() => g => Grupy.Rozstrzygnij(s, g);
+        Func<DuplicateGroup, Resolution> Rozstrzygnij() => g => Grupy.Rozstrzygnij(s, g);
         string Docelowy(string sciezka, string filtr, string domyslna)
         {
             if (!string.IsNullOrWhiteSpace(sciezka)) return sciezka;

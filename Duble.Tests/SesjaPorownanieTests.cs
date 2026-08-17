@@ -72,7 +72,7 @@ public class SesjaPorownanieTests
             // wylaczone zrodlo -> porownanie na zerze pozycji
             s.Project.Sources[0].Enabled = false;
             s.Porownaj(default, null);
-            Assert.Empty(s.Wynik.Grupy);
+            Assert.Empty(s.Wynik.Groups);
         }
         finally { Directory.Delete(tmp, true); }
     }

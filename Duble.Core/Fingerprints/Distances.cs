@@ -7,7 +7,7 @@ namespace Duble.Core.Fingerprints;
 public static class Distance
 {
     /// <summary>Odleglosc L1 miedzy histogramami ksztaltu. 0 = identyczne, max 2.</summary>
-    public static double ShapeHistogram(float[] a, float[] b)
+    public static double ShapeHistogram(float[]? a, float[]? b)
     {
         if (a == null || b == null || a.Length != b.Length) return double.MaxValue;
         double s = 0;
@@ -16,7 +16,7 @@ public static class Distance
     }
 
     /// <summary>Najwieksza wzgledna roznica wymiarow pudelka. 0 = ten sam rozmiar.</summary>
-    public static double BoundingBox(float[] a, float[] b)
+    public static double BoundingBox(float[]? a, float[]? b)
     {
         if (a == null || b == null || a.Length != 3 || b.Length != 3) return double.MaxValue;
         double max = 0;
@@ -30,7 +30,7 @@ public static class Distance
     }
 
     // ===================== TEKSTURY =====================
-    public static int Hamming(ulong[] a, ulong[] b)
+    public static int Hamming(ulong[]? a, ulong[]? b)
     {
         if (a == null || b == null || a.Length != b.Length) return -1;
         int s = 0;
@@ -39,7 +39,7 @@ public static class Distance
     }
 
     /// <summary>Srednia roznica sygnatur koloru w kanale (0..255).</summary>
-    public static double Color(string a, string b)
+    public static double Color(string? a, string? b)
     {
         if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return double.MaxValue;
         var x = Convert.FromBase64String(a);

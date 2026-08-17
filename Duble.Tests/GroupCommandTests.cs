@@ -10,7 +10,7 @@ using Xunit;
 namespace Duble.Tests;
 
 /// <summary>Komendy groups.* / apply.preview na SZTUCZNYM katalogu (bez plikow gry): 3 grupy — DUPLIKAT a=b, PRZEMALOWANIE c=d, DUPLIKAT e=f=g.</summary>
-public class GrupyKomendyTests
+public class GroupCommandTests
 {
     static (Mostek m, Sesja s, List<string> wyslane, string tmp) Zbuduj()
     {
@@ -40,11 +40,11 @@ public class GrupyKomendyTests
             var pod = l.GetProperty("podsumowanie");
             Assert.Equal(2, pod.GetProperty("duplikat").GetInt32()); Assert.Equal(1, pod.GetProperty("przemalowanie").GetInt32());
             Assert.Equal(3, pod.GetProperty("doOdrzucenia").GetProperty("pozycje").GetInt32());   // b, f, g
-            Assert.Equal(Porownanie.Duplikat, l.GetProperty("grupy")[0].GetProperty("werdykt").GetString());   // duplikaty przed przemalowaniem
+            Assert.Equal(Verdict.Duplicate.ToKey(), l.GetProperty("grupy")[0].GetProperty("werdykt").GetString());   // duplikaty przed przemalowaniem
             Assert.Equal(3, l.GetProperty("grupy")[0].GetProperty("czlonkowie").GetArrayLength());            // wieksza grupa pierwsza
             Assert.True(l.GetProperty("filtry").GetProperty("sloty").GetArrayLength() >= 3);
 
-            l = await Wywolaj(m, "groups.list", "{\"werdykty\":[\"PRZEMALOWANIE\"]}");
+            l = await Wywolaj(m, "groups.list", "{\"werdykty\":[\"retexture\"]}");
             Assert.Equal(1, l.GetProperty("grupy").GetArrayLength());
             l = await Wywolaj(m, "groups.list", "{\"szukaj\":\"jbib_007\"}");
             Assert.Equal(1, l.GetProperty("grupy").GetArrayLength());

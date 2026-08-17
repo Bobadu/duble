@@ -36,29 +36,29 @@ public static class Raport
     /// <summary>Tekst raportu w jezyku (klucze raport.* z i18n Core).</summary>
     static string Tx(string jezyk, string klucz, params (string k, object v)[] p)
     {
-        if (p == null || p.Length == 0) return Teksty.T(jezyk, klucz);
+        if (p == null || p.Length == 0) return Texts.T(jezyk, klucz);
         var d = new Dictionary<string, string>();
         foreach (var (k, v) in p) d[k] = Convert.ToString(v, CultureInfo.InvariantCulture);
-        return Teksty.T(jezyk, klucz, d);
+        return Texts.T(jezyk, klucz, d);
     }
 
     /// <summary>Samowystarczalny raport HTML. `rozstrzygnij` (aplikacja: decyzje uzytkownika) mowi, kto zostaje / jest odrzucony /
     /// zignorowany; brak = domyslne z porownania. `tytul` = nazwa projektu (naglowek strony).</summary>
-    public static void Zbuduj(IArchiveCache archiwa, Catalog katalog, WynikPorownania wynik, string plik, Action<string> log, string jezyk = "pl",
-                              Func<Grupa, Resolution> rozstrzygnij = null, string tytul = null)
+    public static void Zbuduj(IArchiveCache archiwa, Catalog katalog, ComparisonResult wynik, string plik, Action<string> log, string jezyk = "pl",
+                              Func<DuplicateGroup, Resolution> rozstrzygnij = null, string tytul = null)
     {
         log ??= _ => { };
         rozstrzygnij ??= g => Rozstrzygniecia.Resolve(g, null);
         var wgId = katalog.Garments.ToDictionary(p => p.Id);
-        var kolejnosc = new Dictionary<string, int>
+        var kolejnosc = new Dictionary<Verdict, int>
         {
-            [Porownanie.Duplikat] = 0, [Porownanie.Nadzbior] = 1,
-            [Porownanie.DoWgladu] = 2, [Porownanie.Przemalowanie] = 3
+            [Verdict.Duplicate] = 0, [Verdict.Superset] = 1,
+            [Verdict.NeedsReview] = 2, [Verdict.Retexture] = 3
         };
-        var grupy = wynik.Grupy
-            .Where(g => g.Pozycje.All(wgId.ContainsKey))
-            .OrderBy(g => kolejnosc.TryGetValue(g.Werdykt, out var k) ? k : 9)
-            .ThenByDescending(g => g.Pozycje.Count)
+        var grupy = wynik.Groups
+            .Where(g => g.Members.All(wgId.ContainsKey))
+            .OrderBy(g => kolejnosc.TryGetValue(g.Verdict, out var k) ? k : 9)
+            .ThenByDescending(g => g.Members.Count)
             .ToList();
         var rozstrzygniecia = grupy.ToDictionary(g => g, g => rozstrzygnij(g));
 
@@ -181,27 +181,27 @@ public static class Raport
 
     // ===================== karta grupy =====================
 
-    static string Karta(IArchiveCache archiwa, Grupa g, Dictionary<string, Garment> wgId, string jezyk, Resolution roz)
+    static string Karta(IArchiveCache archiwa, DuplicateGroup g, Dictionary<string, Garment> wgId, string jezyk, Resolution roz)
     {
         roz ??= Rozstrzygniecia.Resolve(g, null);
-        var zwyciezca = roz.Winner ?? g.Zwyciezca;
-        var czlonkowie = g.Pozycje.OrderByDescending(id => id == zwyciezca ? 1 : 0)
-                                   .ThenByDescending(id => g.Punkty.TryGetValue(id, out var p) ? p : 0)
+        var zwyciezca = roz.Winner ?? g.Winner;
+        var czlonkowie = g.Members.OrderByDescending(id => id == zwyciezca ? 1 : 0)
+                                   .ThenByDescending(id => g.Scores.TryGetValue(id, out var p) ? p : 0)
                                    .ToList();
         var wzorzec = wgId[czlonkowie[0]];
         var inv = CultureInfo.InvariantCulture;
 
         var sb = new StringBuilder();
         var szukaj = string.Join(" ", czlonkowie.Select(id => wgId[id].Label)).ToLowerInvariant();
-        sb.Append($"<article class=\"grupa {Klasa(g.Werdykt)}\" data-werdykt=\"{E(g.Werdykt)}\" data-szukaj=\"{E(szukaj)}\">");
+        sb.Append($"<article class=\"grupa {Klasa(g.Verdict)}\" data-werdykt=\"{E(g.Verdict.ToKey())}\" data-szukaj=\"{E(szukaj)}\">");
 
         // --- naglowek ---
         sb.Append("<header class=\"glowa\">");
-        sb.Append($"<span class=\"odznaka {Klasa(g.Werdykt)}\">{E(Teksty.T(jezyk, "werdykt." + g.Werdykt))}</span>");
+        sb.Append($"<span class=\"odznaka {Klasa(g.Verdict)}\">{E(Texts.Verdict(g.Verdict, jezyk))}</span>");
         if (roz.Ignored) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.zignorowana"))}</span>");
         else if (!roz.IsDefault) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.twojaDecyzja"))}</span>");
         sb.Append($"<h2>{string.Join(" <span class=\"rowna\">=</span> ", czlonkowie.Select(id => $"<span class=\"tytul\">{E(wgId[id].Label)}<sub>{E(wgId[id].Suffix)}</sub></span>"))}</h2>");
-        sb.Append($"<p class=\"powod\">{E(Teksty.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod, jezyk))}</p>");
+        sb.Append($"<p class=\"powod\">{E(Texts.Reason(g.Pairs.FirstOrDefault()?.Reason ?? g.Reason, jezyk))}</p>");
         if (!string.IsNullOrWhiteSpace(roz.Note)) sb.Append($"<p class=\"powod notatka\">{E(Tx(jezyk, "raport.notatka"))}: {E(roz.Note)}</p>");
         sb.Append("</header>");
 
@@ -220,11 +220,11 @@ public static class Raport
             else if (odrzut) sb.Append($"<span class=\"stan odrzut\">{E(Tx(jezyk, "raport.doOdrzucenia"))}</span>");
             sb.Append("</div>");
             sb.Append($"<div class=\"nazwa-poz\">{E(p.Slot)}_{p.Number:d3}<sub>{E(p.Suffix)}</sub></div>");
-            if (g.Punkty.TryGetValue(id, out var pkt))
+            if (g.Scores.TryGetValue(id, out var pkt))
             {
                 sb.Append($"<div class=\"punkty\"><b>{pkt.ToString("F0", inv)}</b><span>{E(Tx(jezyk, "raport.pktJakosci"))}</span></div>");
-                if (g.Rozpiska.TryGetValue(id, out var r))
-                    sb.Append($"<div class=\"rozpiska\">{E(r.Tekst(jezyk))}</div>");
+                if (g.ScoreBreakdown.TryGetValue(id, out var r))
+                    sb.Append($"<div class=\"rozpiska\">{E(r.Text(jezyk))}</div>");
             }
             var med = p.Textures.Count > 0
                 ? p.Textures.OrderBy(t => (long)t.Width * t.Height).ElementAt(p.Textures.Count / 2)
@@ -261,7 +261,7 @@ public static class Raport
                 for (int k = 0; k < inny.Textures.Count; k++)
                 {
                     if (uzyte[czlonkowie[i]].Contains(k)) continue;
-                    if (Porownanie.TaSamaGrafika(wz, inny.Textures[k])) { trafienia[i] = k; break; }
+                    if (DuplicateFinder.SameGraphic(wz, inny.Textures[k])) { trafienia[i] = k; break; }
                 }
                 if (trafienia[i] >= 0) uzyte[czlonkowie[i]].Add(trafienia[i]);
             }
@@ -301,11 +301,11 @@ public static class Raport
     // ===================== CSV =====================
 
     /// <summary>Tabela grup i decyzji: jeden wiersz na czlonka grupy. Separator `;` dla PL (Excel PL), `,` dla EN; UTF-8 z BOM.</summary>
-    public static string Csv(Catalog katalog, WynikPorownania wynik, Func<Grupa, Resolution> rozstrzygnij = null, string jezyk = "pl")
+    public static string Csv(Catalog katalog, ComparisonResult wynik, Func<DuplicateGroup, Resolution> rozstrzygnij = null, string jezyk = "pl")
     {
         rozstrzygnij ??= g => Rozstrzygniecia.Resolve(g, null);
         var wgId = katalog.Garments.ToDictionary(p => p.Id);
-        var sep = Teksty.T(jezyk, "raport.csv.separator");
+        var sep = Texts.T(jezyk, "raport.csv.separator");
         if (sep.Length != 1) sep = ";";
         var inv = CultureInfo.InvariantCulture;
         string Pole(object v)
@@ -316,21 +316,21 @@ public static class Raport
         var kolumny = new[] { "grupa", "werdykt", "powod", "pozycja", "sufiks", "zrodlo", "kontener", "plik", "punkty", "stan", "notatka", "wierzcholki", "trojkaty", "tekstur", "bajty" };
         var sb = new StringBuilder();
         sb.Append('\uFEFF');   // BOM: Excel rozpoznaje UTF-8
-        sb.AppendLine(string.Join(sep, kolumny.Select(k => Pole(Teksty.T(jezyk, "raport.csv." + k)))));
+        sb.AppendLine(string.Join(sep, kolumny.Select(k => Pole(Texts.T(jezyk, "raport.csv." + k)))));
         int nr = 0;
-        foreach (var g in wynik.Grupy.Where(g => g.Pozycje != null && g.Pozycje.All(wgId.ContainsKey)))
+        foreach (var g in wynik.Groups.Where(g => g.Members != null && g.Members.All(wgId.ContainsKey)))
         {
             nr++;
             var r = rozstrzygnij(g);
-            var powod = Teksty.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod, jezyk);
-            foreach (var id in g.Pozycje)
+            var powod = Texts.Reason(g.Pairs.FirstOrDefault()?.Reason ?? g.Reason, jezyk);
+            foreach (var id in g.Members)
             {
                 var p = wgId[id];
                 var stan = r.Ignored ? "zignorowana" : (r.Winner == id && r.Rejected.Count > 0) ? "zostaje" : r.Rejected.Contains(id) ? "odrzucona" : "bezZmian";
                 var wiersz = new object[]
                 {
-                    nr, Teksty.T(jezyk, "werdykt." + g.Werdykt), powod, $"{p.Slot}_{p.Number:d3}", p.Suffix, p.PackName, p.Container, p.ModelPath,
-                    g.Punkty.TryGetValue(id, out var pkt) ? pkt.ToString("F0", inv) : "", Teksty.T(jezyk, "raport.stan." + stan), r.Note ?? "",
+                    nr, Texts.Verdict(g.Verdict, jezyk), powod, $"{p.Slot}_{p.Number:d3}", p.Suffix, p.PackName, p.Container, p.ModelPath,
+                    g.Scores.TryGetValue(id, out var pkt) ? pkt.ToString("F0", inv) : "", Texts.T(jezyk, "raport.stan." + stan), r.Note ?? "",
                     p.Geometry?.Vertices ?? 0, p.Geometry?.Triangles ?? 0, p.Textures.Count, p.ModelSize + p.Textures.Sum(t => t.Size),
                 };
                 sb.AppendLine(string.Join(sep, wiersz.Select(Pole)));
@@ -339,12 +339,12 @@ public static class Raport
         return sb.ToString();
     }
 
-    static string Klasa(string werdykt) => werdykt switch
+    static string Klasa(Verdict werdykt) => werdykt switch
     {
-        Porownanie.Duplikat => "w-duplikat",
-        Porownanie.Nadzbior => "w-nadzbior",
-        Porownanie.DoWgladu => "w-wglad",
-        Porownanie.Przemalowanie => "w-przemalowanie",
+        Verdict.Duplicate => "w-duplikat",
+        Verdict.Superset => "w-nadzbior",
+        Verdict.NeedsReview => "w-wglad",
+        Verdict.Retexture => "w-przemalowanie",
         _ => "w-inne"
     };
 
@@ -352,14 +352,14 @@ public static class Raport
 
     // ===================== naglowek dokumentu =====================
 
-    static string Naglowek(Catalog katalog, WynikPorownania wynik, List<Grupa> grupy, int doOdrzucenia, long doOdzyskania, string jezyk, string tytul)
+    static string Naglowek(Catalog katalog, ComparisonResult wynik, List<DuplicateGroup> grupy, int doOdrzucenia, long doOdzyskania, string jezyk, string tytul)
     {
-        int Ile(string w) => grupy.Count(g => g.Werdykt == w);
+        int Ile(Verdict w) => grupy.Count(g => g.Verdict == w);
         var kultura = CultureInfo.InvariantCulture;
         string T(string k, params (string k, object v)[] p) => E(Tx(jezyk, k, p));
-        string W(string w) => E(Teksty.T(jezyk, "werdykt." + w));
+        string W(Verdict w) => E(Texts.Verdict(w, jezyk));
         var naglowek = string.IsNullOrWhiteSpace(tytul) ? Tx(jezyk, "raport.tytul") : Tx(jezyk, "raport.tytulProjektu", ("nazwa", tytul));
-        var lang = Teksty.Jezyki.Contains((jezyk ?? "pl").ToLowerInvariant()) ? jezyk.ToLowerInvariant() : "pl";
+        var lang = Texts.Languages.Contains((jezyk ?? "pl").ToLowerInvariant()) ? jezyk.ToLowerInvariant() : "pl";
 
         return $$"""
         <!doctype html>
@@ -511,13 +511,13 @@ public static class Raport
             <span class="chip">{{T("raport.widocznychGrup")}} <b id="licznik">0</b></span>
             <span class="chip">{{T("raport.doOdrzuceniaN")}} <b>{{doOdrzucenia}}</b></span>
             <span class="chip">{{T("raport.odzyskaSie")}} <b>{{(doOdzyskania / 1024.0 / 1024.0).ToString("F1", kultura)}} MB</b></span>
-            <span class="chip">{{T("raport.zbudowano")}} <b>{{E(wynik.Zbudowany ?? "")}}</b></span>
+            <span class="chip">{{T("raport.zbudowano")}} <b>{{E(wynik.Built ?? "")}}</b></span>
           </div>
           <div class="chipy">
-            <button data-filtr="DUPLIKAT" aria-pressed="false">{{W(Porownanie.Duplikat)}} {{Ile(Porownanie.Duplikat)}}</button>
-            <button data-filtr="DUPLIKAT-NADZBIOR" aria-pressed="false">{{W(Porownanie.Nadzbior)}} {{Ile(Porownanie.Nadzbior)}}</button>
-            <button data-filtr="DO WGLADU" aria-pressed="false">{{W(Porownanie.DoWgladu)}} {{Ile(Porownanie.DoWgladu)}}</button>
-            <button data-filtr="PRZEMALOWANIE" aria-pressed="false">{{W(Porownanie.Przemalowanie)}} {{Ile(Porownanie.Przemalowanie)}}</button>
+            <button data-filtr="duplicate" aria-pressed="false">{{W(Verdict.Duplicate)}} {{Ile(Verdict.Duplicate)}}</button>
+            <button data-filtr="superset" aria-pressed="false">{{W(Verdict.Superset)}} {{Ile(Verdict.Superset)}}</button>
+            <button data-filtr="needsReview" aria-pressed="false">{{W(Verdict.NeedsReview)}} {{Ile(Verdict.NeedsReview)}}</button>
+            <button data-filtr="retexture" aria-pressed="false">{{W(Verdict.Retexture)}} {{Ile(Verdict.Retexture)}}</button>
           </div>
           <input id="szukaj" type="search" placeholder="{{T("raport.szukaj")}}">
           <button id="motyw">{{T("raport.motyw")}}</button>

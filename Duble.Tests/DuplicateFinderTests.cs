@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Duble.Tests;
 
 /// <summary>Werdykty na SZTUCZNYCH pozycjach (odciski wpisane recznie) — bez plikow, bez CodeWalkera.</summary>
-public class PorownanieTests
+public class DuplicateFinderTests
 {
+    static readonly IDuplicateFinder Finder =
+        new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IDuplicateFinder>();
+
     static float[] Hist(int szczyt) { var h = new float[GeometryFingerprint.HistogramBuckets]; h[szczyt] = 0.7f; h[Math.Min(GeometryFingerprint.HistogramBuckets - 1, szczyt + 1)] = 0.3f; return h; }
 
     static Garment Poz(string paczka, string typ, int numer, string hashPoz, int tri, int wierz, float[] hist, params string[] shaTekstur)
@@ -23,10 +27,10 @@ public class PorownanieTests
         return p;
     }
 
-    static WynikPorownania Uruchom(Thresholds progi, params Garment[] poz)
+    static ComparisonResult Uruchom(Thresholds progi, params Garment[] poz)
     {
         var k = new Catalog(); k.Upsert(poz);
-        return Porownanie.Znajdz(k, s => { }, progi);
+        return Finder.Find(k, progi);
     }
 
     [Fact]
@@ -36,11 +40,11 @@ public class PorownanieTests
         var b = Poz("p2", "jbib", 7, "H1", 1000, 600, Hist(10), "S1", "S2");
         b.Textures.ForEach(t => t.MipLevels = 1);   // b gorsze: bez mipow
         var w = Uruchom(null, a, b);
-        var g = Assert.Single(w.Grupy);
-        Assert.Equal(Porownanie.Duplikat, g.Werdykt);
-        Assert.Equal(a.Id, g.Zwyciezca);
-        Assert.Equal("SAME_MODEL_SAME_TEX", g.Pary[0].Powod.Kod);
-        Assert.Equal(Grupa.PoliczId(new[] { a.Id, b.Id }), g.Id);
+        var g = Assert.Single(w.Groups);
+        Assert.Equal(Verdict.Duplicate, g.Verdict);
+        Assert.Equal(a.Id, g.Winner);
+        Assert.Equal("SAME_MODEL_SAME_TEX", g.Pairs[0].Reason.Code);
+        Assert.Equal(DuplicateGroup.ComputeId(new[] { a.Id, b.Id }), g.Id);
     }
 
     [Fact]
@@ -48,9 +52,9 @@ public class PorownanieTests
     {
         var a = Poz("p1", "jbib", 1, "H1", 1000, 600, Hist(10), "S1", "S2", "S3");
         var b = Poz("p2", "jbib", 7, "H1", 1000, 600, Hist(10), "S1", "S2");
-        var g = Assert.Single(Uruchom(null, a, b).Grupy);
-        Assert.Equal(Porownanie.Nadzbior, g.Werdykt);
-        Assert.Equal("SAME_MODEL_SUBSET", g.Pary[0].Powod.Kod);
+        var g = Assert.Single(Uruchom(null, a, b).Groups);
+        Assert.Equal(Verdict.Superset, g.Verdict);
+        Assert.Equal("SAME_MODEL_SUBSET", g.Pairs[0].Reason.Code);
     }
 
     [Fact]
@@ -59,8 +63,8 @@ public class PorownanieTests
         var a = Poz("p1", "jbib", 1, "H1", 1000, 600, Hist(10), "S1", "S2");
         var b = Poz("p2", "jbib", 7, "H1", 1000, 600, Hist(10), "S8", "S9");
         b.Textures.ForEach(t => { t.PerceptualHash = new ulong[] { ulong.MaxValue, 0, ulong.MaxValue, 0 }; t.ColorSignature = Convert.ToBase64String(Enumerable.Repeat((byte)200, 192).ToArray()); });
-        var g = Assert.Single(Uruchom(null, a, b).Grupy);
-        Assert.Equal(Porownanie.Przemalowanie, g.Werdykt);
+        var g = Assert.Single(Uruchom(null, a, b).Groups);
+        Assert.Equal(Verdict.Retexture, g.Verdict);
     }
 
     [Fact]
@@ -69,7 +73,7 @@ public class PorownanieTests
         // przypadek rekawiczek hand_000 (3560 tri) vs hand_025 (2480 tri): histogram blisko, ale to rozne modele
         var a = Poz("p1", "hand", 0, "H1", 3560, 2000, Hist(10), "S1");
         var b = Poz("p1", "hand", 25, "H2", 2480, 1500, Hist(10), "S1");
-        Assert.Empty(Uruchom(null, a, b).Grupy);
+        Assert.Empty(Uruchom(null, a, b).Groups);
     }
 
     [Fact]
@@ -77,10 +81,10 @@ public class PorownanieTests
     {
         var a = Poz("p1", "jbib", 1, "H1", 1000, 600, Hist(10), "S1", "S2");
         var b = Poz("p2", "jbib", 7, "H2", 1000, 600, Hist(12), "S1", "S2");   // hist rozny -> odleglosc 2.0 (max)
-        Assert.Empty(Uruchom(null, a, b).Grupy);
+        Assert.Empty(Uruchom(null, a, b).Groups);
         var luzne = new Thresholds { GeometrySimilar = 2.5, GeometryIdentical = 2.5 };
-        var g = Assert.Single(Uruchom(luzne, a, b).Grupy);
-        Assert.Equal(Porownanie.Duplikat, g.Werdykt);
+        var g = Assert.Single(Uruchom(luzne, a, b).Groups);
+        Assert.Equal(Verdict.Duplicate, g.Verdict);
     }
 
     [Fact]
@@ -91,18 +95,18 @@ public class PorownanieTests
         var c = Poz("p3", "jbib", 3, "H3", 1000, 600, Hist(30), "S3");
         var k = new Catalog(); k.Upsert(new[] { a, b, c });
         var postepy = new List<ProgressReport>();
-        Porownanie.Znajdz(k, null, null, postepy.Add, default);
-        Assert.Contains(postepy, p => p.Stage == "porownaj" && p.Done == 3 && p.Total == 3);
+        Finder.Find(k, null, new Progress<ProgressReport>(postepy.Add));
+        Assert.Contains(postepy, p => p.Stage == "compare" && p.Done == 3 && p.Total == 3);
         var cts = new System.Threading.CancellationTokenSource(); cts.Cancel();
-        Assert.ThrowsAny<OperationCanceledException>(() => Porownanie.Znajdz(k, null, null, null, cts.Token));
+        Assert.ThrowsAny<OperationCanceledException>(() => Finder.Find(k, null, null, cts.Token));
     }
 
     [Fact]
     public void Id_grupy_nie_zalezy_od_kolejnosci_czlonkow()
     {
-        Assert.Equal(Grupa.PoliczId(new[] { "b", "a", "c" }), Grupa.PoliczId(new[] { "c", "b", "a" }));
-        Assert.NotEqual(Grupa.PoliczId(new[] { "a", "b" }), Grupa.PoliczId(new[] { "a", "c" }));
-        Assert.Equal(16, Grupa.PoliczId(new[] { "x" }).Length);
+        Assert.Equal(DuplicateGroup.ComputeId(new[] { "b", "a", "c" }), DuplicateGroup.ComputeId(new[] { "c", "b", "a" }));
+        Assert.NotEqual(DuplicateGroup.ComputeId(new[] { "a", "b" }), DuplicateGroup.ComputeId(new[] { "a", "c" }));
+        Assert.Equal(16, DuplicateGroup.ComputeId(new[] { "x" }).Length);
     }
 
     [Fact]

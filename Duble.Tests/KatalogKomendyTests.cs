@@ -39,9 +39,9 @@ public class KatalogKomendyTests
             Assert.True(b.GetProperty("bezMipow").GetBoolean());
             // the interface reads gen9 as a boolean; the format being an enum in Core must not leak as a number
             Assert.Equal(JsonValueKind.False, b.GetProperty("gen9").ValueKind);
-            Assert.Equal(Porownanie.Duplikat, b.GetProperty("grupa").GetString());
+            Assert.Equal(Verdict.Duplicate.ToKey(), b.GetProperty("grupa").GetString());
             var c = l.GetProperty("pozycje").EnumerateArray().First(p => p.GetProperty("typ").GetString() == "lowr" && p.GetProperty("numer").GetInt32() == 3);
-            Assert.Equal(Porownanie.Przemalowanie, c.GetProperty("grupa").GetString());
+            Assert.Equal(Verdict.Retexture.ToKey(), c.GetProperty("grupa").GetString());
 
             Assert.Equal(3, (await Wywolaj(m, "catalog.list", "{\"sloty\":[\"feet\"]}")).GetProperty("pozycje").GetArrayLength());
             Assert.Equal(3, (await Wywolaj(m, "catalog.list", "{\"zrodla\":[\"z-p2\"]}")).GetProperty("pozycje").GetArrayLength());
@@ -51,7 +51,7 @@ public class KatalogKomendyTests
             Assert.Equal(1, (await Wywolaj(m, "catalog.list", "{\"szukaj\":\"jbib_007\"}")).GetProperty("pozycje").GetArrayLength());
 
             // zignorowana grupa nie liczy sie jako "w grupie"
-            var efg = Duble.App.Komendy.Grupy.Zywe(s).First(x => x.g.Pozycje.Count == 3).g;
+            var efg = Duble.App.Komendy.Grupy.Zywe(s).First(x => x.g.Members.Count == 3).g;
             s.Project.Decisions[efg.Id] = new Decision { Ignored = true };
             Assert.Equal(4, (await Wywolaj(m, "catalog.list", "{\"wGrupie\":true}")).GetProperty("pozycje").GetArrayLength());
 
@@ -63,7 +63,7 @@ public class KatalogKomendyTests
             Assert.EndsWith("p2", poz.GetProperty("zrodloSciezka").GetString());
             Assert.Equal(1, it.GetProperty("grupy").GetArrayLength());
             var gr = it.GetProperty("grupy")[0];
-            Assert.Equal(Porownanie.Duplikat, gr.GetProperty("werdykt").GetString());
+            Assert.Equal(Verdict.Duplicate.ToKey(), gr.GetProperty("werdykt").GetString());
             Assert.Equal("odrzucona", gr.GetProperty("stan").GetString());
             Assert.Equal(1, gr.GetProperty("inni").GetArrayLength());
             Assert.Equal("jbib_001", gr.GetProperty("inni")[0].GetProperty("nazwa").GetString());

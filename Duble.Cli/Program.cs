@@ -37,6 +37,8 @@ var katalogi = uslugi.GetRequiredService<ICatalogStore>();
 var indeksator = uslugi.GetRequiredService<IGarmentIndexer>();
 var archiwa = uslugi.GetRequiredService<IArchiveCache>();
 var odciskiTekstur = uslugi.GetRequiredService<ITextureFingerprinter>();
+var szukaczDupli = uslugi.GetRequiredService<IDuplicateFinder>();
+var porownania = uslugi.GetRequiredService<IComparisonStore>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -361,8 +363,8 @@ switch (cmd)
         {
             var katalog = katalogi.Load(sciezkaKatalogu);
             if (katalog.Garments.Count == 0) { Console.Error.WriteLine("[blad] pusty katalog — najpierw `duble indeks`"); return 1; }
-            var wynik = Porownanie.Znajdz(katalog, Log);
-            wynik.Zapisz(sciezkaDubli);
+            var wynik = szukaczDupli.Find(katalog);
+            porownania.Save(wynik, sciezkaDubli);
             Zastosowanie.ZapiszDecyzje(wynik, katalog, sciezkaDecyzji);
             Log($"duble:   {sciezkaDubli}");
             Log($"decyzje: {sciezkaDecyzji}  (mozesz poprawic TAK/NIE przed `zastosuj`)");
@@ -379,8 +381,8 @@ switch (cmd)
     case "raport":
         {
             var katalog = katalogi.Load(sciezkaKatalogu);
-            var wynik = WynikPorownania.Wczytaj(sciezkaDubli);
-            if (wynik.Grupy.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
+            var wynik = porownania.Load(sciezkaDubli);
+            if (wynik.Groups.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");
             Raport.Zbuduj(archiwa, katalog, wynik, plik, Log, jezyk);
             Log($"raport: {plik}");

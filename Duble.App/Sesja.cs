@@ -14,15 +14,20 @@ public sealed class Sesja
     readonly object klucz = new();
     readonly ICatalogStore katalogi;
     readonly IProjectStore projekty;
+    readonly IComparisonStore porownania;
+    readonly IDuplicateFinder szukaczDupli;
     readonly IClock zegar;
 
     public Sesja(ICatalogStore katalogi, IProjectStore projekty, IResolutionService rozstrzygniecia,
-                 IGarmentIndexer indeksator, IArchiveCache archiwa, IClock zegar)
+                 IGarmentIndexer indeksator, IArchiveCache archiwa, IComparisonStore porownania,
+                 IDuplicateFinder szukaczDupli, IClock zegar)
     {
         this.katalogi = katalogi;
         this.projekty = projekty;
         this.zegar = zegar;
         Rozstrzygniecia = rozstrzygniecia;
+        this.porownania = porownania;
+        this.szukaczDupli = szukaczDupli;
         Indeksator = indeksator;
         Archiwa = archiwa;
     }
@@ -48,7 +53,7 @@ public sealed class Sesja
     Dictionary<string, TextureInfo> teksturyWgSha;   // indeks sha -> TextureInfo (leniwy, kasowany po zmianie katalogu)
     public Project Project { get; private set; }
     public Catalog Catalog { get; private set; } = new();
-    public WynikPorownania Wynik { get; private set; }
+    public ComparisonResult Wynik { get; private set; }
     public bool Otwarty => Project != null;
     /// <summary>Project/katalog/wynik sie zmienil (po zapisie, indeksowaniu, usunieciu zrodla, porownaniu).</summary>
     public event Action Zmiana;
@@ -70,8 +75,8 @@ public sealed class Sesja
         var p = wczytany.Value;
         Directory.CreateDirectory(p.CacheFolder);
         var k = katalogi.Load(p.CatalogFile);
-        WynikPorownania w = null;
-        try { if (File.Exists(p.ComparisonFile)) w = WynikPorownania.Wczytaj(p.ComparisonFile); } catch { w = null; }
+        ComparisonResult w = null;
+        if (File.Exists(p.ComparisonFile)) w = porownania.Load(p.ComparisonFile);
         lock (klucz) { Project = p; Catalog = k; Wynik = w; teksturyWgSha = null; }
         Zmiana?.Invoke();
     }
@@ -84,7 +89,7 @@ public sealed class Sesja
             Directory.CreateDirectory(Project.CacheFolder);
             projekty.Save(Project);
             katalogi.Save(Catalog, Project.CatalogFile);
-            Wynik?.Zapisz(Project.ComparisonFile);
+            if (Wynik != null) porownania.Save(Wynik, Project.ComparisonFile);
         }
         Zmiana?.Invoke();
     }
@@ -151,15 +156,15 @@ public sealed class Sesja
         var projekt = Project ?? throw new InvalidOperationException("brak projektu");
         var kopia = KatalogWlaczony();
         var progi = projekt.Settings?.Thresholds ?? Thresholds.Default;
-        var wynik = Porownanie.Znajdz(kopia, null, progi, postep, ct);
+        var wynik = szukaczDupli.Find(kopia, progi, postep == null ? null : new Progress<ProgressReport>(postep), ct);
         lock (klucz)
         {
             // decyzje uzytkownika przechodza na nowe (mniejsze) grupy — po Zastosuj / ponownym indeksowaniu nic nie wraca do "do odrzucenia"
-            if (Wynik != null && projekt.Decisions.Count > 0 && Rozstrzygniecia.CarryOver(projekt.Decisions, Wynik.Grupy, wynik.Grupy) > 0)
+            if (Wynik != null && projekt.Decisions.Count > 0 && Rozstrzygniecia.CarryOver(projekt.Decisions, Wynik.Groups, wynik.Groups) > 0)
                 projekty.Save(projekt);
             Wynik = wynik;
             Directory.CreateDirectory(projekt.CacheFolder);
-            wynik.Zapisz(projekt.ComparisonFile);
+            porownania.Save(wynik, projekt.ComparisonFile);
         }
         Zmiana?.Invoke();
     }
@@ -229,13 +234,13 @@ public sealed class Sesja
         lock (klucz)
         {
             if (Project == null) return null;
-            int? duplikaty = Wynik == null ? null : Wynik.Grupy.Count(g => g.Werdykt == Porownanie.Duplikat || g.Werdykt == Porownanie.Nadzbior);
+            int? duplikaty = Wynik == null ? null : Wynik.Groups.Count(g => g.Verdict == Verdict.Duplicate || g.Verdict == Verdict.Superset);
             return new
             {
                 nazwa = Project.Name, sciezka = Project.Path,
                 zrodla = Project.Sources.Count, pozycje = Catalog.Garments.Count,
                 tekstury = Catalog.Garments.Sum(p => p.Textures.Count),
-                duplikaty, porownano = Wynik?.Zbudowany,
+                duplikaty, porownano = Wynik?.Built,
             };
         }
     }
