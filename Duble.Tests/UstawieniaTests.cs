@@ -18,7 +18,7 @@ public class UstawieniaTests
             u.Zapisz(plik);
             var w = Ustawienia.Wczytaj(plik);
             Assert.Equal("en", w.Jezyk); Assert.Equal("dark", w.Motyw); Assert.Equal(1200, w.Okno.W);
-            Assert.Equal(2, w.Ostatnie.Count); Assert.Equal(@"C:\a\A.duble", w.Ostatnie[0].Sciezka); Assert.Equal("B", w.Ostatnie[1].Nazwa);
+            Assert.Equal(2, w.Ostatnie.Count); Assert.Equal(@"C:\a\A.duble", w.Ostatnie[0].Sciezka); Assert.Equal("B", w.Ostatnie[1].Name);
         }
         finally { Directory.Delete(tmp, true); }
     }
@@ -35,6 +35,6 @@ public class UstawieniaTests
     {
         var u = new Ustawienia();
         for (int i = 0; i < 15; i++) u.ZanotujProjekt($@"C:\p{i}\P.duble", "P" + i);
-        Assert.Equal(10, u.Ostatnie.Count); Assert.Equal("P14", u.Ostatnie[0].Nazwa);
+        Assert.Equal(10, u.Ostatnie.Count); Assert.Equal("P14", u.Ostatnie[0].Name);
     }
 }

@@ -15,12 +15,14 @@ public sealed class Sesja
     readonly ICatalogStore katalogi;
     readonly IProjectStore projekty;
     readonly IComparisonStore porownania;
+    readonly IUndoStore cofki;
     readonly IDuplicateFinder szukaczDupli;
     readonly IClock zegar;
 
     public Sesja(ICatalogStore katalogi, IProjectStore projekty, IResolutionService rozstrzygniecia,
                  IGarmentIndexer indeksator, IArchiveCache archiwa, IComparisonStore porownania,
-                 IDuplicateFinder szukaczDupli, IClock zegar)
+                 IDuplicateFinder szukaczDupli, IApplyPlanner planista, IApplyExecutor wykonawca,
+                 IUndoStore cofki, IClock zegar)
     {
         this.katalogi = katalogi;
         this.projekty = projekty;
@@ -28,6 +30,9 @@ public sealed class Sesja
         Rozstrzygniecia = rozstrzygniecia;
         this.porownania = porownania;
         this.szukaczDupli = szukaczDupli;
+        this.cofki = cofki;
+        Planista = planista;
+        Wykonawca = wykonawca;
         Indeksator = indeksator;
         Archiwa = archiwa;
     }
@@ -37,6 +42,15 @@ public sealed class Sesja
 
     /// <summary>Ponowny odczyt zaindeksowanych plikow (miniatury, podglady) — trzyma otwarte archiwa.</summary>
     public IArchiveCache Archiwa { get; }
+
+    /// <summary>Plan zastosowania: co i dokad by poszlo.</summary>
+    public IApplyPlanner Planista { get; }
+
+    /// <summary>Wykonanie planu i cofanie.</summary>
+    public IApplyExecutor Wykonawca { get; }
+
+    /// <summary>Cofki z folderu historii projektu.</summary>
+    public IUndoStore Cofki => cofki;
 
     /// <summary>Reguly "kto zostaje" — komendy licza je dla grup, ktore pokazuja.</summary>
     public IResolutionService Rozstrzygniecia { get; }
@@ -178,7 +192,7 @@ public sealed class Sesja
         return pr.Sources.Find(z => z.Id == p.SourceId) ?? pr.Sources.Find(z => string.Equals(z.Name, p.PackName, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Folder kosza dla zrodla: `Ustawienia.Kosz` (wskazany folder) albo `_odrzucone` obok zrodla — w obu przypadkach z podfolderem o nazwie zrodla.</summary>
+    /// <summary>Folder kosza dla zrodla: `Ustawienia.BinFolder` (wskazany folder) albo `_odrzucone` obok zrodla — w obu przypadkach z podfolderem o nazwie zrodla.</summary>
     public string KoszDla(ProjectSource z)
     {
         var pr = Project; if (pr == null || z == null) return null;
@@ -200,16 +214,16 @@ public sealed class Sesja
     }
 
     /// <summary>Cel przenosin dla pozycji (null = zrodla nie ma w projekcie albo na dysku).</summary>
-    public CelPozycji Cel(Garment p)
+    public BinTarget Cel(Garment p)
     {
         var z = ZrodloPozycji(p);
         if (z == null || z.Path == null || !(Directory.Exists(z.Path) || File.Exists(z.Path))) return null;
-        return new CelPozycji { Korzen = z.Path, Kosz = KoszDla(z), Zrodlo = z.Name, ZrodloId = z.Id };
+        return new BinTarget { Root = z.Path, BinFolder = KoszDla(z), SourceName = z.Name, SourceId = z.Id };
     }
 
-    public PlanZastosowania Zaplanuj(IEnumerable<string> odrzucone)
+    public ApplyPlan Plan(IEnumerable<string> odrzucone)
     {
-        lock (klucz) return Zastosowanie.Zaplanuj(Catalog, odrzucone, Cel);
+        lock (klucz) return Planista.Plan(Catalog, odrzucone, Cel);
     }
 
     /// <summary>Pliki historii zastosowan (najnowsze pierwsze).</summary>

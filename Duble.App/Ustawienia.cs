@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 
 namespace Duble.App;
 
-public class OstatniProjekt { public string Sciezka { get; set; } public string Nazwa { get; set; } public string Ostatnio { get; set; } }
+public class OstatniProjekt { public string Sciezka { get; set; } public string Name { get; set; } public string Ostatnio { get; set; } }
 public class OknoStan { public double X { get; set; } public double Y { get; set; } public double W { get; set; } public double H { get; set; } public bool Maks { get; set; } }
 
 public class Ustawienia
@@ -44,7 +44,7 @@ public class Ustawienia
     public void ZanotujProjekt(string sciezka, string nazwa)
     {
         Ostatnie.RemoveAll(o => string.Equals(o.Sciezka, sciezka, StringComparison.OrdinalIgnoreCase));
-        Ostatnie.Insert(0, new OstatniProjekt { Sciezka = sciezka, Nazwa = nazwa, Ostatnio = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") });
+        Ostatnie.Insert(0, new OstatniProjekt { Sciezka = sciezka, Name = nazwa, Ostatnio = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") });
         if (Ostatnie.Count > MaksOstatnich) Ostatnie.RemoveRange(MaksOstatnich, Ostatnie.Count - MaksOstatnich);
     }
 

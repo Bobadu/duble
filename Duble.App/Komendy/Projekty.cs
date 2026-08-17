@@ -21,7 +21,7 @@ public static class Projekty
 
         m.Rejestruj("project.recent", _ => new
         {
-            ostatnie = m.Ustawienia.Ostatnie.Select(o => new { o.Sciezka, o.Nazwa, o.Ostatnio, istnieje = File.Exists(o.Sciezka) }).ToList(),
+            ostatnie = m.Ustawienia.Ostatnie.Select(o => new { o.Sciezka, o.Name, o.Ostatnio, istnieje = File.Exists(o.Sciezka) }).ToList(),
             folderDomyslny = Ustawienia.FolderProjektow,
         });
         m.Rejestruj("project.get", _ => new { projekt = s.Podsumowanie() });

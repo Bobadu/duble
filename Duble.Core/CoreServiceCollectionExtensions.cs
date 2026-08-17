@@ -1,4 +1,5 @@
 #nullable enable
+using Duble.Core.Apply;
 using Duble.Core.Comparison;
 using Duble.Core.Decisions;
 using Duble.Core.Fingerprints;
@@ -37,6 +38,10 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IQualityScorer, QualityScorer>();
         services.AddSingleton<IReasonFormatter, ReasonFormatter>();
         services.AddSingleton<IDuplicateFinder, DuplicateFinder>();
+
+        services.AddSingleton<IApplyPlanner, ApplyPlanner>();
+        services.AddSingleton<IApplyExecutor, ApplyExecutor>();
+        services.AddSingleton<IUndoStore, JsonUndoStore>();
 
         services.AddSingleton<ArchiveSourceReader>();
         services.AddSingleton<FolderSourceReader>();
