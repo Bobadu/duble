@@ -21,7 +21,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # CodeWalker.Core (dexyfex, MIT) is not part of this repo — build.ps1 clones it next to the
       # workspace at a pinned commit, exactly like a local build does.
