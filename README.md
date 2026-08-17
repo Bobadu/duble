@@ -15,8 +15,7 @@
 
 [Download](https://github.com/Bobadu/duble/releases/latest) ·
 [Website](https://qorion.net/duble) ·
-[How it works](docs/how-it-works.md) ·
-[Wersja polska](README.pl.md)
+[How it works](docs/how-it-works.md)
 
 <img src="docs/screenshots/en/duplicates.png" alt="Duble — the Duplicates screen" width="900">
 
