@@ -84,7 +84,38 @@ export class Widok3D {
 
   pokaz(slot) {
     this.widoczny = slot;
-    for (const [s, m] of Object.entries(this.modele)) m.obiekt.visible = s === slot;
+    for (const [s, m] of Object.entries(this.modele)) { this._krycie(s, s === slot ? 1 : 0, true); m.obiekt.visible = s === slot; }
+    this.render();
+  }
+
+  /** Krycie modelu w slocie (0..1). `glowny` = ten model zapisuje glebie (zaslania swoje wnetrze i drugi model). */
+  _krycie(slot, alfa, glowny = true) {
+    const m = this.modele[slot]; if (!m) return;
+    m.obiekt.visible = alfa > 0.004;
+    m.obiekt.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      o.renderOrder = glowny ? 0 : 1;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const mt of mats) {
+        if (!mt) continue;
+        if (mt.__krycie0 === undefined) { mt.__krycie0 = mt.opacity ?? 1; mt.__przez0 = !!mt.transparent; mt.__zapisZ0 = mt.depthWrite !== false; }
+        const a = mt.__krycie0 * alfa;
+        mt.opacity = a;
+        mt.transparent = mt.__przez0 || a < 0.996;
+        mt.depthWrite = mt.__zapisZ0 && (glowny || a > 0.996);
+        mt.needsUpdate = true;
+      }
+    });
+  }
+
+  /** Przenikanie miedzy dwoma slotami: t=0 tylko A, t=1 tylko B, pomiedzy — slabszy model przeswituje jak duch
+   *  po silniejszym (silniejszy zapisuje glebie, wiec nie widac przez niego wnetrza siatki). */
+  mieszaj(t, slotA = 'A', slotB = 'B') {
+    t = Math.max(0, Math.min(1, Number(t) || 0));
+    const aGlowny = 1 - t >= t;
+    this._krycie(slotA, 1 - t, aGlowny);
+    this._krycie(slotB, t, !aGlowny);
+    this.widoczny = aGlowny ? slotA : slotB;
     this.render();
   }
 
