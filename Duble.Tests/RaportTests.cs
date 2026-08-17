@@ -24,14 +24,14 @@ public class RaportTests
         {
             var efg = wynik.Grupy.First(g => g.Pozycje.Count == 3);
             var ab = wynik.Grupy.First(g => g.Werdykt == Porownanie.Duplikat && g.Pozycje.Count == 2);
-            var decyzje = new Dictionary<string, Decyzja>
+            var decyzje = new Dictionary<string, Decision>
             {
-                [efg.Id] = new Decyzja { Ignoruj = true, Notatka = "different boots" },
-                [ab.Id] = new Decyzja { Zwyciezca = ab.Pozycje[1], Odrzucone = { ab.Pozycje[0] } },
+                [efg.Id] = new Decision { Ignored = true, Note = "different boots" },
+                [ab.Id] = new Decision { Winner = ab.Pozycje[1], Rejected = { ab.Pozycje[0] } },
             };
             var plik = Path.Combine(tmp, "r.html");
             var log = new List<string>();
-            Raport.Zbuduj(kat, wynik, plik, log.Add, "en", g => Rozstrzygniecie.Policz(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "My project");
+            Raport.Zbuduj(kat, wynik, plik, log.Add, "en", g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "My project");
             var html = File.ReadAllText(plik);
             Assert.Contains("<html lang=\"en\">", html);
             Assert.Contains("Duble — My project", html);
@@ -63,8 +63,8 @@ public class RaportTests
         try
         {
             var efg = wynik.Grupy.First(g => g.Pozycje.Count == 3);
-            var decyzje = new Dictionary<string, Decyzja> { [efg.Id] = new Decyzja { Ignoruj = true, Notatka = "inne; buty" } };
-            var csv = Raport.Csv(kat, wynik, g => Rozstrzygniecie.Policz(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "pl");
+            var decyzje = new Dictionary<string, Decision> { [efg.Id] = new Decision { Ignored = true, Note = "inne; buty" } };
+            var csv = Raport.Csv(kat, wynik, g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "pl");
             Assert.StartsWith("\uFEFF", csv);
             var linie = csv.TrimEnd('\r', '\n').Split('\n').Select(l => l.TrimEnd('\r')).ToList();
             Assert.Equal(1 + 7, linie.Count);                       // naglowek + 7 czlonkow (2+2+3)

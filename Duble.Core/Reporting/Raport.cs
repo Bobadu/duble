@@ -22,6 +22,10 @@ namespace Duble.Core.Reporting;
 
 public static class Raport
 {
+    // Raport is still a static class; it becomes HtmlReportBuilder with its dependencies injected in a later
+    // pull request. Until then it keeps one instance of the default resolution rules.
+    static readonly IResolutionService Rozstrzygniecia = new ResolutionService();
+
     const int Bok = 96;              // bok miniatury w pikselach
     const int MaxWierszy = 12;       // ile par tekstur pokazujemy na grupe
     const int MaxUnikalnych = 8;     // ile tekstur "tylko tutaj" na czlonka
@@ -41,10 +45,10 @@ public static class Raport
     /// <summary>Samowystarczalny raport HTML. `rozstrzygnij` (aplikacja: decyzje uzytkownika) mowi, kto zostaje / jest odrzucony /
     /// zignorowany; brak = domyslne z porownania. `tytul` = nazwa projektu (naglowek strony).</summary>
     public static void Zbuduj(Catalog katalog, WynikPorownania wynik, string plik, Action<string> log, string jezyk = "pl",
-                              Func<Grupa, Rozstrzygniecie> rozstrzygnij = null, string tytul = null)
+                              Func<Grupa, Resolution> rozstrzygnij = null, string tytul = null)
     {
         log ??= _ => { };
-        rozstrzygnij ??= g => Rozstrzygniecie.Policz(g, null);
+        rozstrzygnij ??= g => Rozstrzygniecia.Resolve(g, null);
         var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var kolejnosc = new Dictionary<string, int>
         {
@@ -62,8 +66,8 @@ public static class Raport
         foreach (var g in grupy)
         {
             var r = rozstrzygniecia[g];
-            if (r.Ignoruj) continue;
-            foreach (var id in r.Odrzucone.Where(wgId.ContainsKey))
+            if (r.Ignored) continue;
+            foreach (var id in r.Rejected.Where(wgId.ContainsKey))
             {
                 doOdrzucenia++;
                 doOdzyskania += wgId[id].ModelSize + wgId[id].Textures.Sum(t => t.Size);
@@ -177,10 +181,10 @@ public static class Raport
 
     // ===================== karta grupy =====================
 
-    static string Karta(Grupa g, Dictionary<string, Garment> wgId, string jezyk, Rozstrzygniecie roz)
+    static string Karta(Grupa g, Dictionary<string, Garment> wgId, string jezyk, Resolution roz)
     {
-        roz ??= Rozstrzygniecie.Policz(g, null);
-        var zwyciezca = roz.Zwyciezca ?? g.Zwyciezca;
+        roz ??= Rozstrzygniecia.Resolve(g, null);
+        var zwyciezca = roz.Winner ?? g.Zwyciezca;
         var czlonkowie = g.Pozycje.OrderByDescending(id => id == zwyciezca ? 1 : 0)
                                    .ThenByDescending(id => g.Punkty.TryGetValue(id, out var p) ? p : 0)
                                    .ToList();
@@ -194,11 +198,11 @@ public static class Raport
         // --- naglowek ---
         sb.Append("<header class=\"glowa\">");
         sb.Append($"<span class=\"odznaka {Klasa(g.Werdykt)}\">{E(Teksty.T(jezyk, "werdykt." + g.Werdykt))}</span>");
-        if (roz.Ignoruj) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.zignorowana"))}</span>");
-        else if (!roz.Domyslna) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.twojaDecyzja"))}</span>");
+        if (roz.Ignored) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.zignorowana"))}</span>");
+        else if (!roz.IsDefault) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.twojaDecyzja"))}</span>");
         sb.Append($"<h2>{string.Join(" <span class=\"rowna\">=</span> ", czlonkowie.Select(id => $"<span class=\"tytul\">{E(wgId[id].Label)}<sub>{E(wgId[id].Suffix)}</sub></span>"))}</h2>");
         sb.Append($"<p class=\"powod\">{E(Teksty.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod, jezyk))}</p>");
-        if (!string.IsNullOrWhiteSpace(roz.Notatka)) sb.Append($"<p class=\"powod notatka\">{E(Tx(jezyk, "raport.notatka"))}: {E(roz.Notatka)}</p>");
+        if (!string.IsNullOrWhiteSpace(roz.Note)) sb.Append($"<p class=\"powod notatka\">{E(Tx(jezyk, "raport.notatka"))}: {E(roz.Note)}</p>");
         sb.Append("</header>");
 
         // --- panele pozycji ---
@@ -206,8 +210,8 @@ public static class Raport
         foreach (var id in czlonkowie)
         {
             var p = wgId[id];
-            bool wygrywa = !roz.Ignoruj && id == zwyciezca && roz.Odrzucone.Count > 0;
-            bool odrzut = !roz.Ignoruj && roz.Odrzucone.Contains(id);
+            bool wygrywa = !roz.Ignored && id == zwyciezca && roz.Rejected.Count > 0;
+            bool odrzut = !roz.Ignored && roz.Rejected.Contains(id);
             string stan = wygrywa ? "wygrywa" : odrzut ? "odrzut" : "";
             sb.Append($"<section class=\"panel {stan}\">");
             sb.Append("<div class=\"panel-glowa\">");
@@ -282,7 +286,7 @@ public static class Raport
             var p = wgId[id];
             var unikalne = Enumerable.Range(0, p.Textures.Count).Where(k => !uzyte[id].Contains(k)).ToList();
             if (unikalne.Count == 0) continue;
-            bool stracisz = !roz.Ignoruj && roz.Odrzucone.Contains(id);
+            bool stracisz = !roz.Ignored && roz.Rejected.Contains(id);
             sb.Append($"<h4>{E(Tx(jezyk, "raport.tylkoW"))} <em>{E(p.Label)}</em> — {E(Tx(jezyk, "raport.tekstur", ("n", unikalne.Count)))}{(stracisz ? $" <span class=\"zle\">{E(Tx(jezyk, "raport.stracisz"))}</span>" : "")}</h4>");
             sb.Append("<div class=\"pasek\">");
             foreach (var k in unikalne.Take(MaxUnikalnych)) sb.Append(Kafelek(p.Textures[k], jezyk));
@@ -297,9 +301,9 @@ public static class Raport
     // ===================== CSV =====================
 
     /// <summary>Tabela grup i decyzji: jeden wiersz na czlonka grupy. Separator `;` dla PL (Excel PL), `,` dla EN; UTF-8 z BOM.</summary>
-    public static string Csv(Catalog katalog, WynikPorownania wynik, Func<Grupa, Rozstrzygniecie> rozstrzygnij = null, string jezyk = "pl")
+    public static string Csv(Catalog katalog, WynikPorownania wynik, Func<Grupa, Resolution> rozstrzygnij = null, string jezyk = "pl")
     {
-        rozstrzygnij ??= g => Rozstrzygniecie.Policz(g, null);
+        rozstrzygnij ??= g => Rozstrzygniecia.Resolve(g, null);
         var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var sep = Teksty.T(jezyk, "raport.csv.separator");
         if (sep.Length != 1) sep = ";";
@@ -322,11 +326,11 @@ public static class Raport
             foreach (var id in g.Pozycje)
             {
                 var p = wgId[id];
-                var stan = r.Ignoruj ? "zignorowana" : (r.Zwyciezca == id && r.Odrzucone.Count > 0) ? "zostaje" : r.Odrzucone.Contains(id) ? "odrzucona" : "bezZmian";
+                var stan = r.Ignored ? "zignorowana" : (r.Winner == id && r.Rejected.Count > 0) ? "zostaje" : r.Rejected.Contains(id) ? "odrzucona" : "bezZmian";
                 var wiersz = new object[]
                 {
                     nr, Teksty.T(jezyk, "werdykt." + g.Werdykt), powod, $"{p.Slot}_{p.Number:d3}", p.Suffix, p.PackName, p.Container, p.ModelPath,
-                    g.Punkty.TryGetValue(id, out var pkt) ? pkt.ToString("F0", inv) : "", Teksty.T(jezyk, "raport.stan." + stan), r.Notatka ?? "",
+                    g.Punkty.TryGetValue(id, out var pkt) ? pkt.ToString("F0", inv) : "", Teksty.T(jezyk, "raport.stan." + stan), r.Note ?? "",
                     p.Geometry?.Vertices ?? 0, p.Geometry?.Triangles ?? 0, p.Textures.Count, p.ModelSize + p.Textures.Sum(t => t.Size),
                 };
                 sb.AppendLine(string.Join(sep, wiersz.Select(Pole)));

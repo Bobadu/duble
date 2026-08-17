@@ -52,7 +52,7 @@ public class KatalogKomendyTests
 
             // zignorowana grupa nie liczy sie jako "w grupie"
             var efg = Duble.App.Komendy.Grupy.Zywe(s).First(x => x.g.Pozycje.Count == 3).g;
-            s.Projekt.Decyzje[efg.Id] = new Decyzja { Ignoruj = true };
+            s.Project.Decisions[efg.Id] = new Decision { Ignored = true };
             Assert.Equal(4, (await Wywolaj(m, "catalog.list", "{\"wGrupie\":true}")).GetProperty("pozycje").GetArrayLength());
 
             var it = await Wywolaj(m, "catalog.item", "{\"id\":\"" + b.GetProperty("id").GetString() + "\"}");

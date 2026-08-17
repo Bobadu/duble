@@ -65,8 +65,8 @@ Indexing/       IGarmentIndexer, GarmentIndexer, IndexOptions, IndexReport
 Comparison/     IDuplicateFinder, DuplicateFinder, Verdict, ComparisonResult, DuplicateGroup, GarmentPair,
                 Thresholds, IQualityScorer, QualityScorer, QualityScore, Reason, IReasonFormatter
 Decisions/      Decision, Resolution, IResolutionService, ResolutionService
-Projects/       Project, ProjectSource, ProjectSettings, ProjectPaths, IProjectStore, JsonProjectStore,
-                ProjectMigration
+Projects/       Project, ProjectSource, ProjectSettings, SourceKind, SourceFormat,
+                IProjectStore, JsonProjectStore
 Storage/        ICatalogStore, JsonCatalogStore, IComparisonStore, JsonComparisonStore, IUndoStore, JsonUndoStore
 Apply/          IApplyPlanner, ApplyPlanner, IApplyExecutor, ApplyExecutor, ApplyPlan, PlannedGarment,
                 FileMove, FileMoveState, BinTarget, UndoLog, FileRestore, UndoOutcome
@@ -208,36 +208,24 @@ public enum SourceFormat { Unknown, Legacy, Enhanced, Mixed }
 
 `Verdict` keeps its declaration order — the app sorts groups by it (duplicate first, retexture last).
 
-## On-disk formats and migration
+## On-disk formats
 
 JSON written by Core uses `JsonNamingPolicy.CamelCase` and `JsonStringEnumConverter` (camelCase), so a verdict
 reads `"duplicate"` and a garment reads `{"id": …, "packName": …, "slot": …}`.
 
-**The `.duble` project file** goes to version 2 with English keys. `JsonProjectStore.Load` detects version 1
-(Polish keys, `"Wersja": 1` or no version at all), translates it in memory and saves it back in the new shape on
-the next save. Nothing is lost and the user is not asked:
-
-| v1 | v2 |
-|---|---|
-| `Wersja` | `version` (2) |
-| `Nazwa`, `Utworzony` | `name`, `created` |
-| `Zrodla[].{Id,Sciezka,Nazwa,Wlaczone,Typ,Format,Zaindeksowano}` | `sources[].{id,path,name,enabled,kind,format,indexedAt}` |
-| `Decyzje{}` (key = group id) | `decisions{}` — **keys unchanged** |
-| `Decyzje[].{Zwyciezca,Odrzucone,Ignoruj,Notatka}` | `{winner,rejected,ignored,note}` |
-| `Ustawienia.{Kosz,Progi}` | `settings.{binFolder,thresholds}` |
-| `Progi.{GeoIdentyczna,…}` | `thresholds.{geometryIdentical,…}` |
-
-Group ids are content hashes over frozen garment ids, so **every decision survives the migration**. A test loads
-a v1 fixture committed under `Duble.Tests/fixtures/` (hand-written, no real paths) and asserts the decision
-dictionary comes through key for key.
+**Duble reads exactly the version it writes.** The `.duble` project file goes to version 2 with English keys,
+and a file at any other version comes back as `project.unsupported_version` rather than being guessed at. There
+is no migration code: version 1.0.0 has no users with projects to carry over, and a translation layer kept for
+nobody is a translation layer nobody maintains. Should a future version need one, it will be written then,
+against a format that is already in English.
 
 **`katalog.json` and `duble.json`** live in `<project>.duble.cache`, which the README already documents as
 disposable. `Catalog.Version` goes 2 → 3; a catalog with a lower version or unreadable content loads as empty,
-which makes the app re-index once on first open. No migration code for these.
+which makes the app re-index once on first open. Nothing to migrate — indexing produces it.
 
-**Undo logs** (`<cache>/history/*.json`) are different: they describe files that physically moved, and the user
-must be able to restore an apply made before the refactor. `JsonUndoStore.Load` accepts both shapes — the new
-English one and the old Polish one — and always writes the new one. Covered by a test over a v1 fixture.
+**Undo logs** (`<cache>/history/*.json`) describe files that physically moved, so they are the one thing worth
+reading back. They are rewritten with the rest of Apply, and the version written before that rewrite is not
+supported either — for the same reason.
 
 ## Errors
 
@@ -301,7 +289,7 @@ golden shape.
 Added along the way, where the new seams make it possible:
 
 - `GarmentIndexer` against a fake `ISourceReader` — no disk, no packs.
-- `JsonProjectStore` v1 → v2 migration, including decision keys.
+- `JsonProjectStore`: a saved project reads back identically, and any other version is refused.
 - `JsonUndoStore` reading a pre-refactor undo log, from a fixture in the same folder.
 - `RpfArchiveCache` concurrency: parallel reads of one archive, and `Clear()` releasing handles.
 - `IClock` injected, so `Catalog.Built` and `Project.Created` are deterministic in tests.
@@ -318,10 +306,10 @@ initializer, `AddDubleCore` with the services that exist so far, the two `Micros
 references, compiler flags, and the three warning fixes in the test project. No domain renames — deliberately
 small, so the mechanical parts land before anything interesting moves.
 
-**PR 2 — Model, projects, storage, migration.** `Garment`, `TextureInfo`, `GeometryFingerprint`, `Catalog`,
+**PR 2 — Model, projects, storage.** `Garment`, `TextureInfo`, `GeometryFingerprint`, `Catalog`,
 `Project`, `ProjectSource`, `ProjectSettings`, `Decision`, `Resolution`, `IResolutionService`; persistence
-extracted into `IProjectStore`, `ICatalogStore`, `IComparisonStore`, `IUndoStore`; the v1 → v2 project migration
-and the back-compatible undo reader. The largest of the five, because every consumer names these types.
+extracted into `IProjectStore` and `ICatalogStore`. The largest of them, because every consumer names
+these types.
 
 **PR 3 — Sources, indexing, fingerprints.** `ISourceReader` and its two implementations, `ISourceReaderFactory`,
 `RpfArchiveCache` replacing the static dictionary, `GarmentIndexer`, `GeometryFingerprinter`,

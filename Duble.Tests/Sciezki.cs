@@ -14,7 +14,7 @@ namespace Duble.Tests;
 public static class Sciezki
 {
     /// <summary>Folder z Duble.sln.</summary>
-    public static string Projekt { get; } = Znajdz();
+    public static string Project { get; } = Znajdz();
 
     static string Znajdz()
     {
@@ -30,7 +30,7 @@ public static class Sciezki
     {
         var z = Environment.GetEnvironmentVariable("DUBLE_TEST_DATA");
         if (!string.IsNullOrWhiteSpace(z)) return Directory.Exists(z) ? z : null;
-        var d = new DirectoryInfo(Projekt);
+        var d = new DirectoryInfo(Project);
         while (d != null)
         {
             var kandydat = Path.Combine(d.FullName, "downloads");
@@ -40,9 +40,9 @@ public static class Sciezki
         return null;
     }
 
-    public static string Ui => Path.Combine(Projekt, "Duble.App", "ui");
-    public static string Golden(string plik) => Path.Combine(Projekt, "Duble.Tests", "golden", plik);
-    public static string Downloads(string paczka) => Path.Combine(DaneTestowe ?? Path.Combine(Projekt, "_brak-danych-testowych"), paczka);
+    public static string Ui => Path.Combine(Project, "Duble.App", "ui");
+    public static string Golden(string plik) => Path.Combine(Project, "Duble.Tests", "golden", plik);
+    public static string Downloads(string paczka) => Path.Combine(DaneTestowe ?? Path.Combine(Project, "_brak-danych-testowych"), paczka);
     public static string Gra => Environment.GetEnvironmentVariable("GTAV_ENHANCED");
     public static string Dlc(string paczka) => Gra == null ? null : Path.Combine(Gra, "onigiri", "dlcpacks", paczka, "dlc.rpf");
 

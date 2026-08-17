@@ -13,6 +13,6 @@ public static class TestSession
     public static Sesja Create()
     {
         var services = new ServiceCollection().AddDubleCore().BuildServiceProvider();
-        return new Sesja(services.GetRequiredService<ICatalogStore>());
+        return ActivatorUtilities.CreateInstance<Sesja>(services);
     }
 }

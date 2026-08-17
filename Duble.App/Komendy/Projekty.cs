@@ -14,7 +14,7 @@ public static class Projekty
     {
         void Otwarto()
         {
-            m.Ustawienia.ZanotujProjekt(s.Projekt.Sciezka, s.Projekt.Nazwa);
+            m.Ustawienia.ZanotujProjekt(s.Project.Path, s.Project.Name);
             try { m.Ustawienia.Zapisz(m.PlikUstawien); } catch { }
             m.Zdarzenie("project.opened", new { projekt = s.Podsumowanie() });
         }
@@ -32,7 +32,7 @@ public static class Projekty
             var folder = Mostek.Tekst(a, "folder");
             if (string.IsNullOrWhiteSpace(folder)) folder = Ustawienia.FolderProjektow;
             var plikNazwa = Regex.Replace(Niedozwolone.Replace(nazwa, " "), @"\s+", " ").Trim();
-            if (plikNazwa.Length == 0) plikNazwa = "Projekt";
+            if (plikNazwa.Length == 0) plikNazwa = "Project";
             var sciezka = Path.Combine(folder, plikNazwa + ".duble");
             if (File.Exists(sciezka)) throw new BladMostka("io", "plik juz istnieje: " + sciezka);
             try { Directory.CreateDirectory(folder); s.Nowy(nazwa, sciezka); }

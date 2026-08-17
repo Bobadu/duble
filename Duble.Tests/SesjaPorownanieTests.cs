@@ -21,13 +21,13 @@ public class SesjaPorownanieTests
         {
             var s = TestSession.Create();
             s.Nowy("P", Path.Combine(tmp, "P.duble"));
-            var z = s.Projekt.DodajZrodlo(Sciezki.Dlc("studio_body"));
-            var poz = Indeks.Zrodlo(z.Sciezka, z.Nazwa, new OpcjeIndeksu { FolderMiniatur = s.Projekt.FolderMiniatur });
+            var z = s.Project.AddSource(Sciezki.Dlc("studio_body"), "src1");
+            var poz = Indeks.Zrodlo(z.Path, z.Name, new OpcjeIndeksu { FolderMiniatur = s.Project.ThumbnailFolder });
             foreach (var p in poz) p.SourceId = z.Id;
             s.ZmienKatalog(k => k.Upsert(poz));
             s.Porownaj(default, null);
             Assert.NotNull(s.Wynik);
-            Assert.True(File.Exists(s.Projekt.PlikDubli));
+            Assert.True(File.Exists(s.Project.ComparisonFile));
             var pod = System.Text.Json.JsonSerializer.Serialize(s.Podsumowanie(), Mostek.Json);
             Assert.Contains("\"duplikaty\":", pod);
             s.Zapisz();
@@ -40,7 +40,7 @@ public class SesjaPorownanieTests
                 var b = new byte[8]; st.ReadExactly(b, 0, 8);
                 Assert.Equal(0x89, b[0]); Assert.Equal((byte)'P', b[1]);
             }
-            var plik = Path.Combine(s.Projekt.FolderTekstur, sha + ".png");
+            var plik = Path.Combine(s.Project.TextureFolder, sha + ".png");
             Assert.True(File.Exists(plik));
             long dl = new FileInfo(plik).Length;
             using (var st2 = s.Zasob("tex", sha)) Assert.Equal(dl, st2.Length);   // z cache
@@ -54,7 +54,7 @@ public class SesjaPorownanieTests
                 var b = new byte[4]; st.ReadExactly(b, 0, 4);
                 Assert.Equal("glTF", System.Text.Encoding.ASCII.GetString(b));
             }
-            var glby = Directory.GetFiles(s.Projekt.FolderSiatek, "*.glb");
+            var glby = Directory.GetFiles(s.Project.MeshFolder, "*.glb");
             Assert.Single(glby);
             using (var st2 = s.Zasob("mesh", uppr.Id, "w=a")) Assert.Equal(new FileInfo(glby[0]).Length, st2.Length);   // z cache
             Assert.Null(s.Zasob("mesh", "nie|ma|takiej|0|u", null));
@@ -63,7 +63,7 @@ public class SesjaPorownanieTests
             s.Otworz(Path.Combine(tmp, "P.duble"));
             Assert.NotNull(s.Wynik);
             // wylaczone zrodlo -> porownanie na zerze pozycji
-            s.Projekt.Zrodla[0].Wlaczone = false;
+            s.Project.Sources[0].Enabled = false;
             s.Porownaj(default, null);
             Assert.Empty(s.Wynik.Grupy);
         }

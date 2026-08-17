@@ -44,8 +44,8 @@ public class ZrodlaKomendyTests
             Assert.Equal(10, lista[0].GetProperty("pozycje").GetInt32());     // studio_body: 10 pozycji
             Assert.Equal("gen9", lista[0].GetProperty("format").GetString());
             Assert.True(lista[0].GetProperty("perSlot").GetProperty("uppr").GetInt32() >= 1);
-            Assert.True(File.Exists(s.Projekt.PlikKatalogu));
-            Assert.True(Directory.GetFiles(s.Projekt.FolderMiniatur, "*.png").Length > 0);
+            Assert.True(File.Exists(s.Project.CatalogFile));
+            Assert.True(Directory.GetFiles(s.Project.ThumbnailFolder, "*.png").Length > 0);
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"job\"") && w.Contains("\"stan\":\"koniec\""));
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"sources.changed\""));
             Assert.All(s.Catalog.Garments, p => Assert.Equal(id, p.SourceId));
@@ -55,9 +55,9 @@ public class ZrodlaKomendyTests
             Assert.Equal(2, o.GetProperty("result").GetProperty("pominiete").GetArrayLength());
             // wylaczenie i usuniecie zrodla czysci katalog
             await m.Obsluz("{\"id\":\"6\",\"cmd\":\"sources.toggle\",\"args\":{\"id\":\"" + id + "\",\"wlaczone\":false}}");
-            Assert.False(s.Projekt.Zrodla[0].Wlaczone);
+            Assert.False(s.Project.Sources[0].Enabled);
             await m.Obsluz("{\"id\":\"7\",\"cmd\":\"sources.remove\",\"args\":{\"id\":\"" + id + "\"}}");
-            Assert.Empty(s.Catalog.Garments); Assert.Empty(s.Projekt.Zrodla);
+            Assert.Empty(s.Catalog.Garments); Assert.Empty(s.Project.Sources);
         }
         finally { Directory.Delete(tmp, true); }
     }
@@ -74,8 +74,8 @@ public class ZrodlaKomendyTests
             var s = TestSession.Create(); var jr = new JobRunner(m.Zdarzenie);
             Duble.App.Komendy.Projekty.Zarejestruj(m, s); Duble.App.Komendy.Zrodla.Zarejestruj(m, s, jr);
             s.Nowy("U", Path.Combine(tmp, "U.duble"));
-            var z = s.Projekt.DodajZrodlo(Sciezki.Dlc("studio_body"));   // Nazwa = studio_body (dlc.rpf -> folder paczki)
-            Assert.Equal("studio_body", z.Nazwa);
+            var z = s.Project.AddSource(Sciezki.Dlc("studio_body"), "src1");   // Nazwa = studio_body (dlc.rpf -> folder paczki)
+            Assert.Equal("studio_body", z.Name);
             Assert.Equal("studio_body", Duble.App.Komendy.Zrodla.NazwaFolderuKopii(z));
             var lista = Odp(await m.Obsluz("{\"id\":\"1\",\"cmd\":\"sources.list\"}")).GetProperty("result").GetProperty("zrodla");
             Assert.EndsWith(Path.Combine("_odrzucone", "studio_body"), lista[0].GetProperty("kosz").GetString());
@@ -91,10 +91,10 @@ public class ZrodlaKomendyTests
             Assert.Equal(0, done.GetProperty("bledy").GetArrayLength());
             var dodano = done.GetProperty("dodano").GetString();
             Assert.NotNull(dodano);
-            Assert.Equal(2, s.Projekt.Zrodla.Count);
-            Assert.False(z.Wlaczone);                                              // oryginal wylaczony
-            var nowe = s.Projekt.Zrodla.Find(x => x.Id == dodano);
-            Assert.Equal("folder", nowe.Typ); Assert.True(nowe.Wlaczone);
+            Assert.Equal(2, s.Project.Sources.Count);
+            Assert.False(z.Enabled);                                              // oryginal wylaczony
+            var nowe = s.Project.Sources.Find(x => x.Id == dodano);
+            Assert.Equal(SourceKind.Folder, nowe.Kind); Assert.True(nowe.Enabled);
             Assert.Equal(10, s.Catalog.Garments.Count(p => p.SourceId == dodano));  // kopia zaindeksowana
             Assert.All(s.Catalog.Garments.Where(p => p.SourceId == dodano), p => Assert.DoesNotContain("|", p.ModelPath));
             Assert.Contains(wyslane, w => w.Contains("\"event\":\"compare.done\""));

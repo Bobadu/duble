@@ -17,12 +17,12 @@ public static class KatalogPozycji
     public static void Zarejestruj(Mostek m, Sesja s)
     {
         Sesja Wymag() => s.Otwarty ? s : throw new BladMostka("no_project", "brak otwartego projektu");
-        string Zrodlo(Garment p) => s.Projekt.Zrodla.Find(z => z.Id == p.SourceId)?.Nazwa ?? p.PackName;
+        string Zrodlo(Garment p) => s.Project.Sources.Find(z => z.Id == p.SourceId)?.Name ?? p.PackName;
 
         // pozycja -> najostrzejszy werdykt zywej grupy, w ktorej jest (bez zignorowanych) + lista grup
-        Dictionary<string, List<(Grupa g, Rozstrzygniecie r)>> GrupyPozycji()
+        Dictionary<string, List<(Grupa g, Resolution r)>> GrupyPozycji()
         {
-            var wy = new Dictionary<string, List<(Grupa, Rozstrzygniecie)>>();
+            var wy = new Dictionary<string, List<(Grupa, Resolution)>>();
             foreach (var (g, czl, r) in Grupy.Zywe(s))
                 foreach (var p in czl)
                 {
@@ -31,8 +31,8 @@ public static class KatalogPozycji
                 }
             return wy;
         }
-        string Werdykt(List<(Grupa g, Rozstrzygniecie r)> l)
-            => l == null ? null : l.Where(x => !x.r.Ignoruj).Select(x => x.g.Werdykt).OrderBy(w => Ostrosc.TryGetValue(w, out var o) ? o : 9).FirstOrDefault();
+        string Werdykt(List<(Grupa g, Resolution r)> l)
+            => l == null ? null : l.Where(x => !x.r.Ignored).Select(x => x.g.Werdykt).OrderBy(w => Ostrosc.TryGetValue(w, out var o) ? o : 9).FirstOrDefault();
 
         m.Rejestruj("catalog.list", a =>
         {
@@ -43,7 +43,7 @@ public static class KatalogPozycji
             var grupy = GrupyPozycji();
             var wszystkie = s.Catalog.Garments;
             var filtrySloty = wszystkie.GroupBy(p => p.Slot).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
-            var filtryZrodla = wszystkie.GroupBy(p => p.SourceId ?? "").Select(g => new { id = g.Key, nazwa = s.Projekt.Zrodla.Find(z => z.Id == g.Key)?.Nazwa ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
+            var filtryZrodla = wszystkie.GroupBy(p => p.SourceId ?? "").Select(g => new { id = g.Key, nazwa = s.Project.Sources.Find(z => z.Id == g.Key)?.Name ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
             var pozycje = new List<object>();
             foreach (var p in wszystkie)
             {
@@ -78,7 +78,7 @@ public static class KatalogPozycji
             var p = s.ZnajdzPozycje(id) ?? throw new BladMostka("not_found", id);
             var poz = Widoki.Czlonek(p, null, true, Zrodlo);
             var z = s.ZrodloPozycji(p);
-            poz["zrodloSciezka"] = z?.Sciezka;
+            poz["zrodloSciezka"] = z?.Path;
             var wg = s.Catalog.Garments.ToDictionary(x => x.Id);
             var grupy = GrupyPozycji().TryGetValue(id, out var l) ? l : new();
             return new
@@ -86,9 +86,9 @@ public static class KatalogPozycji
                 pozycja = poz,
                 grupy = grupy.Select(x => new
                 {
-                    id = x.g.Id, werdykt = x.g.Werdykt, ignoruj = x.r.Ignoruj, powod = Widoki.Powod(x.g.Pary.FirstOrDefault()?.Powod ?? x.g.Powod),
+                    id = x.g.Id, werdykt = x.g.Werdykt, ignoruj = x.r.Ignored, powod = Widoki.Powod(x.g.Pary.FirstOrDefault()?.Powod ?? x.g.Powod),
                     inni = x.g.Pozycje.Where(i => i != id && wg.ContainsKey(i)).Select(i => new { id = i, nazwa = $"{wg[i].Slot}_{wg[i].Number:d3}", sufiks = wg[i].Suffix, zrodlo = Zrodlo(wg[i]) }).ToList(),
-                    stan = x.r.Ignoruj ? "ignoruj" : x.r.Zwyciezca == id && x.r.Odrzucone.Count > 0 ? "zostaje" : x.r.Odrzucone.Contains(id) ? "odrzucona" : "neutral",
+                    stan = x.r.Ignored ? "ignoruj" : x.r.Winner == id && x.r.Rejected.Count > 0 ? "zostaje" : x.r.Rejected.Contains(id) ? "odrzucona" : "neutral",
                 }).ToList(),
             };
         });

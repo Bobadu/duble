@@ -37,51 +37,6 @@ using Duble.Core.Model;
 
 namespace Duble.Core.Comparison;
 
-/// <summary>Progi porownania. Domyslne = kalibracja 15.08 (uzasadnienie w naglowku pliku). Aplikacja moze je nadpisac per projekt.</summary>
-public class Progi
-{
-    public double GeoIdentyczna { get; set; } = 0.02;   // + rowna liczba trojkatow i wierzcholkow
-    public double GeoPodobna { get; set; } = 0.10;
-    public double GeoPodobnaTri { get; set; } = 0.05;   // dopuszczalna wzgledna roznica trojkatow
-    public double GeoPodobnaBbox { get; set; } = 0.15;
-
-    public int TexPHash { get; set; } = 20;             // na 256 bitow
-    public double TexKolor { get; set; } = 3.0;         // srednia roznica na kanal
-    public float TexWariancjaMin { get; set; } = 3.0f;  // ponizej tego tekstura jest plaska i PHash to szum
-    public double TexKolorPlaska { get; set; } = 1.0;   // dla plaskich tekstur decyduje sam kolor, ostrzej
-
-    public double PelnePokrycie { get; set; } = 0.95;
-    public double CzesciowePokrycie { get; set; } = 0.5;
-
-    public static Progi Domyslne => new();
-
-    public Progi Kopia() => (Progi)MemberwiseClone();
-
-    public bool Rowne(Progi p) => p != null
-        && GeoIdentyczna == p.GeoIdentyczna && GeoPodobna == p.GeoPodobna && GeoPodobnaTri == p.GeoPodobnaTri && GeoPodobnaBbox == p.GeoPodobnaBbox
-        && TexPHash == p.TexPHash && TexKolor == p.TexKolor && TexWariancjaMin == p.TexWariancjaMin && TexKolorPlaska == p.TexKolorPlaska
-        && PelnePokrycie == p.PelnePokrycie && CzesciowePokrycie == p.CzesciowePokrycie;
-
-    /// <summary>Kody bledow (nazwy pol) — pusta lista = progi poprawne. Zakresy: geometria [0;1] (podobna >= identyczna), PHash [0;256],
-    /// kolor [0;100], wariancja [0;255], pokrycia [0;1] (czesciowe &lt;= pelne).</summary>
-    public List<string> Sprawdz()
-    {
-        var b = new List<string>();
-        bool Zle(double v, double od, double @do) => double.IsNaN(v) || v < od || v > @do;
-        if (Zle(GeoIdentyczna, 0, 1)) b.Add(nameof(GeoIdentyczna));
-        if (Zle(GeoPodobna, 0, 1) || GeoPodobna < GeoIdentyczna) b.Add(nameof(GeoPodobna));
-        if (Zle(GeoPodobnaTri, 0, 1)) b.Add(nameof(GeoPodobnaTri));
-        if (Zle(GeoPodobnaBbox, 0, 1)) b.Add(nameof(GeoPodobnaBbox));
-        if (TexPHash < 0 || TexPHash > 256) b.Add(nameof(TexPHash));
-        if (Zle(TexKolor, 0, 100)) b.Add(nameof(TexKolor));
-        if (Zle(TexWariancjaMin, 0, 255)) b.Add(nameof(TexWariancjaMin));
-        if (Zle(TexKolorPlaska, 0, 100)) b.Add(nameof(TexKolorPlaska));
-        if (Zle(PelnePokrycie, 0, 1)) b.Add(nameof(PelnePokrycie));
-        if (Zle(CzesciowePokrycie, 0, 1) || CzesciowePokrycie > PelnePokrycie) b.Add(nameof(CzesciowePokrycie));
-        return b;
-    }
-}
-
 public class Para
 {
     public string A { get; set; }
@@ -142,13 +97,13 @@ public static class Porownanie
     public const string DoWgladu = "DO WGLADU";
     public const string Przemalowanie = "PRZEMALOWANIE";
 
-    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Progi progi = null)
+    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Thresholds progi = null)
         => Znajdz(katalog, log, progi, null, default);
 
     /// <summary>Jak wyzej, z postepem (Etap "porownaj") i anulowaniem — dla aplikacji okienkowej.</summary>
-    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Progi progi, Action<Postep> postep, System.Threading.CancellationToken anuluj)
+    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Thresholds progi, Action<Postep> postep, System.Threading.CancellationToken anuluj)
     {
-        progi ??= Progi.Domyslne;
+        progi ??= Thresholds.Default;
         log ??= _ => { };
         var poz = katalog.Garments.Where(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0).ToList();
         log($"pozycji do porownania: {poz.Count}");
@@ -234,7 +189,7 @@ public static class Porownanie
     }
 
     /// <summary>"identyczna" / "podobna" / null gdy para w ogole nie jest kandydatem.</summary>
-    static string WerdyktGeometrii(Garment a, Garment b, Progi progi, out double dist)
+    static string WerdyktGeometrii(Garment a, Garment b, Thresholds progi, out double dist)
     {
         dist = double.MaxValue;
         // typy musza sie zgadzac tylko co do tego, czy to props — ubranie z jednej paczki
@@ -245,9 +200,9 @@ public static class Porownanie
         if (a.Geometry.PositionHash != null && a.Geometry.PositionHash == b.Geometry.PositionHash) { dist = 0; return "identyczna"; }
 
         dist = Odciski.OdlegloscGeo(a.Geometry.ShapeHistogram, b.Geometry.ShapeHistogram);
-        if (dist > progi.GeoPodobna) return null;
+        if (dist > progi.GeometrySimilar) return null;
 
-        if (dist <= progi.GeoIdentyczna
+        if (dist <= progi.GeometryIdentical
             && a.Geometry.Triangles == b.Geometry.Triangles
             && a.Geometry.Vertices == b.Geometry.Vertices
             && a.Geometry.Triangles > 0) return "identyczna";
@@ -255,27 +210,27 @@ public static class Porownanie
         double maxTri = Math.Max(a.Geometry.Triangles, b.Geometry.Triangles);
         if (maxTri < 1) return null;
         double roznicaTri = Math.Abs(a.Geometry.Triangles - b.Geometry.Triangles) / maxTri;
-        if (roznicaTri > progi.GeoPodobnaTri) return null;
-        if (Odciski.OdlegloscBbox(a.Geometry.BoundingBox, b.Geometry.BoundingBox) > progi.GeoPodobnaBbox) return null;
+        if (roznicaTri > progi.GeometryTriangleTolerance) return null;
+        if (Odciski.OdlegloscBbox(a.Geometry.BoundingBox, b.Geometry.BoundingBox) > progi.GeometryBoundsTolerance) return null;
         return "podobna";
     }
 
     /// <summary>Czy dwie tekstury to ta sama grafika (ten sam kolor, nie tylko ten sam wzor).</summary>
-    public static bool TaSamaGrafika(TextureInfo x, TextureInfo y, Progi progi = null)
+    public static bool TaSamaGrafika(TextureInfo x, TextureInfo y, Thresholds progi = null)
     {
-        progi ??= Progi.Domyslne;
+        progi ??= Thresholds.Default;
         if (x.Sha256 == y.Sha256) return true;
         if (!x.IsDecoded || !y.IsDecoded) return false;
         double kol = Odciski.OdlegloscKoloru(x.ColorSignature, y.ColorSignature);
         // Plaska tekstura (np. jednolity kolor) daje PHash z szumu — wtedy ufamy samemu
         // kolorowi, ale wymagamy scislejszej zgodnosci.
-        if (x.Variance < progi.TexWariancjaMin || y.Variance < progi.TexWariancjaMin)
-            return kol <= progi.TexKolorPlaska;
+        if (x.Variance < progi.FlatTextureVariance || y.Variance < progi.FlatTextureVariance)
+            return kol <= progi.FlatTextureColorDistance;
         int ph = Odciski.Hamming(x.PerceptualHash, y.PerceptualHash);
-        return ph >= 0 && ph <= progi.TexPHash && kol <= progi.TexKolor;
+        return ph >= 0 && ph <= progi.TextureHashDistance && kol <= progi.TextureColorDistance;
     }
 
-    static Para Oceń(Garment a, Garment b, string geo, double dist, Progi progi)
+    static Para Oceń(Garment a, Garment b, string geo, double dist, Thresholds progi)
     {
         var ta = a.Textures ?? new List<TextureInfo>();
         var tb = b.Textures ?? new List<TextureInfo>();
@@ -303,8 +258,8 @@ public static class Porownanie
         para.PokrycieA = (double)dopasowaneA / ta.Count;
         para.PokrycieB = (double)dopasowaneB / tb.Count;
         double maxPokrycie = Math.Max(para.PokrycieA, para.PokrycieB);
-        bool pelneA = para.PokrycieA >= progi.PelnePokrycie;
-        bool pelneB = para.PokrycieB >= progi.PelnePokrycie;
+        bool pelneA = para.PokrycieA >= progi.FullCoverage;
+        bool pelneB = para.PokrycieB >= progi.FullCoverage;
 
         // parametry wspolne wszystkich powodow: ile tekstur wspolnych po obu stronach ({a}/{na} i {b}/{nb})
         (string, object)[] Tex(params (string, object)[] extra)
@@ -327,7 +282,7 @@ public static class Porownanie
                 para.Werdykt = Nadzbior;
                 para.Powod = new Powod("SAME_MODEL_SUBSET", Tex());
             }
-            else if (maxPokrycie >= progi.CzesciowePokrycie)
+            else if (maxPokrycie >= progi.PartialCoverage)
             {
                 para.Werdykt = DoWgladu;
                 para.Powod = new Powod("SAME_MODEL_PARTIAL", Tex());
@@ -347,7 +302,7 @@ public static class Porownanie
                 para.Werdykt = DoWgladu;
                 para.Powod = new Powod("SIMILAR_MODEL_SAME_TEX", Tex(("dist", distTekst)));
             }
-            else if (maxPokrycie >= progi.CzesciowePokrycie)
+            else if (maxPokrycie >= progi.PartialCoverage)
             {
                 para.Werdykt = DoWgladu;
                 para.Powod = new Powod("SIMILAR_MODEL_PARTIAL", Tex(("dist", distTekst)));

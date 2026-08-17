@@ -13,35 +13,57 @@ public sealed class Sesja
 {
     readonly object klucz = new();
     readonly ICatalogStore katalogi;
+    readonly IProjectStore projekty;
+    readonly IClock zegar;
 
-    public Sesja(ICatalogStore katalogi) => this.katalogi = katalogi;
+    public Sesja(ICatalogStore katalogi, IProjectStore projekty, IResolutionService rozstrzygniecia, IClock zegar)
+    {
+        this.katalogi = katalogi;
+        this.projekty = projekty;
+        this.zegar = zegar;
+        Rozstrzygniecia = rozstrzygniecia;
+    }
+
+    /// <summary>Reguly "kto zostaje" — komendy licza je dla grup, ktore pokazuja.</summary>
+    public IResolutionService Rozstrzygniecia { get; }
+
+    /// <summary>Zapisuje sam plik projektu (decyzje, zrodla, ustawienia) bez katalogu i wyniku.</summary>
+    public void ZapiszProjekt()
+    {
+        var p = Project;
+        if (p == null) return;
+        var wynik = projekty.Save(p);
+        if (wynik.IsFailure) throw new IOException(wynik.Error.Message);
+    }
 
     Dictionary<string, TextureInfo> teksturyWgSha;   // indeks sha -> TextureInfo (leniwy, kasowany po zmianie katalogu)
-    public Projekt Projekt { get; private set; }
+    public Project Project { get; private set; }
     public Catalog Catalog { get; private set; } = new();
     public WynikPorownania Wynik { get; private set; }
-    public bool Otwarty => Projekt != null;
-    /// <summary>Projekt/katalog/wynik sie zmienil (po zapisie, indeksowaniu, usunieciu zrodla, porownaniu).</summary>
+    public bool Otwarty => Project != null;
+    /// <summary>Project/katalog/wynik sie zmienil (po zapisie, indeksowaniu, usunieciu zrodla, porownaniu).</summary>
     public event Action Zmiana;
 
     public void Nowy(string nazwa, string sciezkaPliku)
     {
-        var p = Projekt.Nowy(nazwa, sciezkaPliku);
-        Directory.CreateDirectory(p.FolderCache);
-        p.Zapisz();
-        lock (klucz) { Projekt = p; Catalog = new Catalog(); Wynik = null; teksturyWgSha = null; }
+        var p = Project.Create(nazwa, sciezkaPliku, zegar.Now);
+        Directory.CreateDirectory(p.CacheFolder);
+        projekty.Save(p);
+        lock (klucz) { Project = p; Catalog = new Catalog(); Wynik = null; teksturyWgSha = null; }
         Zmiana?.Invoke();
     }
 
     public void Otworz(string sciezkaPliku)
     {
         if (!File.Exists(sciezkaPliku)) throw new FileNotFoundException("brak projektu", sciezkaPliku);
-        var p = Projekt.Wczytaj(sciezkaPliku);
-        Directory.CreateDirectory(p.FolderCache);
-        var k = katalogi.Load(p.PlikKatalogu);
+        var wczytany = projekty.Load(sciezkaPliku);
+        if (wczytany.IsFailure) throw new IOException(wczytany.Error.Message);
+        var p = wczytany.Value;
+        Directory.CreateDirectory(p.CacheFolder);
+        var k = katalogi.Load(p.CatalogFile);
         WynikPorownania w = null;
-        try { if (File.Exists(p.PlikDubli)) w = WynikPorownania.Wczytaj(p.PlikDubli); } catch { w = null; }
-        lock (klucz) { Projekt = p; Catalog = k; Wynik = w; teksturyWgSha = null; }
+        try { if (File.Exists(p.ComparisonFile)) w = WynikPorownania.Wczytaj(p.ComparisonFile); } catch { w = null; }
+        lock (klucz) { Project = p; Catalog = k; Wynik = w; teksturyWgSha = null; }
         Zmiana?.Invoke();
     }
 
@@ -49,18 +71,18 @@ public sealed class Sesja
     {
         lock (klucz)
         {
-            if (Projekt == null) return;
-            Directory.CreateDirectory(Projekt.FolderCache);
-            Projekt.Zapisz();
-            katalogi.Save(Catalog, Projekt.PlikKatalogu);
-            Wynik?.Zapisz(Projekt.PlikDubli);
+            if (Project == null) return;
+            Directory.CreateDirectory(Project.CacheFolder);
+            projekty.Save(Project);
+            katalogi.Save(Catalog, Project.CatalogFile);
+            Wynik?.Zapisz(Project.ComparisonFile);
         }
         Zmiana?.Invoke();
     }
 
     public void Zamknij()
     {
-        lock (klucz) { Projekt = null; Catalog = new Catalog(); Wynik = null; teksturyWgSha = null; }
+        lock (klucz) { Project = null; Catalog = new Catalog(); Wynik = null; teksturyWgSha = null; }
         Zmiana?.Invoke();
     }
 
@@ -72,22 +94,22 @@ public sealed class Sesja
     {
         lock (klucz)
         {
-            var projekt = Projekt ?? throw new InvalidOperationException("brak projektu");
-            var wlaczone = new HashSet<string>(projekt.Zrodla.Where(z => z.Wlaczone).Select(z => z.Id));
+            var projekt = Project ?? throw new InvalidOperationException("brak projektu");
+            var wlaczone = new HashSet<string>(projekt.Sources.Where(z => z.Enabled).Select(z => z.Id));
             return new Catalog { Garments = Catalog.Garments.Where(p => p.SourceId == null || wlaczone.Contains(p.SourceId)).ToList() };
         }
     }
 
-    /// <summary>Progi projektu (albo domyslne).</summary>
-    public Progi ProgiProjektu => Projekt?.Ustawienia?.Progi ?? Progi.Domyslne;
+    /// <summary>Thresholds projektu (albo domyslne).</summary>
+    public Thresholds ProgiProjektu => Project?.Settings?.Thresholds ?? Thresholds.Default;
 
     /// <summary>Rozmiar cache projektu: (pliki, bajty) per folder + razem.</summary>
     public Dictionary<string, (int pliki, long bajty)> RozmiarCache()
     {
         var wy = new Dictionary<string, (int, long)>();
-        var p = Projekt; if (p == null) return wy;
+        var p = Project; if (p == null) return wy;
         long razem = 0; int razemN = 0;
-        foreach (var (nazwa, folder) in new[] { ("thumbs", p.FolderMiniatur), ("tex", p.FolderTekstur), ("mesh", p.FolderSiatek), ("historia", p.FolderHistorii) })
+        foreach (var (nazwa, folder) in new[] { ("thumbs", p.ThumbnailFolder), ("tex", p.TextureFolder), ("mesh", p.MeshFolder), ("historia", p.HistoryFolder) })
         {
             int n = 0; long b = 0;
             if (Directory.Exists(folder))
@@ -101,9 +123,9 @@ public sealed class Sesja
     /// <summary>Usuwa pliki podgladow odtwarzanych na zadanie (tex\ i/lub mesh\). Zwraca (usuniete, bajty).</summary>
     public (int pliki, long bajty) WyczyscCache(bool tex, bool mesh)
     {
-        var p = Projekt; if (p == null) return (0, 0);
+        var p = Project; if (p == null) return (0, 0);
         int n = 0; long b = 0;
-        foreach (var folder in new[] { tex ? p.FolderTekstur : null, mesh ? p.FolderSiatek : null })
+        foreach (var folder in new[] { tex ? p.TextureFolder : null, mesh ? p.MeshFolder : null })
         {
             if (folder == null || !Directory.Exists(folder)) continue;
             foreach (var f in Directory.EnumerateFiles(folder))
@@ -117,18 +139,18 @@ public sealed class Sesja
     /// <summary>Porownanie pozycji WLACZONYCH zrodel progami projektu; wynik zapamietany i zapisany do duble.json.</summary>
     public void Porownaj(CancellationToken ct, Action<Postep> postep)
     {
-        var projekt = Projekt ?? throw new InvalidOperationException("brak projektu");
+        var projekt = Project ?? throw new InvalidOperationException("brak projektu");
         var kopia = KatalogWlaczony();
-        var progi = projekt.Ustawienia?.Progi ?? Progi.Domyslne;
+        var progi = projekt.Settings?.Thresholds ?? Thresholds.Default;
         var wynik = Porownanie.Znajdz(kopia, null, progi, postep, ct);
         lock (klucz)
         {
             // decyzje uzytkownika przechodza na nowe (mniejsze) grupy — po Zastosuj / ponownym indeksowaniu nic nie wraca do "do odrzucenia"
-            if (Wynik != null && projekt.Decyzje.Count > 0 && Rozstrzygniecie.PrzeniesDecyzje(projekt.Decyzje, Wynik.Grupy, wynik.Grupy) > 0)
-                projekt.Zapisz();
+            if (Wynik != null && projekt.Decisions.Count > 0 && Rozstrzygniecia.CarryOver(projekt.Decisions, Wynik.Grupy, wynik.Grupy) > 0)
+                projekty.Save(projekt);
             Wynik = wynik;
-            Directory.CreateDirectory(projekt.FolderCache);
-            wynik.Zapisz(projekt.PlikDubli);
+            Directory.CreateDirectory(projekt.CacheFolder);
+            wynik.Zapisz(projekt.ComparisonFile);
         }
         Zmiana?.Invoke();
     }
@@ -136,24 +158,24 @@ public sealed class Sesja
     // ---------------- zastosowanie: zrodlo pozycji, kosz, plan ----------------
 
     /// <summary>Zrodlo projektu, z ktorego pochodzi pozycja (po ZrodloId; starsze katalogi — po nazwie paczki).</summary>
-    public ZrodloProjektu ZrodloPozycji(Garment p)
+    public ProjectSource ZrodloPozycji(Garment p)
     {
-        var pr = Projekt; if (pr == null || p == null) return null;
-        return pr.Zrodla.Find(z => z.Id == p.SourceId) ?? pr.Zrodla.Find(z => string.Equals(z.Nazwa, p.PackName, StringComparison.OrdinalIgnoreCase));
+        var pr = Project; if (pr == null || p == null) return null;
+        return pr.Sources.Find(z => z.Id == p.SourceId) ?? pr.Sources.Find(z => string.Equals(z.Name, p.PackName, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Folder kosza dla zrodla: `Ustawienia.Kosz` (wskazany folder) albo `_odrzucone` obok zrodla — w obu przypadkach z podfolderem o nazwie zrodla.</summary>
-    public string KoszDla(ZrodloProjektu z)
+    public string KoszDla(ProjectSource z)
     {
-        var pr = Projekt; if (pr == null || z == null) return null;
-        var kosz = pr.Ustawienia?.Kosz;
+        var pr = Project; if (pr == null || z == null) return null;
+        var kosz = pr.Settings?.BinFolder;
         if (string.IsNullOrWhiteSpace(kosz))
         {
-            var sciezka = z.Sciezka.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var sciezka = z.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             var nad = Path.GetDirectoryName(sciezka) ?? sciezka;
             kosz = Path.Combine(nad, Indeks.FolderOdrzuconych);
         }
-        return Path.Combine(kosz, Bezpieczna(z.Nazwa));
+        return Path.Combine(kosz, Bezpieczna(z.Name));
     }
 
     static string Bezpieczna(string nazwa)
@@ -167,8 +189,8 @@ public sealed class Sesja
     public CelPozycji Cel(Garment p)
     {
         var z = ZrodloPozycji(p);
-        if (z == null || z.Sciezka == null || !(Directory.Exists(z.Sciezka) || File.Exists(z.Sciezka))) return null;
-        return new CelPozycji { Korzen = z.Sciezka, Kosz = KoszDla(z), Zrodlo = z.Nazwa, ZrodloId = z.Id };
+        if (z == null || z.Path == null || !(Directory.Exists(z.Path) || File.Exists(z.Path))) return null;
+        return new CelPozycji { Korzen = z.Path, Kosz = KoszDla(z), Zrodlo = z.Name, ZrodloId = z.Id };
     }
 
     public PlanZastosowania Zaplanuj(IEnumerable<string> odrzucone)
@@ -179,17 +201,17 @@ public sealed class Sesja
     /// <summary>Pliki historii zastosowan (najnowsze pierwsze).</summary>
     public List<string> PlikiHistorii()
     {
-        var pr = Projekt; if (pr == null || !Directory.Exists(pr.FolderHistorii)) return new();
-        return Directory.GetFiles(pr.FolderHistorii, "*.json").OrderByDescending(f => Path.GetFileName(f), StringComparer.Ordinal).ToList();
+        var pr = Project; if (pr == null || !Directory.Exists(pr.HistoryFolder)) return new();
+        return Directory.GetFiles(pr.HistoryFolder, "*.json").OrderByDescending(f => Path.GetFileName(f), StringComparer.Ordinal).ToList();
     }
 
     public string NowyPlikHistorii()
     {
-        var pr = Projekt ?? throw new InvalidOperationException("brak projektu");
-        Directory.CreateDirectory(pr.FolderHistorii);
+        var pr = Project ?? throw new InvalidOperationException("brak projektu");
+        Directory.CreateDirectory(pr.HistoryFolder);
         var baza = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-        var plik = Path.Combine(pr.FolderHistorii, baza + ".json");
-        for (int i = 2; File.Exists(plik); i++) plik = Path.Combine(pr.FolderHistorii, $"{baza}-{i}.json");
+        var plik = Path.Combine(pr.HistoryFolder, baza + ".json");
+        for (int i = 2; File.Exists(plik); i++) plik = Path.Combine(pr.HistoryFolder, $"{baza}-{i}.json");
         return plik;
     }
 
@@ -197,12 +219,12 @@ public sealed class Sesja
     {
         lock (klucz)
         {
-            if (Projekt == null) return null;
+            if (Project == null) return null;
             int? duplikaty = Wynik == null ? null : Wynik.Grupy.Count(g => g.Werdykt == Porownanie.Duplikat || g.Werdykt == Porownanie.Nadzbior);
             return new
             {
-                nazwa = Projekt.Nazwa, sciezka = Projekt.Sciezka,
-                zrodla = Projekt.Zrodla.Count, pozycje = Catalog.Garments.Count,
+                nazwa = Project.Name, sciezka = Project.Path,
+                zrodla = Project.Sources.Count, pozycje = Catalog.Garments.Count,
                 tekstury = Catalog.Garments.Sum(p => p.Textures.Count),
                 duplikaty, porownano = Wynik?.Zbudowany,
             };
@@ -244,14 +266,14 @@ public sealed class Sesja
     /// mesh (klucz = id pozycji, query "w=&lt;litera&gt;" = wariant tekstury; GLB generowany do cache mesh\).</summary>
     public Stream Zasob(string kategoria, string klucz, string query = null)
     {
-        var p = Projekt;
+        var p = Project;
         if (p == null || string.IsNullOrEmpty(klucz) || klucz.Contains("..") || klucz.Contains('/') || klucz.Contains('\\')) return null;
         string plik;
         switch (kategoria)
         {
-            case "thumb": plik = Path.Combine(p.FolderMiniatur, klucz + ".png"); break;
+            case "thumb": plik = Path.Combine(p.ThumbnailFolder, klucz + ".png"); break;
             case "tex":
-                plik = Path.Combine(p.FolderTekstur, klucz + ".png");
+                plik = Path.Combine(p.TextureFolder, klucz + ".png");
                 if (!File.Exists(plik) && !GenerujTeksture(klucz, plik)) return null;
                 break;
             case "mesh":
@@ -286,10 +308,10 @@ public sealed class Sesja
             var tex = poz.Textures.FirstOrDefault(t => litera != null && string.Equals(Nazwy.ParseTexture(t.FileName)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
                       ?? poz.Textures.FirstOrDefault();
             string Krotki(string sha) => string.IsNullOrEmpty(sha) ? "brak" : sha.Length > 16 ? sha.Substring(0, 16) : sha;
-            var plik = Path.Combine(Projekt.FolderSiatek, $"{Krotki(poz.ModelSha256)}_{Krotki(tex?.Sha256)}.glb");
+            var plik = Path.Combine(Project.MeshFolder, $"{Krotki(poz.ModelSha256)}_{Krotki(tex?.Sha256)}.glb");
             if (File.Exists(plik)) return plik;
             var glb = Podglad3D.Glb(poz, tex != null ? Nazwy.ParseTexture(tex.FileName)?.Litera : null);
-            Directory.CreateDirectory(Projekt.FolderSiatek);
+            Directory.CreateDirectory(Project.MeshFolder);
             var tmp = plik + "." + Guid.NewGuid().ToString("N").Substring(0, 6) + ".tmp";
             File.WriteAllBytes(tmp, glb);
             try { File.Move(tmp, plik, true); } catch { try { File.Delete(tmp); } catch { } }

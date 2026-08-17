@@ -21,10 +21,10 @@ public static class Historia
         string Plik(string nazwa)
         {
             // tylko pliki z folderu historii projektu (nazwa albo pelna sciezka)
-            var pr = Wymag().Projekt;
-            var kandydat = Path.IsPathRooted(nazwa) ? nazwa : Path.Combine(pr.FolderHistorii, nazwa);
+            var pr = Wymag().Project;
+            var kandydat = Path.IsPathRooted(nazwa) ? nazwa : Path.Combine(pr.HistoryFolder, nazwa);
             var pelny = Path.GetFullPath(kandydat);
-            if (!pelny.StartsWith(Path.GetFullPath(pr.FolderHistorii), StringComparison.OrdinalIgnoreCase) || !File.Exists(pelny)) throw new BladMostka("not_found", nazwa);
+            if (!pelny.StartsWith(Path.GetFullPath(pr.HistoryFolder), StringComparison.OrdinalIgnoreCase) || !File.Exists(pelny)) throw new BladMostka("not_found", nazwa);
             return pelny;
         }
 
@@ -79,7 +79,7 @@ public static class Historia
                 try { (wrocilo, pominieto) = Zastosowanie.Cofnij(cofka, pozycje.Count > 0 ? pozycje : null, postep); }
                 finally { cofka.Zapisz(plik); m.Zdarzenie("history.changed", new { plik }); }   // stan cofki na dysku takze po bledzie
                 var ids = pozycje.Count > 0 ? new HashSet<string>(pozycje) : null;
-                var dotkniete = s.Projekt.Zrodla.Where(z => cofka.Pozycje.Any(p => p.ZrodloId == z.Id && (ids == null || ids.Contains(p.Id)))).ToList();
+                var dotkniete = s.Project.Sources.Where(z => cofka.Pozycje.Any(p => p.ZrodloId == z.Id && (ids == null || ids.Contains(p.Id)))).ToList();
                 if (dotkniete.Count > 0) Zrodla.Indeksuj(s, m, dotkniete, false, ct, postep);
                 Zrodla.PorownajIZapisz(s, m, ct, postep);
                 m.Zdarzenie("undo.done", new { plik, wrocilo, pominieto, cofnieto = cofka.Cofnieto });
@@ -90,11 +90,11 @@ public static class Historia
 
         // ---- eksport ----
         string Jezyk() => m.Ustawienia?.JezykEfektywny ?? "pl";
-        Func<Grupa, Rozstrzygniecie> Rozstrzygnij() => g => Grupy.Rozstrzygnij(s, g);
+        Func<Grupa, Resolution> Rozstrzygnij() => g => Grupy.Rozstrzygnij(s, g);
         string Docelowy(string sciezka, string filtr, string domyslna)
         {
             if (!string.IsNullOrWhiteSpace(sciezka)) return sciezka;
-            var folder = Path.GetDirectoryName(s.Projekt.Sciezka);
+            var folder = Path.GetDirectoryName(s.Project.Path);
             return m.Dialogi.ZapiszPlik(null, filtr, domyslna, folder);
         }
         string BezpiecznaNazwa(string n) => string.Concat((n ?? "projekt").Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)).Trim();
@@ -103,9 +103,9 @@ public static class Historia
         {
             Wymag();
             if (s.Wynik == null) throw new BladMostka("not_found", "brak porownania");
-            var plik = Docelowy(Mostek.Tekst(a, "sciezka"), "html", BezpiecznaNazwa(s.Projekt.Nazwa) + "-raport.html");
+            var plik = Docelowy(Mostek.Tekst(a, "sciezka"), "html", BezpiecznaNazwa(s.Project.Name) + "-raport.html");
             if (plik == null) return new { anulowano = true };
-            var jezyk = Jezyk(); var rozstrzygnij = Rozstrzygnij(); var tytul = s.Projekt.Nazwa;
+            var jezyk = Jezyk(); var rozstrzygnij = Rozstrzygnij(); var tytul = s.Project.Name;
             bool ok = jr.SprobujUruchom("raport", Path.GetFileName(plik), async (ct, postep) =>
             {
                 await Task.Yield();
@@ -121,7 +121,7 @@ public static class Historia
         {
             Wymag();
             if (s.Wynik == null) throw new BladMostka("not_found", "brak porownania");
-            var plik = Docelowy(Mostek.Tekst(a, "sciezka"), "csv", BezpiecznaNazwa(s.Projekt.Nazwa) + "-grupy.csv");
+            var plik = Docelowy(Mostek.Tekst(a, "sciezka"), "csv", BezpiecznaNazwa(s.Project.Name) + "-grupy.csv");
             if (plik == null) return new { anulowano = true };
             try
             {

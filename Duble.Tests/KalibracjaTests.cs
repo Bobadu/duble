@@ -41,10 +41,10 @@ public class KalibracjaTests
             Assert.Equal(2, w.PHashWarianty.N);
             Assert.True(w.PHashLosowe.N > 0);
             Assert.NotNull(w.Propozycja);
-            Assert.InRange(w.Propozycja.GeoIdentyczna, 0, 1); Assert.True(w.Propozycja.GeoPodobna >= w.Propozycja.GeoIdentyczna);
-            Assert.InRange(w.Propozycja.TexPHash, 4, 256); Assert.True(w.Propozycja.TexKolor >= 0);
-            Assert.Empty(w.Propozycja.Sprawdz());
-            Assert.Equal(Progi.Domyslne.TexPHash, w.Progi.TexPHash);
+            Assert.InRange(w.Propozycja.GeometryIdentical, 0, 1); Assert.True(w.Propozycja.GeometrySimilar >= w.Propozycja.GeometryIdentical);
+            Assert.InRange(w.Propozycja.TextureHashDistance, 4, 256); Assert.True(w.Propozycja.TextureColorDistance >= 0);
+            Assert.Empty(w.Propozycja.Validate());
+            Assert.Equal(Thresholds.Default.TextureHashDistance, w.UsedThresholds.TextureHashDistance);
             Assert.False(string.IsNullOrEmpty(w.Kiedy));
 
             // wydruk CLI dziala i zawiera propozycje
