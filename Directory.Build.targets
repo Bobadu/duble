@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    CodeWalker.Core (dexyfex, MIT) is a git submodule in external\CodeWalker, pinned to one commit.
+    Cloning with submodules (which Visual Studio and Rider do on their own) is all it takes; if someone
+    ends up without it, this stops the build with one clear sentence instead of a wall of CS0246.
+  -->
+  <PropertyGroup>
+    <CodeWalkerCore>$(MSBuildThisFileDirectory)external\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj</CodeWalkerCore>
+  </PropertyGroup>
+
+  <Target Name="EnsureCodeWalker"
+          BeforeTargets="PrepareForBuild;CollectPackageReferences"
+          Condition="'$(MSBuildProjectName)' == 'Duble.Core' And !Exists('$(CodeWalkerCore)')">
+    <Error Text="CodeWalker.Core is missing: Duble references it as a git submodule (external\CodeWalker). Run &quot;git submodule update --init --recursive&quot; in the repository root and build again, or clone with &quot;git clone --recurse-submodules https://github.com/Bobadu/duble&quot;. A downloaded ZIP archive does not contain submodules." />
+  </Target>
+</Project>

@@ -104,11 +104,22 @@ The full reasoning, including the measurements that made each threshold what it 
 Requirements: Windows, [.NET 10 SDK](https://dotnet.microsoft.com/download), git.
 
 ```powershell
-git clone https://github.com/Bobadu/duble
-cd duble
-.\build.ps1            # clones CodeWalker (pinned commit) next to the repo, builds Release, runs the tests
+git clone --recurse-submodules https://github.com/Bobadu/duble
+```
+
+Open `Duble.sln` in Visual Studio or Rider and build - that is the whole setup. Set `Duble.App` as the startup
+project and pick the **Duble (developer mode)** profile to run with the interface loaded from `Duble.App/ui`,
+so HTML/CSS/JS changes only need a page reload, with DevTools available.
+
+[CodeWalker](https://github.com/dexyfex/CodeWalker) (dexyfex, MIT) is a git submodule in `external/CodeWalker`
+pinned to one commit - cloning through the IDE brings it along. If you already cloned without submodules, run
+`git submodule update --init --recursive`; the build says so as well.
+
+For the command line, or when you want the release artefact:
+
+```powershell
+.\build.ps1            # submodule, Release build, tests - the same thing CI runs
 .\build.ps1 -Publish   # single-file publish\Duble.exe (self-contained, win-x64)
-.\build.ps1 -Uruchom   # build and run in developer mode (interface loaded from ui\, DevTools)
 ```
 
 | Project | What it is |

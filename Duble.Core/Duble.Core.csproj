@@ -9,7 +9,7 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj" />
+    <ProjectReference Include="..\external\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- slowniki PL/EN: powody werdyktow, nazwy werdyktow, rozpiska jakosci (Powody.cs / Teksty) -->

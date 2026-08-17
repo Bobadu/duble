@@ -34,5 +34,8 @@
 Duble.App/ui/vendor/** linguist-vendored
 Duble.App/ui/vendor/*.js -diff
 
+# CodeWalker lives here as a submodule - not our code.
+external/** linguist-vendored
+
 # Golden files for the tests are data, not source.
 Duble.Tests/golden/** linguist-generated

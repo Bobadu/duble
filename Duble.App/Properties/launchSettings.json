@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Duble": {
+      "commandName": "Project"
+    },
+    "Duble (developer mode)": {
+      "commandName": "Project",
+      "commandLineArgs": "--dev",
+      "nativeDebugging": false
+    }
+  }
+}

@@ -20,18 +20,23 @@ against those two promises.
 Requirements: Windows 10/11, [.NET 10 SDK](https://dotnet.microsoft.com/download), git.
 
 ```powershell
-git clone https://github.com/Bobadu/duble
-cd duble
-.\build.ps1                # clones CodeWalker next to the repo, builds Release, runs the tests
-.\build.ps1 -Uruchom       # build + start the app in developer mode
-.\build.ps1 -Publish       # single-file publish\Duble.exe
+git clone --recurse-submodules https://github.com/Bobadu/duble
 ```
 
-`build.ps1` clones [CodeWalker](https://github.com/dexyfex/CodeWalker) (dexyfex, MIT) into `..\CodeWalker` at a
-pinned commit — it is a project reference, not a NuGet package, and it is deliberately not vendored into this repo.
+Then open `Duble.sln` in Visual Studio or Rider and build. There is nothing to run first: the only external
+dependency, [CodeWalker](https://github.com/dexyfex/CodeWalker) (dexyfex, MIT), is a git submodule in
+`external/CodeWalker` pinned to one commit, and both IDEs fetch submodules when they clone. If you cloned without
+them, `git submodule update --init --recursive` fixes it - the build tells you so in one sentence.
 
-**Developer mode** (`Duble.exe --dev`) reads the interface from `Duble.App/ui` instead of the resources embedded
-in the exe, so HTML/CSS/JS changes only need a page reload (`Ctrl+R`), and DevTools (`F12`) are available.
+CodeWalker is referenced as a project, not as a NuGet package (it does not publish one), and it is deliberately
+not copied into this repository.
+
+**Developer mode** - run `Duble.App` with the **Duble (developer mode)** profile (or `Duble.exe --dev`): the
+interface is read from `Duble.App/ui` instead of the resources embedded in the executable, so HTML/CSS/JS changes
+only need a page reload (`Ctrl+R`), and DevTools (`F12`) are available.
+
+`build.ps1` does the same from the command line (submodule, build, tests, `-Publish` for the single-file
+executable) and is what CI runs - useful, but never required for working in an IDE.
 
 ### Tests
 
@@ -51,6 +56,7 @@ like the packs, e.g. `vrp_clothes_f_civil01`), and `GTAV_ENHANCED` at a GTA V En
 | `Duble.App` | WPF + WebView2 shell; the whole interface is `Duble.App/ui` (HTML/CSS/JS + three.js) talking to C# over a small JSON bridge |
 | `Duble.Cli` | command line (`duble indeks / porownaj / raport / zastosuj / cofnij / kalibruj`) |
 | `Duble.Tests` | xunit tests for the engine, the bridge commands and the dictionaries |
+| `external/CodeWalker` | submodule: dexyfex's CodeWalker, pinned - nothing in here is edited by us |
 
 `docs/how-it-works.md` explains what the engine actually compares and why the thresholds are what they are —
 worth reading before changing anything in `Odciski.cs` or `Porownanie.cs`.

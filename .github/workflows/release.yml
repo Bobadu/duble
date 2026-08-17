@@ -24,12 +24,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Cache CodeWalker
-        uses: actions/cache@v6
         with:
-          path: ${{ github.workspace }}/../CodeWalker
-          key: codewalker-485d56b
+          submodules: recursive
+
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
