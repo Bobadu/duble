@@ -17,7 +17,7 @@ public static class KatalogPozycji
     public static void Zarejestruj(Mostek m, Sesja s)
     {
         Sesja Wymag() => s.Otwarty ? s : throw new BladMostka("no_project", "brak otwartego projektu");
-        string Zrodlo(Pozycja p) => s.Projekt.Zrodla.Find(z => z.Id == p.ZrodloId)?.Nazwa ?? p.Paczka;
+        string Zrodlo(Garment p) => s.Projekt.Zrodla.Find(z => z.Id == p.SourceId)?.Nazwa ?? p.PackName;
 
         // pozycja -> najostrzejszy werdykt zywej grupy, w ktorej jest (bez zignorowanych) + lista grup
         Dictionary<string, List<(Grupa g, Rozstrzygniecie r)>> GrupyPozycji()
@@ -41,32 +41,32 @@ public static class KatalogPozycji
             bool problemy = Mostek.Flaga(a, "problemy"), wGrupie = Mostek.Flaga(a, "wGrupie");
             var szukaj = (Mostek.Tekst(a, "szukaj") ?? "").Trim().ToLowerInvariant();
             var grupy = GrupyPozycji();
-            var wszystkie = s.Katalog.Pozycje;
-            var filtrySloty = wszystkie.GroupBy(p => p.Typ).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
-            var filtryZrodla = wszystkie.GroupBy(p => p.ZrodloId ?? "").Select(g => new { id = g.Key, nazwa = s.Projekt.Zrodla.Find(z => z.Id == g.Key)?.Nazwa ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
+            var wszystkie = s.Catalog.Garments;
+            var filtrySloty = wszystkie.GroupBy(p => p.Slot).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
+            var filtryZrodla = wszystkie.GroupBy(p => p.SourceId ?? "").Select(g => new { id = g.Key, nazwa = s.Projekt.Zrodla.Find(z => z.Id == g.Key)?.Nazwa ?? g.Key, n = g.Count() }).OrderBy(x => x.nazwa).ToList();
             var pozycje = new List<object>();
             foreach (var p in wszystkie)
             {
-                bool bezMipow = p.Tekstury.Any(t => t.Mipy <= 1), bc1Alfa = p.Tekstury.Any(t => t.Format == "BC1" && t.Alfa > 0.02f), bc7 = p.Tekstury.Any(t => t.Format == "BC7");
+                bool bezMipow = p.Textures.Any(t => t.MipLevels <= 1), bc1Alfa = p.Textures.Any(t => t.Format == "BC1" && t.AlphaShare > 0.02f), bc7 = p.Textures.Any(t => t.Format == "BC7");
                 var werdykt = Werdykt(grupy.TryGetValue(p.Id, out var l) ? l : null);
-                if (zrodla.Count > 0 && !zrodla.Contains(p.ZrodloId ?? "")) continue;
-                if (sloty.Count > 0 && !sloty.Contains(p.Typ)) continue;
-                if (formaty.Count > 0 && !formaty.Contains(p.Gen9 ? "gen9" : "legacy")) continue;
+                if (zrodla.Count > 0 && !zrodla.Contains(p.SourceId ?? "")) continue;
+                if (sloty.Count > 0 && !sloty.Contains(p.Slot)) continue;
+                if (formaty.Count > 0 && !formaty.Contains(p.GameFormat.ToLabel())) continue;
                 if (problemy && !(bezMipow || bc1Alfa)) continue;
                 if (wGrupie && werdykt == null) continue;
-                if (szukaj.Length > 0 && !($"{p.Typ}_{p.Numer:d3} {p.Paczka} {p.Kontener} {Zrodlo(p)} {p.Id}").ToLowerInvariant().Contains(szukaj)) continue;
+                if (szukaj.Length > 0 && !($"{p.Slot}_{p.Number:d3} {p.PackName} {p.Container} {Zrodlo(p)} {p.Id}").ToLowerInvariant().Contains(szukaj)) continue;
                 pozycje.Add(new
                 {
-                    id = p.Id, zrodloId = p.ZrodloId, zrodlo = Zrodlo(p), kontener = p.Kontener, typ = p.Typ, numer = p.Numer, sufiks = p.Sufiks,
-                    gen9 = p.Gen9, props = p.Props, thumb = Widoki.Miniatura(p), tekstur = p.Tekstury.Count,
-                    bajty = p.BajtyYdd + p.Tekstury.Sum(t => t.Bajty), wArchiwum = Widoki.WArchiwum(p),
+                    id = p.Id, zrodloId = p.SourceId, zrodlo = Zrodlo(p), kontener = p.Container, typ = p.Slot, numer = p.Number, sufiks = p.Suffix,
+                    gen9 = p.GameFormat == GameFormat.Enhanced, props = p.IsProp, thumb = Widoki.Miniatura(p), tekstur = p.Textures.Count,
+                    bajty = p.ModelSize + p.Textures.Sum(t => t.Size), wArchiwum = Widoki.WArchiwum(p),
                     bezMipow, bc1Alfa, bc7, grupa = werdykt,
                 });
             }
             return new
             {
-                razem = wszystkie.Count, tekstury = wszystkie.Sum(p => p.Tekstury.Count), pokazane = pozycje.Count,
-                filtry = new { sloty = filtrySloty, zrodla = filtryZrodla, formaty = new { legacy = wszystkie.Count(p => !p.Gen9), gen9 = wszystkie.Count(p => p.Gen9) } },
+                razem = wszystkie.Count, tekstury = wszystkie.Sum(p => p.Textures.Count), pokazane = pozycje.Count,
+                filtry = new { sloty = filtrySloty, zrodla = filtryZrodla, formaty = new { legacy = wszystkie.Count(p => p.GameFormat == GameFormat.Legacy), gen9 = wszystkie.Count(p => p.GameFormat == GameFormat.Enhanced) } },
                 pozycje,
             };
         });
@@ -79,7 +79,7 @@ public static class KatalogPozycji
             var poz = Widoki.Czlonek(p, null, true, Zrodlo);
             var z = s.ZrodloPozycji(p);
             poz["zrodloSciezka"] = z?.Sciezka;
-            var wg = s.Katalog.Pozycje.ToDictionary(x => x.Id);
+            var wg = s.Catalog.Garments.ToDictionary(x => x.Id);
             var grupy = GrupyPozycji().TryGetValue(id, out var l) ? l : new();
             return new
             {
@@ -87,7 +87,7 @@ public static class KatalogPozycji
                 grupy = grupy.Select(x => new
                 {
                     id = x.g.Id, werdykt = x.g.Werdykt, ignoruj = x.r.Ignoruj, powod = Widoki.Powod(x.g.Pary.FirstOrDefault()?.Powod ?? x.g.Powod),
-                    inni = x.g.Pozycje.Where(i => i != id && wg.ContainsKey(i)).Select(i => new { id = i, nazwa = $"{wg[i].Typ}_{wg[i].Numer:d3}", sufiks = wg[i].Sufiks, zrodlo = Zrodlo(wg[i]) }).ToList(),
+                    inni = x.g.Pozycje.Where(i => i != id && wg.ContainsKey(i)).Select(i => new { id = i, nazwa = $"{wg[i].Slot}_{wg[i].Number:d3}", sufiks = wg[i].Suffix, zrodlo = Zrodlo(wg[i]) }).ToList(),
                     stan = x.r.Ignoruj ? "ignoruj" : x.r.Zwyciezca == id && x.r.Odrzucone.Count > 0 ? "zostaje" : x.r.Odrzucone.Contains(id) ? "odrzucona" : "neutral",
                 }).ToList(),
             };

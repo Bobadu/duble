@@ -14,28 +14,28 @@ public static class Widoki
     public static object Rozstrz(Rozstrzygniecie r) => new { zwyciezca = r.Zwyciezca, odrzucone = r.Odrzucone, ignoruj = r.Ignoruj, domyslna = r.Domyslna, notatka = r.Notatka };
     public static object Punkt(Punktacja p) => p == null ? null : new { razem = p.Razem, rozdz = p.Rozdz, mipy = p.Mipy, warianty = p.Warianty, format = p.Format, lod = p.Lod, rozdzPx = p.RozdzPx, udzialMipow = p.UdzialMipow, liczbaWariantow = p.LiczbaWariantow, zlyFormat = p.ZlyFormat, lody = p.Lody, brakTekstur = p.BrakTekstur };
 
-    public static bool WArchiwum(Pozycja p) => p.SciezkaYdd != null && p.SciezkaYdd.Contains('|');
-    public static string Miniatura(Pozycja p) => p.Tekstury.FirstOrDefault(t => t.Zdekodowana && t.Sha != null)?.Sha;
+    public static bool WArchiwum(Garment p) => p.ModelPath != null && p.ModelPath.Contains('|');
+    public static string Miniatura(Garment p) => p.Textures.FirstOrDefault(t => t.IsDecoded && t.Sha256 != null)?.Sha256;
 
     /// <summary>Czlonek grupy (g != null: punkty/rozpiska z grupy) albo samodzielna pozycja (g == null: z Jakosc).</summary>
-    public static Dictionary<string, object> Czlonek(Pozycja p, Grupa g, bool szczegoly, Func<Pozycja, string> zrodlo)
+    public static Dictionary<string, object> Czlonek(Garment p, Grupa g, bool szczegoly, Func<Garment, string> zrodlo)
     {
         double punkty; Punktacja rozpiska = null;
         if (g != null) { punkty = g.Punkty.TryGetValue(p.Id, out var pkt) ? pkt : 0.0; if (szczegoly) rozpiska = g.Rozpiska.TryGetValue(p.Id, out var r) ? r : null; }
         else { var j = Porownanie.Jakosc(p); punkty = j.Razem; rozpiska = j; }
         var podst = new Dictionary<string, object>
         {
-            ["id"] = p.Id, ["zrodloId"] = p.ZrodloId, ["zrodlo"] = zrodlo(p), ["kontener"] = p.Kontener, ["typ"] = p.Typ, ["numer"] = p.Numer, ["sufiks"] = p.Sufiks,
-            ["gen9"] = p.Gen9, ["props"] = p.Props, ["punkty"] = punkty, ["thumb"] = Miniatura(p),
-            ["tekstur"] = p.Tekstury.Count, ["wierzcholki"] = p.Geo?.Wierzcholki ?? 0, ["trojkaty"] = p.Geo?.Trojkaty ?? 0, ["lody"] = p.Geo?.Lody ?? 0,
-            ["bajty"] = p.BajtyYdd + p.Tekstury.Sum(t => t.Bajty), ["wArchiwum"] = WArchiwum(p),
+            ["id"] = p.Id, ["zrodloId"] = p.SourceId, ["zrodlo"] = zrodlo(p), ["kontener"] = p.Container, ["typ"] = p.Slot, ["numer"] = p.Number, ["sufiks"] = p.Suffix,
+            ["gen9"] = p.GameFormat == GameFormat.Enhanced, ["props"] = p.IsProp, ["punkty"] = punkty, ["thumb"] = Miniatura(p),
+            ["tekstur"] = p.Textures.Count, ["wierzcholki"] = p.Geometry?.Vertices ?? 0, ["trojkaty"] = p.Geometry?.Triangles ?? 0, ["lody"] = p.Geometry?.LodLevels ?? 0,
+            ["bajty"] = p.ModelSize + p.Textures.Sum(t => t.Size), ["wArchiwum"] = WArchiwum(p),
         };
         if (szczegoly)
         {
             podst["rozpiska"] = Punkt(rozpiska);
-            podst["sciezkaYdd"] = p.SciezkaYdd;
-            podst["bajtyYdd"] = p.BajtyYdd;
-            podst["tekstury"] = p.Tekstury.Select(t => new { sha = t.Sha, plik = t.Plik, nazwa = t.Nazwa, w = t.W, h = t.H, format = t.Format, mipy = t.Mipy, alfa = t.Alfa, zdekodowana = t.Zdekodowana, bajty = t.Bajty }).ToList();
+            podst["sciezkaYdd"] = p.ModelPath;
+            podst["bajtyYdd"] = p.ModelSize;
+            podst["tekstury"] = p.Textures.Select(t => new { sha = t.Sha256, plik = t.FileName, nazwa = t.Name, w = t.Width, h = t.Height, format = t.Format, mipy = t.MipLevels, alfa = t.AlphaShare, zdekodowana = t.IsDecoded, bajty = t.Size }).ToList();
         }
         return podst;
     }

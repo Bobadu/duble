@@ -166,6 +166,8 @@
   "dup.clear": "Clear",
   "dup.empty": "No groups — nothing duplicates anything else. Good news!",
   "dup.emptyFiltered": "No group matches the filters.",
+  "dup.notIndexed": "Nothing indexed yet",
+  "dup.notIndexedHint": "Add sources and run Index all — the comparison then starts by itself.",
   "dup.members": "{n} members",
   "dup.winner": "stays",
   "dup.rejected": "rejected",

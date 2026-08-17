@@ -23,8 +23,8 @@ public static class Zrodla
         {
             ct.ThrowIfCancellationRequested();
             if (!Directory.Exists(z.Sciezka) && !File.Exists(z.Sciezka)) continue;
-            Katalog poprzedni = null;
-            s.ZmienKatalog(k => poprzedni = new Katalog { Pozycje = k.Pozycje.ToList() });
+            Catalog poprzedni = null;
+            s.ZmienKatalog(k => poprzedni = new Catalog { Garments = k.Garments.ToList() });
             var opcje = new OpcjeIndeksu
             {
                 Log = _ => { }, Anuluj = ct, Poprzedni = poprzedni, Wymus = wymus,
@@ -33,10 +33,10 @@ public static class Zrodla
             };
             postep(new Postep("start", 0, 0, z.Nazwa));
             var pozycje = Indeks.Zrodlo(z.Sciezka, z.Nazwa, opcje);
-            foreach (var p in pozycje) p.ZrodloId = z.Id;
-            s.ZmienKatalog(k => { k.UsunPaczke(z.Nazwa); k.Wstaw(pozycje); k.Zrodla[z.Nazwa] = z.Sciezka; });
+            foreach (var p in pozycje) p.SourceId = z.Id;
+            s.ZmienKatalog(k => { k.RemovePack(z.Nazwa); k.Upsert(pozycje); k.Sources[z.Nazwa] = z.Sciezka; });
             z.Zaindeksowano = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            z.Format = pozycje.Count == 0 ? null : pozycje.All(p => p.Gen9) ? "gen9" : pozycje.All(p => !p.Gen9) ? "legacy" : "mieszany";
+            z.Format = pozycje.Count == 0 ? null : pozycje.All(p => p.GameFormat == GameFormat.Enhanced) ? "gen9" : pozycje.All(p => p.GameFormat == GameFormat.Legacy) ? "legacy" : "mieszany";
             m.Zdarzenie("sources.changed", new { id = z.Id });
             m.Zdarzenie("project.changed", new { projekt = s.Podsumowanie() });
         }
@@ -99,7 +99,7 @@ public static class Zrodla
             var id = Mostek.Tekst(a, "id", true);
             var z = Wymag().Projekt.Zrodla.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
             s.Projekt.Zrodla.Remove(z);
-            s.ZmienKatalog(k => { k.Pozycje.RemoveAll(p => p.ZrodloId == id); k.Zrodla.Remove(z.Nazwa); });
+            s.ZmienKatalog(k => { k.Garments.RemoveAll(p => p.SourceId == id); k.Sources.Remove(z.Nazwa); });
             s.Zapisz();
             Zmienilo(id);
             return new { };

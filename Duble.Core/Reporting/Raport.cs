@@ -40,12 +40,12 @@ public static class Raport
 
     /// <summary>Samowystarczalny raport HTML. `rozstrzygnij` (aplikacja: decyzje uzytkownika) mowi, kto zostaje / jest odrzucony /
     /// zignorowany; brak = domyslne z porownania. `tytul` = nazwa projektu (naglowek strony).</summary>
-    public static void Zbuduj(Katalog katalog, WynikPorownania wynik, string plik, Action<string> log, string jezyk = "pl",
+    public static void Zbuduj(Catalog katalog, WynikPorownania wynik, string plik, Action<string> log, string jezyk = "pl",
                               Func<Grupa, Rozstrzygniecie> rozstrzygnij = null, string tytul = null)
     {
         log ??= _ => { };
         rozstrzygnij ??= g => Rozstrzygniecie.Policz(g, null);
-        var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
+        var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var kolejnosc = new Dictionary<string, int>
         {
             [Porownanie.Duplikat] = 0, [Porownanie.Nadzbior] = 1,
@@ -66,7 +66,7 @@ public static class Raport
             foreach (var id in r.Odrzucone.Where(wgId.ContainsKey))
             {
                 doOdrzucenia++;
-                doOdzyskania += wgId[id].BajtyYdd + wgId[id].Tekstury.Sum(t => t.Bajty);
+                doOdzyskania += wgId[id].ModelSize + wgId[id].Textures.Sum(t => t.Size);
             }
         }
 
@@ -134,42 +134,42 @@ public static class Raport
 
     // ===================== miniatury =====================
 
-    static string Miniatura(Tekstura t, bool gen9)
+    static string Miniatura(TextureInfo t)
     {
-        if (t?.Sciezka == null) { bezPliku++; return null; }
-        if (CacheMiniatur.TryGetValue(t.Sha, out var gotowa)) return gotowa;
-        var bajty = Zrodla.Bajty(t.Sciezka);
+        if (t?.Path == null) { bezPliku++; return null; }
+        if (CacheMiniatur.TryGetValue(t.Sha256, out var gotowa)) return gotowa;
+        var bajty = Zrodla.Bajty(t.Path);
         if (bajty == null) { bezPliku++; return null; }
         try
         {
-            CodeWalkerRuntime.Initialize();   // tryb gen9 czyta oba formaty po naglowku RSC7 (parametr gen9 zostal dla zgodnosci)
+            CodeWalkerRuntime.Initialize();   // gen9 mode reads both formats, by the RSC7 header of each file
             var ytd = new YtdFile();
             RpfFile.LoadResourceFile(ytd, bajty, 13);
             var tex = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
             var rgb = tex == null ? null : Odciski.Miniatura(tex, Bok);
             if (rgb == null) { bezPodgladu++; return null; }
             var uri = "data:image/png;base64," + Convert.ToBase64String(Png.Rgb(rgb, Bok, Bok));
-            CacheMiniatur[t.Sha] = uri;
+            CacheMiniatur[t.Sha256] = uri;
             return uri;
         }
         catch { bezPodgladu++; return null; }
     }
 
-    static string Kafelek(Tekstura t, bool gen9, string jezyk, string etykieta = null)
+    static string Kafelek(TextureInfo t, string jezyk, string etykieta = null)
     {
         if (t == null)
             return $"<div class=\"kafelek pusty\"><div class=\"placeholder\">{E(Tx(jezyk, "raport.brakOdpowiednika")).Replace(" ", "<br>")}</div></div>";
-        var uri = Miniatura(t, gen9);
+        var uri = Miniatura(t);
         var obraz = uri != null
-            ? $"<img src=\"{uri}\" alt=\"{E(t.Plik)}\" loading=\"lazy\" width=\"{Bok}\" height=\"{Bok}\">"
+            ? $"<img src=\"{uri}\" alt=\"{E(t.FileName)}\" loading=\"lazy\" width=\"{Bok}\" height=\"{Bok}\">"
             : $"<div class=\"placeholder\">{E(t.Format)}<br>{E(Tx(jezyk, "raport.bezPodgladu"))}</div>";
-        var znaczniki = new List<string> { $"{t.W}×{t.H}", E(t.Format) };
-        if (t.Mipy <= 1) znaczniki.Add($"<span class=\"zle\">{E(Tx(jezyk, "raport.bezMipow"))}</span>");
-        if (t.Format == "BC1" && t.Alfa > 0.02f) znaczniki.Add($"<span class=\"zle\">{E(Tx(jezyk, "raport.bc1Alfa"))}</span>");
+        var znaczniki = new List<string> { $"{t.Width}×{t.Height}", E(t.Format) };
+        if (t.MipLevels <= 1) znaczniki.Add($"<span class=\"zle\">{E(Tx(jezyk, "raport.bezMipow"))}</span>");
+        if (t.Format == "BC1" && t.AlphaShare > 0.02f) znaczniki.Add($"<span class=\"zle\">{E(Tx(jezyk, "raport.bc1Alfa"))}</span>");
         return $"""
             <div class="kafelek">
               {obraz}
-              <div class="nazwa" title="{E(t.Plik)}">{E(etykieta ?? t.Plik)}</div>
+              <div class="nazwa" title="{E(t.FileName)}">{E(etykieta ?? t.FileName)}</div>
               <div class="meta">{string.Join(" · ", znaczniki)}</div>
             </div>
             """;
@@ -177,7 +177,7 @@ public static class Raport
 
     // ===================== karta grupy =====================
 
-    static string Karta(Grupa g, Dictionary<string, Pozycja> wgId, string jezyk, Rozstrzygniecie roz)
+    static string Karta(Grupa g, Dictionary<string, Garment> wgId, string jezyk, Rozstrzygniecie roz)
     {
         roz ??= Rozstrzygniecie.Policz(g, null);
         var zwyciezca = roz.Zwyciezca ?? g.Zwyciezca;
@@ -188,7 +188,7 @@ public static class Raport
         var inv = CultureInfo.InvariantCulture;
 
         var sb = new StringBuilder();
-        var szukaj = string.Join(" ", czlonkowie.Select(id => wgId[id].Opis)).ToLowerInvariant();
+        var szukaj = string.Join(" ", czlonkowie.Select(id => wgId[id].Label)).ToLowerInvariant();
         sb.Append($"<article class=\"grupa {Klasa(g.Werdykt)}\" data-werdykt=\"{E(g.Werdykt)}\" data-szukaj=\"{E(szukaj)}\">");
 
         // --- naglowek ---
@@ -196,7 +196,7 @@ public static class Raport
         sb.Append($"<span class=\"odznaka {Klasa(g.Werdykt)}\">{E(Teksty.T(jezyk, "werdykt." + g.Werdykt))}</span>");
         if (roz.Ignoruj) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.zignorowana"))}</span>");
         else if (!roz.Domyslna) sb.Append($" <span class=\"odznaka w-inne\">{E(Tx(jezyk, "raport.twojaDecyzja"))}</span>");
-        sb.Append($"<h2>{string.Join(" <span class=\"rowna\">=</span> ", czlonkowie.Select(id => $"<span class=\"tytul\">{E(wgId[id].Opis)}<sub>{E(wgId[id].Sufiks)}</sub></span>"))}</h2>");
+        sb.Append($"<h2>{string.Join(" <span class=\"rowna\">=</span> ", czlonkowie.Select(id => $"<span class=\"tytul\">{E(wgId[id].Label)}<sub>{E(wgId[id].Suffix)}</sub></span>"))}</h2>");
         sb.Append($"<p class=\"powod\">{E(Teksty.Powod(g.Pary.FirstOrDefault()?.Powod ?? g.Powod, jezyk))}</p>");
         if (!string.IsNullOrWhiteSpace(roz.Notatka)) sb.Append($"<p class=\"powod notatka\">{E(Tx(jezyk, "raport.notatka"))}: {E(roz.Notatka)}</p>");
         sb.Append("</header>");
@@ -211,26 +211,26 @@ public static class Raport
             string stan = wygrywa ? "wygrywa" : odrzut ? "odrzut" : "";
             sb.Append($"<section class=\"panel {stan}\">");
             sb.Append("<div class=\"panel-glowa\">");
-            sb.Append($"<span class=\"paczka\">{E(p.Paczka)}</span>");
+            sb.Append($"<span class=\"paczka\">{E(p.PackName)}</span>");
             if (wygrywa) sb.Append($"<span class=\"stan wygrywa\">{E(Tx(jezyk, "raport.zostaje"))}</span>");
             else if (odrzut) sb.Append($"<span class=\"stan odrzut\">{E(Tx(jezyk, "raport.doOdrzucenia"))}</span>");
             sb.Append("</div>");
-            sb.Append($"<div class=\"nazwa-poz\">{E(p.Typ)}_{p.Numer:d3}<sub>{E(p.Sufiks)}</sub></div>");
+            sb.Append($"<div class=\"nazwa-poz\">{E(p.Slot)}_{p.Number:d3}<sub>{E(p.Suffix)}</sub></div>");
             if (g.Punkty.TryGetValue(id, out var pkt))
             {
                 sb.Append($"<div class=\"punkty\"><b>{pkt.ToString("F0", inv)}</b><span>{E(Tx(jezyk, "raport.pktJakosci"))}</span></div>");
                 if (g.Rozpiska.TryGetValue(id, out var r))
                     sb.Append($"<div class=\"rozpiska\">{E(r.Tekst(jezyk))}</div>");
             }
-            var med = p.Tekstury.Count > 0
-                ? p.Tekstury.OrderBy(t => (long)t.W * t.H).ElementAt(p.Tekstury.Count / 2)
+            var med = p.Textures.Count > 0
+                ? p.Textures.OrderBy(t => (long)t.Width * t.Height).ElementAt(p.Textures.Count / 2)
                 : null;
             sb.Append("<ul class=\"znaczniki\">");
-            sb.Append($"<li>{E(Tx(jezyk, "raport.tekstur", ("n", p.Tekstury.Count)))}</li>");
-            if (med != null) sb.Append($"<li>{med.W}×{med.H}</li>");
-            sb.Append($"<li>{(p.Geo?.Trojkaty ?? 0).ToString("N0", inv)} tri</li>");
-            sb.Append($"<li>LOD {p.Geo?.Lody ?? 0}</li>");
-            int bezMip = p.Tekstury.Count(t => t.Mipy <= 1);
+            sb.Append($"<li>{E(Tx(jezyk, "raport.tekstur", ("n", p.Textures.Count)))}</li>");
+            if (med != null) sb.Append($"<li>{med.Width}×{med.Height}</li>");
+            sb.Append($"<li>{(p.Geometry?.Triangles ?? 0).ToString("N0", inv)} tri</li>");
+            sb.Append($"<li>LOD {p.Geometry?.LodLevels ?? 0}</li>");
+            int bezMip = p.Textures.Count(t => t.MipLevels <= 1);
             if (bezMip > 0) sb.Append($"<li class=\"zle\">{E(Tx(jezyk, "raport.nBezMipow", ("n", bezMip)))}</li>");
             sb.Append("</ul>");
             sb.Append("</section>");
@@ -243,9 +243,9 @@ public static class Raport
         var uzyte = czlonkowie.ToDictionary(id => id, id => new HashSet<int>());
         int wierszy = 0, pominietych = 0;
         sb.Append("<div class=\"siatka\" style=\"--kolumn:" + czlonkowie.Count + "\">");
-        for (int w = 0; w < wzorzec.Tekstury.Count; w++)
+        for (int w = 0; w < wzorzec.Textures.Count; w++)
         {
-            var wz = wzorzec.Tekstury[w];
+            var wz = wzorzec.Textures[w];
             // Dopasowanie liczymy ZAWSZE, nawet gdy wiersza juz nie rysujemy — inaczej
             // nadmiarowe tekstury wzorca wyladowalyby falszywie w sekcji "tylko tutaj".
             uzyte[czlonkowie[0]].Add(w);
@@ -254,38 +254,38 @@ public static class Raport
             {
                 var inny = wgId[czlonkowie[i]];
                 trafienia[i] = -1;
-                for (int k = 0; k < inny.Tekstury.Count; k++)
+                for (int k = 0; k < inny.Textures.Count; k++)
                 {
                     if (uzyte[czlonkowie[i]].Contains(k)) continue;
-                    if (Porownanie.TaSamaGrafika(wz, inny.Tekstury[k])) { trafienia[i] = k; break; }
+                    if (Porownanie.TaSamaGrafika(wz, inny.Textures[k])) { trafienia[i] = k; break; }
                 }
                 if (trafienia[i] >= 0) uzyte[czlonkowie[i]].Add(trafienia[i]);
             }
             if (wierszy >= MaxWierszy) { pominietych++; continue; }
             wierszy++;
             sb.Append("<div class=\"wiersz\">");
-            sb.Append(Kafelek(wz, wzorzec.Gen9, jezyk));
+            sb.Append(Kafelek(wz, jezyk));
             for (int i = 1; i < czlonkowie.Count; i++)
             {
                 var inny = wgId[czlonkowie[i]];
-                sb.Append(Kafelek(trafienia[i] >= 0 ? inny.Tekstury[trafienia[i]] : null, inny.Gen9, jezyk));
+                sb.Append(Kafelek(trafienia[i] >= 0 ? inny.Textures[trafienia[i]] : null, jezyk));
             }
             sb.Append("</div>");
         }
         sb.Append("</div>");
         if (pominietych > 0)
-            sb.Append($"<p class=\"uwaga\">{E(Tx(jezyk, "raport.pokazane", ("n", MaxWierszy), ("m", wzorzec.Tekstury.Count), ("r", pominietych)))}</p>");
+            sb.Append($"<p class=\"uwaga\">{E(Tx(jezyk, "raport.pokazane", ("n", MaxWierszy), ("m", wzorzec.Textures.Count), ("r", pominietych)))}</p>");
 
         // --- tekstury wystepujace tylko u jednego ---
         foreach (var id in czlonkowie)
         {
             var p = wgId[id];
-            var unikalne = Enumerable.Range(0, p.Tekstury.Count).Where(k => !uzyte[id].Contains(k)).ToList();
+            var unikalne = Enumerable.Range(0, p.Textures.Count).Where(k => !uzyte[id].Contains(k)).ToList();
             if (unikalne.Count == 0) continue;
             bool stracisz = !roz.Ignoruj && roz.Odrzucone.Contains(id);
-            sb.Append($"<h4>{E(Tx(jezyk, "raport.tylkoW"))} <em>{E(p.Opis)}</em> — {E(Tx(jezyk, "raport.tekstur", ("n", unikalne.Count)))}{(stracisz ? $" <span class=\"zle\">{E(Tx(jezyk, "raport.stracisz"))}</span>" : "")}</h4>");
+            sb.Append($"<h4>{E(Tx(jezyk, "raport.tylkoW"))} <em>{E(p.Label)}</em> — {E(Tx(jezyk, "raport.tekstur", ("n", unikalne.Count)))}{(stracisz ? $" <span class=\"zle\">{E(Tx(jezyk, "raport.stracisz"))}</span>" : "")}</h4>");
             sb.Append("<div class=\"pasek\">");
-            foreach (var k in unikalne.Take(MaxUnikalnych)) sb.Append(Kafelek(p.Tekstury[k], p.Gen9, jezyk));
+            foreach (var k in unikalne.Take(MaxUnikalnych)) sb.Append(Kafelek(p.Textures[k], jezyk));
             sb.Append("</div>");
             if (unikalne.Count > MaxUnikalnych)
                 sb.Append($"<p class=\"uwaga\">{E(Tx(jezyk, "raport.dalszych", ("n", unikalne.Count - MaxUnikalnych)))}</p>");
@@ -297,10 +297,10 @@ public static class Raport
     // ===================== CSV =====================
 
     /// <summary>Tabela grup i decyzji: jeden wiersz na czlonka grupy. Separator `;` dla PL (Excel PL), `,` dla EN; UTF-8 z BOM.</summary>
-    public static string Csv(Katalog katalog, WynikPorownania wynik, Func<Grupa, Rozstrzygniecie> rozstrzygnij = null, string jezyk = "pl")
+    public static string Csv(Catalog katalog, WynikPorownania wynik, Func<Grupa, Rozstrzygniecie> rozstrzygnij = null, string jezyk = "pl")
     {
         rozstrzygnij ??= g => Rozstrzygniecie.Policz(g, null);
-        var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
+        var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var sep = Teksty.T(jezyk, "raport.csv.separator");
         if (sep.Length != 1) sep = ";";
         var inv = CultureInfo.InvariantCulture;
@@ -325,9 +325,9 @@ public static class Raport
                 var stan = r.Ignoruj ? "zignorowana" : (r.Zwyciezca == id && r.Odrzucone.Count > 0) ? "zostaje" : r.Odrzucone.Contains(id) ? "odrzucona" : "bezZmian";
                 var wiersz = new object[]
                 {
-                    nr, Teksty.T(jezyk, "werdykt." + g.Werdykt), powod, $"{p.Typ}_{p.Numer:d3}", p.Sufiks, p.Paczka, p.Kontener, p.SciezkaYdd,
+                    nr, Teksty.T(jezyk, "werdykt." + g.Werdykt), powod, $"{p.Slot}_{p.Number:d3}", p.Suffix, p.PackName, p.Container, p.ModelPath,
                     g.Punkty.TryGetValue(id, out var pkt) ? pkt.ToString("F0", inv) : "", Teksty.T(jezyk, "raport.stan." + stan), r.Notatka ?? "",
-                    p.Geo?.Wierzcholki ?? 0, p.Geo?.Trojkaty ?? 0, p.Tekstury.Count, p.BajtyYdd + p.Tekstury.Sum(t => t.Bajty),
+                    p.Geometry?.Vertices ?? 0, p.Geometry?.Triangles ?? 0, p.Textures.Count, p.ModelSize + p.Textures.Sum(t => t.Size),
                 };
                 sb.AppendLine(string.Join(sep, wiersz.Select(Pole)));
             }
@@ -348,7 +348,7 @@ public static class Raport
 
     // ===================== naglowek dokumentu =====================
 
-    static string Naglowek(Katalog katalog, WynikPorownania wynik, List<Grupa> grupy, int doOdrzucenia, long doOdzyskania, string jezyk, string tytul)
+    static string Naglowek(Catalog katalog, WynikPorownania wynik, List<Grupa> grupy, int doOdrzucenia, long doOdzyskania, string jezyk, string tytul)
     {
         int Ile(string w) => grupy.Count(g => g.Werdykt == w);
         var kultura = CultureInfo.InvariantCulture;
@@ -502,8 +502,8 @@ public static class Raport
         <header class="strona">
           <h1>{{E(naglowek)}}</h1>
           <div class="chipy">
-            <span class="chip">{{T("raport.pozycjiWKatalogu")}} <b>{{katalog.Pozycje.Count}}</b></span>
-            <span class="chip">{{T("raport.tekstury")}} <b>{{katalog.Pozycje.Sum(p => p.Tekstury.Count)}}</b></span>
+            <span class="chip">{{T("raport.pozycjiWKatalogu")}} <b>{{katalog.Garments.Count}}</b></span>
+            <span class="chip">{{T("raport.tekstury")}} <b>{{katalog.Garments.Sum(p => p.Textures.Count)}}</b></span>
             <span class="chip">{{T("raport.widocznychGrup")}} <b id="licznik">0</b></span>
             <span class="chip">{{T("raport.doOdrzuceniaN")}} <b>{{doOdrzucenia}}</b></span>
             <span class="chip">{{T("raport.odzyskaSie")}} <b>{{(doOdzyskania / 1024.0 / 1024.0).ToString("F1", kultura)}} MB</b></span>

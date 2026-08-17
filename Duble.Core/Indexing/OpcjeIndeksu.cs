@@ -13,7 +13,7 @@ public class OpcjeIndeksu
     public Action<Postep> Postep { get; set; }
     public CancellationToken Anuluj { get; set; }
     /// <summary>Poprzedni katalog: pozycje/tekstury o tej samej sciezce i znaczniku sa brane z niego bez liczenia.</summary>
-    public Katalog Poprzedni { get; set; }
+    public Catalog Poprzedni { get; set; }
     /// <summary>Ignoruj Poprzedni — przelicz wszystko.</summary>
     public bool Wymus { get; set; }
     /// <summary>Gdy ustawiony: przy dekodowaniu tekstury zapisujemy &lt;sha&gt;.png (128 px, alfa na szachownicy).</summary>

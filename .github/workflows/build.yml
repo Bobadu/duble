@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths-ignore: ['**/*.md', 'docs/**', '.github/ISSUE_TEMPLATE/**']
   pull_request:
-    branches: [main]
+    # every target branch, not only main: a refactor lands as a stack of pull requests, and a stacked one has
+    # to be checkable before the one below it is merged
+    branches: ['**']
   workflow_dispatch:
 
 permissions:

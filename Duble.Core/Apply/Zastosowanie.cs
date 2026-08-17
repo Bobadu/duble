@@ -34,7 +34,7 @@ public sealed class RuchPliku
     public const string WArchiwum = "wArchiwum";           // siedzi w .rpf — nie ruszamy archiwow
     public const string Brak = "brak";                     // nie ma go na dysku / brak zrodla
 
-    public string Pozycja { get; set; }
+    public string GarmentId { get; set; }
     public string Z { get; set; }
     public string Do { get; set; }
     public long Bajty { get; set; }
@@ -88,7 +88,7 @@ public sealed class Przeniesienie
 {
     public string Z { get; set; }
     public string Do { get; set; }
-    public string Pozycja { get; set; }
+    public string GarmentId { get; set; }
     public long Bajty { get; set; }
     public bool Cofniety { get; set; }
 }
@@ -124,7 +124,7 @@ public sealed class Cofka
     /// <summary>Jest co cofac: ruch niecofniety, plik nadal w koszu, a miejsce zrodlowe wolne.</summary>
     [JsonIgnore] public bool MoznaCofnac => Ruchy.Any(MoznaCofnacRuch);
     public static bool MoznaCofnacRuch(Przeniesienie r) => !r.Cofniety && File.Exists(r.Do) && !File.Exists(r.Z);
-    public bool MoznaCofnacPozycje(string id) => Ruchy.Any(r => r.Pozycja == id && MoznaCofnacRuch(r));
+    public bool MoznaCofnacPozycje(string id) => Ruchy.Any(r => r.GarmentId == id && MoznaCofnacRuch(r));
 
     static readonly JsonSerializerOptions Opcje = new() { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
     public void Zapisz(string plik)
@@ -146,7 +146,7 @@ public sealed class Cofka
 public static class Zastosowanie
 {
     /// <summary>Wypisuje liste decyzji do pliku TSV, ktory mozna recznie poprawic (CLI).</summary>
-    public static void ZapiszDecyzje(WynikPorownania wynik, Katalog katalog, string sciezka)
+    public static void ZapiszDecyzje(WynikPorownania wynik, Catalog katalog, string sciezka)
     {
         var sb = new StringBuilder();
         sb.AppendLine("# Lista pozycji, ktore `duble zastosuj` przeniesie do _odrzucone\\.");
@@ -169,41 +169,41 @@ public static class Zastosowanie
     /// <summary>Plan przeniesien dla odrzuconych pozycji. `cel(p)` mowi, skad liczyc sciezke wzgledna i dokad przeniesc
     /// (null = zrodla nie ma na dysku -> pliki pozycji w stanie Brak). Pliki uzywane przez pozycje, ktore zostaja,
     /// dostaja stan Wspoldzielony; wpisy z archiwow (sciezka z '|') — WArchiwum.</summary>
-    public static PlanZastosowania Zaplanuj(Katalog katalog, IEnumerable<string> odrzucone, Func<Pozycja, CelPozycji> cel)
+    public static PlanZastosowania Zaplanuj(Catalog katalog, IEnumerable<string> odrzucone, Func<Garment, CelPozycji> cel)
     {
         var plan = new PlanZastosowania();
-        var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
+        var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var odrzucane = new HashSet<string>(odrzucone.Where(wgId.ContainsKey));
         if (odrzucane.Count == 0) return plan;
 
         // Pliki uzywane przez pozycje, KTORE ZOSTAJA. Wszystko z tej listy jest nietykalne.
         var chronione = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var p in katalog.Pozycje.Where(p => !odrzucane.Contains(p.Id)))
+        foreach (var p in katalog.Garments.Where(p => !odrzucane.Contains(p.Id)))
         {
-            if (p.SciezkaYdd != null) chronione.Add(p.SciezkaYdd);
-            foreach (var t in p.Tekstury) if (t.Sciezka != null) chronione.Add(t.Sciezka);
+            if (p.ModelPath != null) chronione.Add(p.ModelPath);
+            foreach (var t in p.Textures) if (t.Path != null) chronione.Add(t.Path);
         }
 
         // ten sam plik moze byc w dwoch odrzucanych pozycjach (feet_050 i feet_050_1 obie odrzucone) — przenosimy raz
         var zaplanowane = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var brakZrodel = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var kolejnosc = odrzucane.Select(id => wgId[id]).OrderBy(p => p.Paczka, StringComparer.OrdinalIgnoreCase).ThenBy(p => p.Typ, StringComparer.Ordinal).ThenBy(p => p.Numer).ThenBy(p => p.Sufiks, StringComparer.Ordinal);
+        var kolejnosc = odrzucane.Select(id => wgId[id]).OrderBy(p => p.PackName, StringComparer.OrdinalIgnoreCase).ThenBy(p => p.Slot, StringComparer.Ordinal).ThenBy(p => p.Number).ThenBy(p => p.Suffix, StringComparer.Ordinal);
         foreach (var p in kolejnosc)
         {
             var c = cel?.Invoke(p);
             var pp = new PozycjaPlanu
             {
-                Id = p.Id, Nazwa = $"{p.Typ}_{p.Numer:d3}", Sufiks = p.Sufiks, Kontener = p.Kontener,
-                Zrodlo = c?.Zrodlo ?? p.Paczka, ZrodloId = c?.ZrodloId ?? p.ZrodloId, Kosz = c?.Kosz,
+                Id = p.Id, Nazwa = $"{p.Slot}_{p.Number:d3}", Sufiks = p.Suffix, Kontener = p.Container,
+                Zrodlo = c?.Zrodlo ?? p.PackName, ZrodloId = c?.ZrodloId ?? p.SourceId, Kosz = c?.Kosz,
             };
             if (c == null) brakZrodel.Add(pp.Zrodlo);
 
             var pliki = new List<(string sciezka, long bajty)>();
-            if (p.SciezkaYdd != null) pliki.Add((p.SciezkaYdd, p.BajtyYdd));
-            pliki.AddRange(p.Tekstury.Where(t => t.Sciezka != null).Select(t => (t.Sciezka, t.Bajty)));
+            if (p.ModelPath != null) pliki.Add((p.ModelPath, p.ModelSize));
+            pliki.AddRange(p.Textures.Where(t => t.Path != null).Select(t => (t.Path, t.Size)));
             foreach (var (sciezka, bajty) in pliki.DistinctBy(x => x.sciezka, StringComparer.OrdinalIgnoreCase))
             {
-                var r = new RuchPliku { Pozycja = p.Id, Z = sciezka, Bajty = bajty };
+                var r = new RuchPliku { GarmentId = p.Id, Z = sciezka, Bajty = bajty };
                 if (sciezka.Contains('|')) r.Stan = RuchPliku.WArchiwum;
                 else if (chronione.Contains(sciezka)) r.Stan = RuchPliku.Wspoldzielony;
                 else if (c == null || !File.Exists(sciezka)) r.Stan = RuchPliku.Brak;
@@ -258,7 +258,7 @@ public static class Zastosowanie
                 File.Move(r.Z, r.Do);
             }
             catch (Exception e) { cofka.Przerwano = true; cofka.Blad = $"{r.Z}: {e.Message}"; break; }
-            cofka.Ruchy.Add(new Przeniesienie { Z = r.Z, Do = r.Do, Pozycja = p.Id, Bajty = r.Bajty });
+            cofka.Ruchy.Add(new Przeniesienie { Z = r.Z, Do = r.Do, GarmentId = p.Id, Bajty = r.Bajty });
             if (!pozycje.TryGetValue(p.Id, out var pc))
                 pozycje[p.Id] = pc = new PozycjaCofki { Id = p.Id, Nazwa = p.Nazwa + (string.IsNullOrEmpty(p.Sufiks) ? "" : " " + p.Sufiks), Zrodlo = p.Zrodlo, ZrodloId = p.ZrodloId, Kosz = p.Kosz };
             pc.Pliki++;
@@ -276,7 +276,7 @@ public static class Zastosowanie
     public static (int wrocilo, int pominieto) Cofnij(Cofka cofka, IEnumerable<string> tylkoPozycje = null, Action<Postep> postep = null)
     {
         var tylko = tylkoPozycje == null ? null : new HashSet<string>(tylkoPozycje);
-        var doCofniecia = cofka.Ruchy.Where(r => !r.Cofniety && (tylko == null || tylko.Contains(r.Pozycja))).ToList();
+        var doCofniecia = cofka.Ruchy.Where(r => !r.Cofniety && (tylko == null || tylko.Contains(r.GarmentId))).ToList();
         int wrocilo = 0, pominieto = 0, i = 0;
         foreach (var r in doCofniecia)
         {
@@ -318,15 +318,14 @@ public static class Zastosowanie
 
     // ===================== CLI (plik decyzji TSV + jeden korzen kosza) =====================
 
-    public static int Zastosuj(Katalog katalog, string decyzje, string korzenOdrzuconych, string plikCofki, Action<string> log)
+    public static int Zastosuj(Catalog katalog, string decyzje, string korzenOdrzuconych, string plikCofki, Action<string> log)
     {
         if (!File.Exists(decyzje)) { log($"[blad] brak pliku decyzji: {decyzje} — najpierw `duble porownaj`"); return 1; }
 
-        // Katalog trzyma BEZWZGLEDNE sciezki. Po przeniesieniu projektu na druga maszyne
-        // (inna litera dysku) sa nieaktualne — bez tej zapory `zastosuj` po cichu nie
-        // przeniosl by niczego i wygladaloby to na sukces. Same decyzje przezywaja
-        // przenosiny, bo odwoluja sie do Id pozycji, nie do sciezek.
-        var martwe = katalog.Zrodla.Where(z => !Directory.Exists(z.Value) && !File.Exists(z.Value)).ToList();
+        // The catalog holds ABSOLUTE paths. Move a project to another machine (a different drive letter)
+        // and they are stale — without this guard `apply` would quietly move nothing and look like a success.
+        // The decisions themselves survive the move, because they refer to garment ids, not to paths.
+        var martwe = katalog.Sources.Where(z => !Directory.Exists(z.Value) && !File.Exists(z.Value)).ToList();
         if (martwe.Count > 0)
         {
             log("[blad] katalog wskazuje na zrodla, ktorych nie ma na tym dysku:");
@@ -335,7 +334,7 @@ public static class Zastosowanie
             return 1;
         }
 
-        var wgId = katalog.Pozycje.ToDictionary(p => p.Id);
+        var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var doOdrzucenia = new List<string>();
         foreach (var linia in File.ReadAllLines(decyzje))
         {
@@ -351,8 +350,8 @@ public static class Zastosowanie
 
         var plan = Zaplanuj(katalog, doOdrzucenia, p => new CelPozycji
         {
-            Korzen = katalog.Zrodla.TryGetValue(p.Paczka, out var k) ? k : null,
-            Kosz = Path.Combine(korzenOdrzuconych, p.Paczka), Zrodlo = p.Paczka,
+            Korzen = katalog.Sources.TryGetValue(p.PackName, out var k) ? k : null,
+            Kosz = Path.Combine(korzenOdrzuconych, p.PackName), Zrodlo = p.PackName,
         });
         var cofka = Wykonaj(plan, "duble zastosuj");
         foreach (var p in cofka.Pozycje) log($"  odrzucone: {p.Zrodlo} / {p.Nazwa}");

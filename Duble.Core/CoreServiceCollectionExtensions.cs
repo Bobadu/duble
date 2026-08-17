@@ -1,5 +1,6 @@
 #nullable enable
 using Duble.Core.Formats;
+using Duble.Core.Storage;
 using Duble.Core.Time;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +20,7 @@ public static class CoreServiceCollectionExtensions
 
         services.AddSingleton<CodeWalkerRuntime>();
         services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton<ICatalogStore, JsonCatalogStore>();
         return services;
     }
 }

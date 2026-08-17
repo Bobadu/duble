@@ -22,7 +22,7 @@ public class KatalogKomendyTests
         {
             var wyslane = new List<string>();
             var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), new Ustawienia(), wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-            var s = new Sesja(); s.Nowy("K", Path.Combine(tmp, "proj", "K.duble"));
+            var s = TestSession.Create(); s.Nowy("K", Path.Combine(tmp, "proj", "K.duble"));
             Sztuczne.SiedemZeZrodlami(s, tmp);
             s.Porownaj(default, null); s.Zapisz();
             Duble.App.Komendy.Grupy.Zarejestruj(m, s, new JobRunner(m.Zdarzenie));
@@ -37,6 +37,8 @@ public class KatalogKomendyTests
             Assert.Equal(7, l.GetProperty("filtry").GetProperty("formaty").GetProperty("legacy").GetInt32());
             var b = l.GetProperty("pozycje").EnumerateArray().First(p => p.GetProperty("typ").GetString() == "jbib" && p.GetProperty("numer").GetInt32() == 7);
             Assert.True(b.GetProperty("bezMipow").GetBoolean());
+            // the interface reads gen9 as a boolean; the format being an enum in Core must not leak as a number
+            Assert.Equal(JsonValueKind.False, b.GetProperty("gen9").ValueKind);
             Assert.Equal(Porownanie.Duplikat, b.GetProperty("grupa").GetString());
             var c = l.GetProperty("pozycje").EnumerateArray().First(p => p.GetProperty("typ").GetString() == "lowr" && p.GetProperty("numer").GetInt32() == 3);
             Assert.Equal(Porownanie.Przemalowanie, c.GetProperty("grupa").GetString());

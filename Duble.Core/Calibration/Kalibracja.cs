@@ -106,18 +106,18 @@ public static class Kalibracja
     public const double KolorZakres = 40; public const int KolorKubelki = 20;
     public const double WariancjaZakres = 80; public const int WariancjaKubelki = 20;
 
-    public static WynikKalibracji Policz(Katalog katalog, Progi progi = null, CancellationToken ct = default)
+    public static WynikKalibracji Policz(Catalog katalog, Progi progi = null, CancellationToken ct = default)
     {
         progi ??= Progi.Domyslne;
-        var w = new WynikKalibracji { Kiedy = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), Progi = progi.Kopia(), Pozycje = katalog.Pozycje.Count };
-        var poz = katalog.Pozycje.Where(p => p.Geo?.Hist != null && p.Geo.Wierzcholki > 0).ToList();
+        var w = new WynikKalibracji { Kiedy = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), Progi = progi.Kopia(), Pozycje = katalog.Garments.Count };
+        var poz = katalog.Garments.Where(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0).ToList();
         w.PozycjeZGeometria = poz.Count;
 
         // ================= GEOMETRIA =================
         var pozytywySha = new List<double>();
         var pozytywyHash = new List<double>();
         var najblizszyObcy = new List<double>();
-        var podejrzane = new List<(double d, Pozycja a, Pozycja b)>();
+        var podejrzane = new List<(double d, Garment a, Garment b)>();
         for (int i = 0; i < poz.Count; i++)
         {
             if ((i & 15) == 0) ct.ThrowIfCancellationRequested();
@@ -126,13 +126,13 @@ public static class Kalibracja
             {
                 if (i == j) continue;
                 var a = poz[i]; var b = poz[j];
-                double d = Odciski.OdlegloscGeo(a.Geo.Hist, b.Geo.Hist);
-                bool tenSamMesh = a.Geo.HashPozycji != null && a.Geo.HashPozycji == b.Geo.HashPozycji;
+                double d = Odciski.OdlegloscGeo(a.Geometry.ShapeHistogram, b.Geometry.ShapeHistogram);
+                bool tenSamMesh = a.Geometry.PositionHash != null && a.Geometry.PositionHash == b.Geometry.PositionHash;
                 if (j > i)
                 {
-                    if (a.ShaYdd == b.ShaYdd) pozytywySha.Add(d);
+                    if (a.ModelSha256 == b.ModelSha256) pozytywySha.Add(d);
                     else if (tenSamMesh) pozytywyHash.Add(d);
-                    if (tenSamMesh && a.Paczka != b.Paczka) w.GeoParMiedzyPaczkami++;
+                    if (tenSamMesh && a.PackName != b.PackName) w.GeoParMiedzyPaczkami++;
                     if (!tenSamMesh && d < 0.05) podejrzane.Add((d, a, b));
                 }
                 if (!tenSamMesh && d < min) min = d;
@@ -144,37 +144,37 @@ public static class Kalibracja
         w.GeoNajblizszyObcy = Rozklad.Z(najblizszyObcy, 0, GeoZakres, GeoKubelki);
         w.GeoPodejrzane = podejrzane.Count;
         w.Podejrzane = podejrzane.OrderBy(x => x.d).Take(25)
-            .Select(x => new PodejrzanaPara { D = x.d, Bbox = Odciski.OdlegloscBbox(x.a.Geo.Bbox, x.b.Geo.Bbox), A = x.a.Opis + x.a.Sufiks, B = x.b.Opis + x.b.Sufiks, TriA = x.a.Geo.Trojkaty, TriB = x.b.Geo.Trojkaty }).ToList();
+            .Select(x => new PodejrzanaPara { D = x.d, Bbox = Odciski.OdlegloscBbox(x.a.Geometry.BoundingBox, x.b.Geometry.BoundingBox), A = x.a.Label + x.a.Suffix, B = x.b.Label + x.b.Suffix, TriA = x.a.Geometry.Triangles, TriB = x.b.Geometry.Triangles }).ToList();
 
         // ================= TEKSTURY =================
         ct.ThrowIfCancellationRequested();
-        var wszystkie = katalog.Pozycje.SelectMany(p => p.Tekstury.Where(t => t.Zdekodowana).Select(t => (poz: p, tex: t))).ToList();
-        w.Tekstury = katalog.Pozycje.Sum(p => p.Tekstury.Count);
+        var wszystkie = katalog.Garments.SelectMany(p => p.Textures.Where(t => t.IsDecoded).Select(t => (poz: p, tex: t))).ToList();
+        w.Tekstury = katalog.Garments.Sum(p => p.Textures.Count);
         w.TeksturyZdekodowane = wszystkie.Count;
 
         // pozytywy: ten sam SHA
         var phSha = new List<double>(); var kolSha = new List<double>();
-        foreach (var g in wszystkie.GroupBy(x => x.tex.Sha).Where(g => g.Count() > 1))
+        foreach (var g in wszystkie.GroupBy(x => x.tex.Sha256).Where(g => g.Count() > 1))
         {
             var l = g.ToList();
             for (int i = 0; i < l.Count; i++)
                 for (int j = i + 1; j < l.Count; j++)
                 {
-                    phSha.Add(Odciski.Hamming(l[i].tex.PHash, l[j].tex.PHash));
-                    kolSha.Add(Odciski.OdlegloscKoloru(l[i].tex.Kolor, l[j].tex.Kolor));
+                    phSha.Add(Odciski.Hamming(l[i].tex.PerceptualHash, l[j].tex.PerceptualHash));
+                    kolSha.Add(Odciski.OdlegloscKoloru(l[i].tex.ColorSignature, l[j].tex.ColorSignature));
                 }
         }
         // trudne negatywy: warianty koloru tego samego ciucha
         var phWar = new List<double>(); var kolWar = new List<double>();
-        foreach (var p in katalog.Pozycje)
+        foreach (var p in katalog.Garments)
         {
-            var l = p.Tekstury.Where(t => t.Zdekodowana).ToList();
+            var l = p.Textures.Where(t => t.IsDecoded).ToList();
             for (int i = 0; i < l.Count; i++)
                 for (int j = i + 1; j < l.Count; j++)
                 {
-                    if (l[i].Sha == l[j].Sha) continue;
-                    phWar.Add(Odciski.Hamming(l[i].PHash, l[j].PHash));
-                    kolWar.Add(Odciski.OdlegloscKoloru(l[i].Kolor, l[j].Kolor));
+                    if (l[i].Sha256 == l[j].Sha256) continue;
+                    phWar.Add(Odciski.Hamming(l[i].PerceptualHash, l[j].PerceptualHash));
+                    kolWar.Add(Odciski.OdlegloscKoloru(l[i].ColorSignature, l[j].ColorSignature));
                 }
         }
         ct.ThrowIfCancellationRequested();
@@ -187,17 +187,17 @@ public static class Kalibracja
             if ((k & 4095) == 0) ct.ThrowIfCancellationRequested();
             var a = wszystkie[rnd.Next(wszystkie.Count)];
             var b = wszystkie[rnd.Next(wszystkie.Count)];
-            if (ReferenceEquals(a.poz, b.poz) || a.tex.Sha == b.tex.Sha) continue;
-            int ph = Odciski.Hamming(a.tex.PHash, b.tex.PHash);
-            double kol = Odciski.OdlegloscKoloru(a.tex.Kolor, b.tex.Kolor);
+            if (ReferenceEquals(a.poz, b.poz) || a.tex.Sha256 == b.tex.Sha256) continue;
+            int ph = Odciski.Hamming(a.tex.PerceptualHash, b.tex.PerceptualHash);
+            double kol = Odciski.OdlegloscKoloru(a.tex.ColorSignature, b.tex.ColorSignature);
             phLos.Add(ph); kolLos.Add(kol);
-            if (ph <= 24) bliskie.Add(new BliskaLosowa { PHash = ph, Kolor = kol, A = $"{a.poz.Opis}/{a.tex.Plik}", B = $"{b.poz.Opis}/{b.tex.Plik}" });
+            if (ph <= 24) bliskie.Add(new BliskaLosowa { PHash = ph, Kolor = kol, A = $"{a.poz.Label}/{a.tex.FileName}", B = $"{b.poz.Label}/{b.tex.FileName}" });
         }
         w.PHashIdentyczne = Rozklad.Z(phSha, 0, PHashZakres, PHashKubelki);
         w.KolorIdentyczne = Rozklad.Z(kolSha, 0, KolorZakres, KolorKubelki);
         w.PHashWarianty = Rozklad.Z(phWar, 0, PHashZakres, PHashKubelki);
         w.KolorWarianty = Rozklad.Z(kolWar, 0, KolorZakres, KolorKubelki);
-        w.Wariancja = Rozklad.Z(wszystkie.Select(x => (double)x.tex.Wariancja), 0, WariancjaZakres, WariancjaKubelki);
+        w.Wariancja = Rozklad.Z(wszystkie.Select(x => (double)x.tex.Variance), 0, WariancjaZakres, WariancjaKubelki);
         w.PHashLosowe = Rozklad.Z(phLos, 0, PHashZakres, PHashKubelki);
         w.KolorLosowe = Rozklad.Z(kolLos, 0, KolorZakres, KolorKubelki);
         w.BliskieLosowe = bliskie.OrderBy(v => v.PHash).ThenBy(v => v.Kolor).Take(20).ToList();
@@ -217,9 +217,9 @@ public static class Kalibracja
     }
 
     /// <summary>Wydruk dla CLI (`duble kalibruj`).</summary>
-    public static int Uruchom(Katalog katalog, Action<string> log)
+    public static int Uruchom(Catalog katalog, Action<string> log)
     {
-        var poz = katalog.Pozycje.Count(p => p.Geo?.Hist != null && p.Geo.Wierzcholki > 0);
+        var poz = katalog.Garments.Count(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0);
         if (poz < 2) { log("[blad] za malo pozycji w katalogu"); return 1; }
         var w = Policz(katalog);
         var inv = CultureInfo.InvariantCulture;

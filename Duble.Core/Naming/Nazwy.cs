@@ -26,7 +26,7 @@ public static class Nazwy
         return i < 0 ? (null, nazwaPliku) : (nazwaPliku.Substring(0, i), nazwaPliku.Substring(i + 1));
     }
 
-    public static NazwaModelu Model(string nazwaPliku)
+    public static NazwaModelu ParseModel(string nazwaPliku)
     {
         var (prefiks, nazwa) = RozdzielFiveM(nazwaPliku);
         if (nazwa == null) return null;
@@ -41,7 +41,7 @@ public static class Nazwy
         return null;
     }
 
-    public static NazwaTekstury Tekstura(string nazwaPliku)
+    public static NazwaTekstury ParseTexture(string nazwaPliku)
     {
         var (prefiks, nazwa) = RozdzielFiveM(nazwaPliku);
         if (nazwa == null) return null;

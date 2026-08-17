@@ -41,10 +41,10 @@ public class RozpakowanieTests
             var zArch = Indeks.Zrodlo(Sciezki.Dlc("studio_body"), "x", s => { });
             var zKopii = Indeks.Zrodlo(Path.Combine(tmp, "studio_body"), "x", s => { });
             Assert.Equal(zArch.Count, zKopii.Count);
-            var a = zArch.OrderBy(p => p.Id).Select(p => p.Geo.HashPozycji + "|" + string.Join(",", p.Tekstury.Select(t => t.PHash?[0]))).ToList();
-            var b2 = zKopii.OrderBy(p => p.Id).Select(p => p.Geo.HashPozycji + "|" + string.Join(",", p.Tekstury.Select(t => t.PHash?[0]))).ToList();
+            var a = zArch.OrderBy(p => p.Id).Select(p => p.Geometry.PositionHash + "|" + string.Join(",", p.Textures.Select(t => t.PerceptualHash?[0]))).ToList();
+            var b2 = zKopii.OrderBy(p => p.Id).Select(p => p.Geometry.PositionHash + "|" + string.Join(",", p.Textures.Select(t => t.PerceptualHash?[0]))).ToList();
             Assert.Equal(a, b2);
-            Assert.All(zKopii, p => Assert.DoesNotContain("|", p.SciezkaYdd));   // luzne pliki -> przenoszalne
+            Assert.All(zKopii, p => Assert.DoesNotContain("|", p.ModelPath));   // luzne pliki -> przenoszalne
 
             // Zrodlo() na folderze z archiwum w srodku: kopia + rozlozone archiwum
             var src = Path.Combine(tmp, "src", "stream"); Directory.CreateDirectory(src);

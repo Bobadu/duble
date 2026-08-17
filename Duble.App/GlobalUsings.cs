@@ -14,4 +14,5 @@ global using Duble.Core.Projects;
 global using Duble.Core.Reporting;
 global using Duble.Core.Results;
 global using Duble.Core.Sources;
+global using Duble.Core.Storage;
 global using Duble.Core.Time;

@@ -73,7 +73,7 @@ public class Projekt
     }
 
     /// <summary>Dodaje zrodlo (albo zwraca juz istniejace o tej samej sciezce). Nazwa = nazwa folderu/pliku,
-    /// unikalna w projekcie (kolejne "stream" dostaja " (2)", " (3)"…) — bo Katalog grupuje pozycje po nazwie paczki.</summary>
+    /// unikalna w projekcie (kolejne "stream" dostaja " (2)", " (3)"…) — bo katalog grupuje pozycje po nazwie paczki.</summary>
     public ZrodloProjektu DodajZrodlo(string sciezka)
     {
         sciezka = Path.GetFullPath(sciezka).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

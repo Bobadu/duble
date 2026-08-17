@@ -42,7 +42,7 @@ public static class Historia
                 o["lista"] = c.Pozycje.Select(p => new
                 {
                     id = p.Id, nazwa = p.Nazwa, zrodlo = p.Zrodlo, zrodloId = p.ZrodloId, kosz = p.Kosz,
-                    pliki = c.Ruchy.Where(r => r.Pozycja == p.Id).Select(r => new { z = r.Z, @do = r.Do, bajty = r.Bajty, cofniety = r.Cofniety, jest = File.Exists(r.Do) }).ToList(),
+                    pliki = c.Ruchy.Where(r => r.GarmentId == p.Id).Select(r => new { z = r.Z, @do = r.Do, bajty = r.Bajty, cofniety = r.Cofniety, jest = File.Exists(r.Do) }).ToList(),
                     moznaCofnac = c.MoznaCofnacPozycje(p.Id),
                 }).ToList();
             return o;
@@ -110,7 +110,7 @@ public static class Historia
             {
                 await Task.Yield();
                 postep(new Postep("raport", 0, 0, Path.GetFileName(plik)));
-                Raport.Zbuduj(s.Katalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
+                Raport.Zbuduj(s.Catalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
                 m.Zdarzenie("report.done", new { plik, typ = "html" });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
@@ -125,7 +125,7 @@ public static class Historia
             if (plik == null) return new { anulowano = true };
             try
             {
-                var csv = Raport.Csv(s.Katalog, s.Wynik, Rozstrzygnij(), Jezyk());
+                var csv = Raport.Csv(s.Catalog, s.Wynik, Rozstrzygnij(), Jezyk());
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(plik)));
                 File.WriteAllText(plik, csv, new System.Text.UTF8Encoding(false));   // BOM jest juz w tresci
             }

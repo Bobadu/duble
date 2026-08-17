@@ -1,7 +1,8 @@
 // Podglad3D.cs — GLB dla pozycji z katalogu albo z surowych plikow (CLI `duble glb`).
 //
-// Tekstura diffuse: pierwsza tekstura z .ytd wybranego wariantu (litera a/b/c...), zdekodowana do PNG RGBA
-// (najwiekszy mip o boku <= 1024). Tekstury osadzone w .ydd (wlosy: diffuse + normal) — z jego slownika.
+// Diffuse texture: the first texture in the .ytd of the chosen variant (letter a/b/c…), decoded to RGBA PNG
+// (the largest mip with a side <= 1024). Textures embedded in the .ydd (hair: diffuse + normal) come from its
+// own dictionary.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,19 +19,19 @@ public static class Podglad3D
 {
     const int MaksBok = 1024;
 
-    public static byte[] Glb(Pozycja p, string litera = null, Action<string> log = null)
+    public static byte[] Glb(Garment p, string litera = null, Action<string> log = null)
     {
-        var ydd = Zrodla.Bajty(p.SciezkaYdd) ?? throw new FileNotFoundException("brak modelu: " + p.SciezkaYdd);
-        var tex = p.Tekstury.FirstOrDefault(t => litera == null || string.Equals(Nazwy.Tekstura(t.Plik)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
-                  ?? p.Tekstury.FirstOrDefault();
-        var ytd = tex == null ? null : Zrodla.Bajty(tex.Sciezka);
-        return Glb(ydd, ytd, p.Gen9, log);
+        var ydd = Zrodla.Bajty(p.ModelPath) ?? throw new FileNotFoundException("brak modelu: " + p.ModelPath);
+        var tex = p.Textures.FirstOrDefault(t => litera == null || string.Equals(Nazwy.ParseTexture(t.FileName)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
+                  ?? p.Textures.FirstOrDefault();
+        var ytd = tex == null ? null : Zrodla.Bajty(tex.Path);
+        return Glb(ydd, ytd, log);
     }
 
-    public static byte[] Glb(byte[] ydd, byte[] ytd, bool? gen9, Action<string> log = null)
+    public static byte[] Glb(byte[] ydd, byte[] ytd, Action<string> log = null)
     {
         log ??= _ => { };
-        CodeWalkerRuntime.Initialize();   // tryb gen9 czyta oba formaty (po naglowku RSC7); parametr gen9 zostaje dla zgodnosci
+        CodeWalkerRuntime.Initialize();   // gen9 mode reads both formats, by the RSC7 header of each file
         Drawable dr;
         try
         {
@@ -44,7 +45,7 @@ public static class Podglad3D
         var pngi = new Dictionary<string, byte[]>();
         // osadzone tekstury (wlosy itp.)
         var td = dr.ShaderGroup?.TextureDictionary?.Textures?.data_items;
-        foreach (var klucz in geos.SelectMany(g => new[] { g.Tekstura, g.Normalna }).Where(k => k != null && k.StartsWith("emb:")).Distinct())
+        foreach (var klucz in geos.SelectMany(g => new[] { g.TextureInfo, g.Normalna }).Where(k => k != null && k.StartsWith("emb:")).Distinct())
         {
             var t = td?.FirstOrDefault(x => string.Equals(x?.Name, klucz.Substring(4), StringComparison.OrdinalIgnoreCase));
             var png = t == null ? null : PngZTekstury(t);

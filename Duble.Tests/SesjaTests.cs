@@ -15,11 +15,11 @@ public class SesjaTests
         var tmp = Sciezki.Tymczasowy("sesja");
         try
         {
-            var s = new Sesja();
+            var s = TestSession.Create();
             s.Nowy("Moje studio", Path.Combine(tmp, "Moje studio.duble"));
             Assert.True(File.Exists(Path.Combine(tmp, "Moje studio.duble")));
             Assert.True(Directory.Exists(Path.Combine(tmp, "Moje studio.duble.cache")));
-            Assert.True(s.Otwarty); Assert.Empty(s.Katalog.Pozycje);
+            Assert.True(s.Otwarty); Assert.Empty(s.Catalog.Garments);
             s.Zamknij(); Assert.False(s.Otwarty);
             s.Otworz(Path.Combine(tmp, "Moje studio.duble"));
             Assert.Equal("Moje studio", s.Projekt.Nazwa);
@@ -37,7 +37,7 @@ public class SesjaTests
         {
             var u = new Ustawienia(); var wyslane = new List<string>();
             var m = new Mostek(new FalszyweOkno(), new FalszyweDialogi(), u, wyslane.Add) { PlikUstawien = Path.Combine(tmp, "settings.json") };
-            var s = new Sesja(); Duble.App.Komendy.Projekty.Zarejestruj(m, s);
+            var s = TestSession.Create(); Duble.App.Komendy.Projekty.Zarejestruj(m, s);
             var folder = tmp.Replace("\\", "\\\\");
             var o = JsonDocument.Parse(await m.Obsluz("{\"id\":\"1\",\"cmd\":\"project.new\",\"args\":{\"nazwa\":\"Test: A/B\",\"folder\":\"" + folder + "\"}}")).RootElement;
             Assert.True(o.GetProperty("ok").GetBoolean(), o.ToString());

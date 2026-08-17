@@ -20,7 +20,7 @@ public sealed class SiatkaGeo
     public float[] Normalne { get; set; }   // 3 na wierzcholek albo null
     public float[] Uv { get; set; }         // 2 na wierzcholek albo null
     public uint[] Indeksy { get; set; }     // trojkaty
-    public string Tekstura { get; set; }    // klucz w slowniku PNG albo null
+    public string TextureInfo { get; set; }    // klucz w slowniku PNG albo null
     public string Normalna { get; set; }    // klucz mapy normalnych albo null
     public bool Przezroczysta { get; set; }
 }
@@ -84,7 +84,7 @@ public static class Glb
             if (g.Normalne != null && g.Normalne.Length == g.Pozycje.Length) attrs["NORMAL"] = DodajFloaty(g.Normalne, 3, false);
             if (g.Uv != null && g.Uv.Length / 2 == g.Pozycje.Length / 3) attrs["TEXCOORD_0"] = DodajFloaty(g.Uv, 2, false);
             var pbr = new Dictionary<string, object> { ["metallicFactor"] = 0.0, ["roughnessFactor"] = 0.9, ["baseColorFactor"] = new[] { 1.0, 1.0, 1.0, 1.0 } };
-            var tex = Obraz(g.Tekstura);
+            var tex = Obraz(g.TextureInfo);
             if (tex != null) pbr["baseColorTexture"] = new Dictionary<string, object> { ["index"] = tex.Value };
             else pbr["baseColorFactor"] = new[] { 0.72, 0.72, 0.74, 1.0 };
             var mat = new Dictionary<string, object> { ["name"] = g.Nazwa ?? "geo", ["pbrMetallicRoughness"] = pbr, ["doubleSided"] = true, ["alphaMode"] = g.Przezroczysta ? "MASK" : "OPAQUE" };
@@ -166,7 +166,7 @@ public static class Glb
                 for (int i = 0; i < s.Indeksy.Length; i++) s.Indeksy[i] = idx[i];
 
                 // shader: nazwa (przezroczystosc) + tekstury diffuse/bump
-                s.Tekstura = "diff";
+                s.TextureInfo = "diff";
                 if (shs != null && geo.ShaderID < shs.Length && shs[geo.ShaderID] != null)
                 {
                     var sh = shs[geo.ShaderID];
@@ -178,7 +178,7 @@ public static class Glb
                         {
                             if (prs[k].DataType != 0 || prs[k].Data is not TextureBase tb || string.IsNullOrEmpty(tb.Name)) continue;
                             uint hash = (uint)hs[k];
-                            if (hash == (uint)ShaderParamNames.DiffuseSampler && osadzone.Contains(tb.Name)) s.Tekstura = "emb:" + tb.Name;
+                            if (hash == (uint)ShaderParamNames.DiffuseSampler && osadzone.Contains(tb.Name)) s.TextureInfo = "emb:" + tb.Name;
                             if (hash == (uint)ShaderParamNames.BumpSampler && osadzone.Contains(tb.Name)) s.Normalna = "emb:" + tb.Name;
                         }
                 }

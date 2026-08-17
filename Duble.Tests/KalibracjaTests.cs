@@ -27,7 +27,7 @@ public class KalibracjaTests
         var tmp = Sciezki.Tymczasowy("kalib");
         try
         {
-            var kat = new Katalog(); kat.Wstaw(Sztuczne.Siedem(tmp));
+            var kat = new Catalog(); kat.Upsert(Sztuczne.Siedem(tmp));
             var w = Kalibracja.Policz(kat);
             Assert.Equal(7, w.Pozycje); Assert.Equal(7, w.PozycjeZGeometria);
             Assert.Equal(9, w.Tekstury); Assert.Equal(9, w.TeksturyZdekodowane);
