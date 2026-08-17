@@ -1,0 +1,38 @@
+# Text files are normalised to LF in the repository and checked out with the platform's endings.
+* text=auto
+
+# Windows tooling is happier with CRLF in the working tree for these.
+*.ps1   text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+*.sln   text eol=crlf
+
+*.cs    text diff=csharp
+*.csproj text
+*.md    text
+*.json  text
+*.js    text
+*.css   text
+*.html  text
+*.xaml  text
+*.yml   text
+*.yaml  text
+
+# Binaries — never touch these.
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.glb   binary
+*.rpf   binary
+*.ydd   binary
+*.ytd   binary
+*.dds   binary
+*.exe   binary
+*.zip   binary
+
+# three.js ships as a bundled build — do not count it as project code and do not diff it.
+Duble.App/ui/vendor/** linguist-vendored
+Duble.App/ui/vendor/*.js -diff
+
+# Golden files for the tests are data, not source.
+Duble.Tests/golden/** linguist-generated

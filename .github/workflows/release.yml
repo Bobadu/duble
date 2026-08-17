@@ -1,0 +1,81 @@
+name: release
+
+# Tag a commit to cut a release:
+#   git tag -a v1.0.1 -m "Duble 1.0.1" && git push origin v1.0.1
+# The workflow builds, runs the tests, publishes the single-file Duble.exe, writes a SHA-256 checksum
+# and creates a GitHub Release with the matching section of CHANGELOG.md as the notes.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (without the leading v), e.g. 1.0.1'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build + release (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache CodeWalker
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../CodeWalker
+          key: codewalker-485d56b
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve version
+        id: v
+        shell: pwsh
+        run: |
+          $v = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ inputs.version }}' } else { '${{ github.ref_name }}'.TrimStart('v') }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Version '$v' is not X.Y.Z" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Duble $v"
+
+      - name: Build, test and publish
+        shell: pwsh
+        run: ./build.ps1 -Publish -Wersja ${{ steps.v.outputs.version }}
+
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $exe = 'publish/Duble.exe'
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  Duble.exe" | Set-Content 'publish/Duble.exe.sha256' -Encoding ascii
+          Write-Host "SHA-256 $hash  ($([math]::Round((Get-Item $exe).Length / 1MB, 1)) MB)"
+
+      - name: Release notes from CHANGELOG
+        shell: pwsh
+        run: |
+          $v = '${{ steps.v.outputs.version }}'
+          $notes = "publish/notes.md"
+          $lines = Get-Content CHANGELOG.md
+          $start = ($lines | Select-String -Pattern "^## \[$([regex]::Escape($v))\]" | Select-Object -First 1).LineNumber
+          if (-not $start) { "See CHANGELOG.md." | Set-Content $notes -Encoding utf8; exit 0 }
+          $rest = $lines[$start..($lines.Count - 1)]
+          $end = ($rest | Select-String -Pattern '^## \[' | Select-Object -First 1).LineNumber
+          $body = if ($end -gt 1) { $rest[0..($end - 2)] } elseif ($end) { @() } else { $rest }
+          if (-not $body) { $body = @("See CHANGELOG.md.") }
+          $body | Set-Content $notes -Encoding utf8
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.v.outputs.version }}'
+          gh release create "v$v" publish/Duble.exe publish/Duble.exe.sha256 `
+            --title "Duble $v" --notes-file publish/notes.md --target ${{ github.sha }}

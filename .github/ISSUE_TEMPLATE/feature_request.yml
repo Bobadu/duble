@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest something Duble should do
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Duble has one job: find garments that are truly the same and let you clean them up without losing files.
+        Ideas that make that job faster, clearer or safer are very welcome.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the problem?
+      description: Describe the situation you run into, not the solution yet.
+      placeholder: 'When I have 30 packs, I …'
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: How you imagine it working in the app.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you do it today?
+      description: Other tools, manual steps, workarounds.

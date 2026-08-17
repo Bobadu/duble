@@ -4,6 +4,7 @@
 #   .\build.ps1 -BezTestow      tylko build
 #   .\build.ps1 -Publish        + publish\Duble.exe (self-contained, win-x64, jeden plik)
 #   .\build.ps1 -Uruchom        + start aplikacji w trybie deweloperskim (UI z folderu ui\, DevTools)
+#   .\build.ps1 -Publish -Wersja 1.0.1   numer wersji plikow exe/dll z parametru (uzywa tego wydanie z tagu)
 #
 # CodeWalker.Core (dexyfex, MIT) nie jest czescia repo: klonujemy je do ..\CodeWalker (rodzenstwo folderu repo),
 # w przypietym commicie — Duble.Core\Duble.Core.csproj wskazuje ..\..\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj.
@@ -12,6 +13,7 @@ param(
     [switch]$Publish,
     [switch]$Uruchom,
     [switch]$BezTestow,
+    [string]$Wersja,
     [string]$CodeWalkerCommit = '485d56b'
 )
 $ErrorActionPreference = 'Stop'
@@ -41,8 +43,11 @@ if (-not (Test-Path (Join-Path $codewalker 'CodeWalker.Core\CodeWalker.Core.cspr
     if ($c -and -not $c.StartsWith($CodeWalkerCommit)) { Write-Warning "CodeWalker jest na innym commicie niz przypiety ($CodeWalkerCommit) — jesli cos nie buduje, zrob: git -C `"$codewalker`" checkout $CodeWalkerCommit" }
 }
 
+$wersjaArg = if ($Wersja) { "-p:Version=$Wersja" } else { $null }
+if ($Wersja) { Write-Host "   wersja $Wersja" }
+
 Krok 'build Release'
-dotnet build $sln -c Release --nologo -v q
+dotnet build $sln -c Release --nologo -v q $wersjaArg
 if ($LASTEXITCODE -ne 0) { throw 'build nie powiodl sie' }
 
 if (-not $BezTestow) {
@@ -57,7 +62,7 @@ if ($Publish) {
     # IncludeAllContentForSelfExtract: CodeWalker.Core czyta ShadersGen9Conversion.xml i strings.txt z folderu SWOJEJ dll
     # (Assembly.Location) — w zwyklym single-file to pusta sciezka i pliki Enhanced (gen9) traca geometrie; z pelna
     # ekstrakcja bundle rozpakowuje sie do %TEMP%\.net\Duble\ i wszystko dziala. Kompresja: ~132 MB -> mniej.
-    dotnet publish (Join-Path $tu 'Duble.App') -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o $out --nologo -v q
+    dotnet publish (Join-Path $tu 'Duble.App') -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o $out --nologo -v q $wersjaArg
     if ($LASTEXITCODE -ne 0) { throw 'publish nie powiodl sie' }
     $exe = Get-Item (Join-Path $out 'Duble.exe')
     Write-Host ("   {0}  {1:N1} MB  wersja {2}" -f $exe.FullName, ($exe.Length / 1MB), $exe.VersionInfo.ProductVersion) -ForegroundColor Green
