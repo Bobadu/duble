@@ -8,3 +8,6 @@ publish/
 TestResults/
 # skrypty kontrolne UI (Duble.exe --dev --exec "import(./_dev-*.js)")
 Duble.App/ui/_dev-*.js
+
+# Rider / IntelliJ
+.idea/
