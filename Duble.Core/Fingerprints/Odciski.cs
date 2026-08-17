@@ -16,8 +16,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using CodeWalker.GameFiles;
 using CodeWalker.Utils;
-using Duble.Core.Model;
 using Duble.Core.Formats;
+using Duble.Core.Model;
 
 namespace Duble.Core.Fingerprints;
 

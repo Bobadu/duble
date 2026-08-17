@@ -7,8 +7,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
-using Duble.Core.Model;
 using Duble.Core.Fingerprints;
+using Duble.Core.Model;
 using Duble.Core.Naming;
 using Duble.Core.Sources;
 

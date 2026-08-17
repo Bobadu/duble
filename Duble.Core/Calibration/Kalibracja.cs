@@ -20,8 +20,8 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Duble.Core.Comparison;
-using Duble.Core.Model;
 using Duble.Core.Fingerprints;
+using Duble.Core.Model;
 
 namespace Duble.Core.Calibration;
 

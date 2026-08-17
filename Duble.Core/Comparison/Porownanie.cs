@@ -31,9 +31,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Duble.Core.Fingerprints;
 using Duble.Core.Indexing;
 using Duble.Core.Model;
-using Duble.Core.Fingerprints;
 
 namespace Duble.Core.Comparison;
 

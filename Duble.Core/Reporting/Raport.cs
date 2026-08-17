@@ -13,9 +13,9 @@ using System.Text;
 using CodeWalker.GameFiles;
 using Duble.Core.Comparison;
 using Duble.Core.Decisions;
-using Duble.Core.Model;
 using Duble.Core.Fingerprints;
 using Duble.Core.Formats;
+using Duble.Core.Model;
 using Duble.Core.Sources;
 
 namespace Duble.Core.Reporting;
