@@ -40,5 +40,5 @@ First public release.
   your own catalog, drawn as charts, with a suggested threshold.
 - **Command line** (`duble`) — `indeks`, `porownaj`, `raport`, `zastosuj`, `cofnij`, `kalibruj` for scripted use.
 
-[Unreleased]: https://github.com/qorion-net/duble/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/qorion-net/duble/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Bobadu/duble/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Bobadu/duble/releases/tag/v1.0.0

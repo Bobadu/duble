@@ -6,7 +6,7 @@ against those two promises.
 
 ## Ways to help
 
-- **Report a bug** — [open an issue](https://github.com/qorion-net/duble/issues/new/choose). A screenshot of
+- **Report a bug** — [open an issue](https://github.com/Bobadu/duble/issues/new/choose). A screenshot of
   the screen where it went wrong and the name of the pack are worth more than a long description.
 - **Report a wrong verdict** — the interesting bugs live here: two garments called duplicates that are not,
   or a real duplicate that Duble missed. Please include both item names, the source packs and a screenshot of
@@ -20,7 +20,7 @@ against those two promises.
 Requirements: Windows 10/11, [.NET 10 SDK](https://dotnet.microsoft.com/download), git.
 
 ```powershell
-git clone https://github.com/qorion-net/duble
+git clone https://github.com/Bobadu/duble
 cd duble
 .\build.ps1                # clones CodeWalker next to the repo, builds Release, runs the tests
 .\build.ps1 -Uruchom       # build + start the app in developer mode

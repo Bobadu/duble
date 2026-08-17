@@ -13,7 +13,7 @@
     <Description>Duble - duplicate clothing finder for GTA V (Legacy and Enhanced)</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://qorion.net/duble</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/qorion-net/duble</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Bobadu/duble</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>

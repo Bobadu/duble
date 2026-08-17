@@ -13,7 +13,7 @@ public static class Okno
 
     /// <summary>Strona projektu i repozytorium (przyciski w „O programie"). Adresy od Wiktorii (16.08.2026); null = przycisk ukryty.</summary>
     public const string StronaProjektu = "https://qorion.net/duble";
-    public const string Repozytorium = "https://github.com/qorion-net/duble";
+    public const string Repozytorium = "https://github.com/Bobadu/duble";
     public const string Licencja = "MIT";
 
     public static void Zarejestruj(Mostek m)

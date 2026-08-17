@@ -6,14 +6,14 @@
 
 **Znajduje podwójne ubrania w paczkach do GTA V — i pozwala je posprzątać bez utraty plików.**
 
-[![build](https://github.com/qorion-net/duble/actions/workflows/build.yml/badge.svg)](https://github.com/qorion-net/duble/actions/workflows/build.yml)
-[![release](https://img.shields.io/github/v/release/qorion-net/duble?display_name=tag&sort=semver)](https://github.com/qorion-net/duble/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/qorion-net/duble/total)](https://github.com/qorion-net/duble/releases)
+[![build](https://github.com/Bobadu/duble/actions/workflows/build.yml/badge.svg)](https://github.com/Bobadu/duble/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/Bobadu/duble?display_name=tag&sort=semver)](https://github.com/Bobadu/duble/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/Bobadu/duble/total)](https://github.com/Bobadu/duble/releases)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![windows](https://img.shields.io/badge/Windows-10%2F11-0078d4)](https://github.com/qorion-net/duble/releases/latest)
+[![windows](https://img.shields.io/badge/Windows-10%2F11-0078d4)](https://github.com/Bobadu/duble/releases/latest)
 [![.NET](https://img.shields.io/badge/.NET-10-512bd4)](https://dotnet.microsoft.com/download)
 
-[Pobierz](https://github.com/qorion-net/duble/releases/latest) ·
+[Pobierz](https://github.com/Bobadu/duble/releases/latest) ·
 [Strona projektu](https://qorion.net/duble) ·
 [Jak to działa](docs/how-it-works.md) ·
 [English version](README.md)
@@ -57,7 +57,7 @@ tekstury — i pokazuje dowody, a nie sam werdykt.
 
 ## Instalacja
 
-1. Pobierz `Duble.exe` z [ostatniego wydania](https://github.com/qorion-net/duble/releases/latest) — jeden plik,
+1. Pobierz `Duble.exe` z [ostatniego wydania](https://github.com/Bobadu/duble/releases/latest) — jeden plik,
    ok. 60 MB, .NET w środku, bez instalatora.
 2. Uruchom. SmartScreen ostrzega przed niepodpisanymi programami: **Więcej informacji → Uruchom mimo to**.
    Pierwszy start trwa kilka sekund dłużej (plik rozpakowuje się do `%TEMP%\.net\Duble\`).
@@ -104,7 +104,7 @@ Pełne uzasadnienie z pomiarami: **[docs/how-it-works.md](docs/how-it-works.md)*
 Wymagania: Windows, [.NET 10 SDK](https://dotnet.microsoft.com/download), git.
 
 ```powershell
-git clone https://github.com/qorion-net/duble
+git clone https://github.com/Bobadu/duble
 cd duble
 .\build.ps1            # klonuje CodeWalker (przypięty commit) obok repo, buduje Release, uruchamia testy
 .\build.ps1 -Publish   # jeden plik publish\Duble.exe (self-contained, win-x64)
