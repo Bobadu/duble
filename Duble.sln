@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Duble.Core", "Duble.Core\Duble.Core.csproj", "{60318B15-7A73-43BE-B681-815C1895075F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeWalker.Core", "..\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj", "{2D6764F1-A754-412E-B868-ECDADFB3C60C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeWalker.Core", "external\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj", "{2D6764F1-A754-412E-B868-ECDADFB3C60C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Duble.Cli", "Duble.Cli\Duble.Cli.csproj", "{1F245963-230F-47DF-958E-46D06AAC28B0}"
 EndProject
