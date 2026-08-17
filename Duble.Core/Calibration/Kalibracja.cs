@@ -90,10 +90,10 @@ public sealed class WynikKalibracji
     public Rozklad KolorLosowe { get; set; }
     public List<BliskaLosowa> BliskieLosowe { get; set; } = new();
 
-    /// <summary>Progi uzyte przy liczeniu (do zaznaczenia na wykresach).</summary>
-    public Progi Progi { get; set; }
-    /// <summary>Propozycja: GeoIdentyczna, GeoPodobna (4x), TexPHash, TexKolor — reszta jak Progi.</summary>
-    public Progi Propozycja { get; set; }
+    /// <summary>The thresholds in force while this calibration ran, so the charts can mark them.</summary>
+    public Thresholds UsedThresholds { get; set; }
+    /// <summary>Propozycja: GeometryIdentical, GeometrySimilar (4x), TextureHashDistance, TextureColorDistance — reszta jak Thresholds.</summary>
+    public Thresholds Propozycja { get; set; }
 }
 
 public sealed class PodejrzanaPara { public double D { get; set; } public double Bbox { get; set; } public string A { get; set; } public string B { get; set; } public int TriA { get; set; } public int TriB { get; set; } }
@@ -106,10 +106,10 @@ public static class Kalibracja
     public const double KolorZakres = 40; public const int KolorKubelki = 20;
     public const double WariancjaZakres = 80; public const int WariancjaKubelki = 20;
 
-    public static WynikKalibracji Policz(Catalog katalog, Progi progi = null, CancellationToken ct = default)
+    public static WynikKalibracji Policz(Catalog katalog, Thresholds progi = null, CancellationToken ct = default)
     {
-        progi ??= Progi.Domyslne;
-        var w = new WynikKalibracji { Kiedy = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), Progi = progi.Kopia(), Pozycje = katalog.Garments.Count };
+        progi ??= Thresholds.Default;
+        var w = new WynikKalibracji { Kiedy = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), UsedThresholds = progi.Clone(), Pozycje = katalog.Garments.Count };
         var poz = katalog.Garments.Where(p => p.Geometry?.ShapeHistogram != null && p.Geometry.Vertices > 0).ToList();
         w.PozycjeZGeometria = poz.Count;
 
@@ -203,15 +203,15 @@ public static class Kalibracja
         w.BliskieLosowe = bliskie.OrderBy(v => v.PHash).ThenBy(v => v.Kolor).Take(20).ToList();
 
         // ================= PROPOZYCJA =================
-        var prop = progi.Kopia();
+        var prop = progi.Clone();
         double progGeo = najblizszyObcy.Count > 0
             ? najblizszyObcy.OrderBy(x => x).ElementAt(Math.Max(0, (int)(0.001 * najblizszyObcy.Count))) / 3.0
-            : progi.GeoIdentyczna;
-        // przyciete do zakresow Progi.Sprawdz (na sztucznych/dziwnych katalogach propozycja moglaby wyjsc poza)
-        prop.GeoIdentyczna = Math.Min(1, Math.Round(progGeo, 4));
-        prop.GeoPodobna = Math.Min(1, Math.Round(progGeo * 4, 4));
-        prop.TexPHash = phWar.Count > 0 ? (int)Math.Min(256, Math.Max(4, phWar.OrderBy(x => x).First() / 2)) : progi.TexPHash;
-        prop.TexKolor = kolWar.Count > 0 ? Math.Min(100, Math.Round(kolWar.OrderBy(x => x).First() / 2, 2)) : progi.TexKolor;
+            : progi.GeometryIdentical;
+        // przyciete do zakresow Thresholds.Sprawdz (na sztucznych/dziwnych katalogach propozycja moglaby wyjsc poza)
+        prop.GeometryIdentical = Math.Min(1, Math.Round(progGeo, 4));
+        prop.GeometrySimilar = Math.Min(1, Math.Round(progGeo * 4, 4));
+        prop.TextureHashDistance = phWar.Count > 0 ? (int)Math.Min(256, Math.Max(4, phWar.OrderBy(x => x).First() / 2)) : progi.TextureHashDistance;
+        prop.TextureColorDistance = kolWar.Count > 0 ? Math.Min(100, Math.Round(kolWar.OrderBy(x => x).First() / 2, 2)) : progi.TextureColorDistance;
         w.Propozycja = prop;
         return w;
     }
@@ -243,10 +243,10 @@ public static class Kalibracja
         log(""); log($"  --- losowe pary z PHash <= 24 (kandydaci na falszywy duplikat): {w.BliskieLosowe.Count} ---");
         foreach (var x in w.BliskieLosowe) log($"    ph={x.PHash,-4} kol={x.Kolor.ToString("F2", inv),7}  {x.A}  vs  {x.B}");
         log(""); log("=== PROPOZYCJA PROGOW ===");
-        log($"  geometria — identyczna : dist <= {w.Propozycja.GeoIdentyczna.ToString("F4", inv)}   (1/3 najblizszego obcego mesha)");
-        log($"  geometria — podobna    : dist <= {w.Propozycja.GeoPodobna.ToString("F4", inv)}");
-        log($"  tekstura  — PHash      : hamming <= {w.Propozycja.TexPHash}");
-        log($"  tekstura  — kolor      : dist <= {w.Propozycja.TexKolor.ToString("F2", inv)}   (polowa najmniejszej roznicy miedzy wariantami)");
+        log($"  geometria — identyczna : dist <= {w.Propozycja.GeometryIdentical.ToString("F4", inv)}   (1/3 najblizszego obcego mesha)");
+        log($"  geometria — podobna    : dist <= {w.Propozycja.GeometrySimilar.ToString("F4", inv)}");
+        log($"  tekstura  — PHash      : hamming <= {w.Propozycja.TextureHashDistance}");
+        log($"  tekstura  — kolor      : dist <= {w.Propozycja.TextureColorDistance.ToString("F2", inv)}   (polowa najmniejszej roznicy miedzy wariantami)");
         return 0;
     }
 }

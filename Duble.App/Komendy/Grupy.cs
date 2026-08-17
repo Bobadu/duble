@@ -78,7 +78,7 @@ public static class Grupy
             if (szczegoly)
             {
                 o["pary"] = g.Pary.Select(p => new { a = p.A, b = p.B, werdykt = p.Werdykt, powod = Widoki.Powod(p.Powod), distGeo = p.DistGeo, pokrycieA = p.PokrycieA, pokrycieB = p.PokrycieB, wspolnychTekstur = p.WspolnychTekstur }).ToList();
-                var progi = s.Projekt.Ustawienia?.Progi ?? Progi.Domyslne;
+                var progi = s.Projekt.Ustawienia?.Thresholds ?? Thresholds.Default;
                 var dop = new List<object>();
                 for (int i = 0; i < czl.Count; i++)
                     for (int j = i + 1; j < czl.Count; j++)

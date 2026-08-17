@@ -1,7 +1,7 @@
 // Komendy/UstawieniaKomendy.cs — ustawienia PROJEKTU (kosz, progi porownania), cache projektu, kalibracja.
 //
 // project.settings.get/set/resetProgi: kosz (null = _odrzucone obok zrodla) i progi (czesciowe: podane pola nadpisuja biezace;
-// walidacja Progi.Sprawdz -> bad_args z lista pol). Zmiana progow = ponowne porownanie w tle (decyzje zostaja, PrzeniesDecyzje).
+// walidacja Thresholds.Sprawdz -> bad_args z lista pol). Zmiana progow = ponowne porownanie w tle (decyzje zostaja, PrzeniesDecyzje).
 // cache.clear: tylko tex\ i mesh\ (odtwarzane na zadanie). calibrate.run: JobRunner "kalibracja" -> Kalibracja.Policz na
 // pozycjach wlaczonych zrodel -> zdarzenie calibrate.done {wynik} (rozklady z kubelkami do wykresow, propozycja progow).
 using System;
@@ -14,15 +14,15 @@ namespace Duble.App.Komendy;
 
 public static class UstawieniaKomendy
 {
-    static object ProgiJson(Progi p) => new
+    static object ProgiJson(Thresholds p) => new
     {
-        geoIdentyczna = p.GeoIdentyczna, geoPodobna = p.GeoPodobna, geoPodobnaTri = p.GeoPodobnaTri, geoPodobnaBbox = p.GeoPodobnaBbox,
-        texPHash = p.TexPHash, texKolor = p.TexKolor, texWariancjaMin = p.TexWariancjaMin, texKolorPlaska = p.TexKolorPlaska,
-        pelnePokrycie = p.PelnePokrycie, czesciowePokrycie = p.CzesciowePokrycie,
+        geometryIdentical = p.GeometryIdentical, geometrySimilar = p.GeometrySimilar, geometryTriangleTolerance = p.GeometryTriangleTolerance, geometryBoundsTolerance = p.GeometryBoundsTolerance,
+        textureHashDistance = p.TextureHashDistance, textureColorDistance = p.TextureColorDistance, flatTextureVariance = p.FlatTextureVariance, flatTextureColorDistance = p.FlatTextureColorDistance,
+        fullCoverage = p.FullCoverage, partialCoverage = p.PartialCoverage,
     };
 
     /// <summary>Nadpisuje w `p` pola podane w JSON (camelCase jak w ProgiJson). Zwraca liczbe zmienionych pol.</summary>
-    public static int WczytajProgi(Progi p, JsonElement a)
+    public static int WczytajProgi(Thresholds p, JsonElement a)
     {
         if (a.ValueKind != JsonValueKind.Object) return 0;
         int n = 0;
@@ -32,16 +32,16 @@ public static class UstawieniaKomendy
             var v = D(w.Value); if (double.IsNaN(v)) continue;
             switch (w.Name)
             {
-                case "geoIdentyczna": p.GeoIdentyczna = v; break;
-                case "geoPodobna": p.GeoPodobna = v; break;
-                case "geoPodobnaTri": p.GeoPodobnaTri = v; break;
-                case "geoPodobnaBbox": p.GeoPodobnaBbox = v; break;
-                case "texPHash": p.TexPHash = (int)Math.Round(v); break;
-                case "texKolor": p.TexKolor = v; break;
-                case "texWariancjaMin": p.TexWariancjaMin = (float)v; break;
-                case "texKolorPlaska": p.TexKolorPlaska = v; break;
-                case "pelnePokrycie": p.PelnePokrycie = v; break;
-                case "czesciowePokrycie": p.CzesciowePokrycie = v; break;
+                case "geometryIdentical": p.GeometryIdentical = v; break;
+                case "geometrySimilar": p.GeometrySimilar = v; break;
+                case "geometryTriangleTolerance": p.GeometryTriangleTolerance = v; break;
+                case "geometryBoundsTolerance": p.GeometryBoundsTolerance = v; break;
+                case "textureHashDistance": p.TextureHashDistance = (int)Math.Round(v); break;
+                case "textureColorDistance": p.TextureColorDistance = v; break;
+                case "flatTextureVariance": p.FlatTextureVariance = (float)v; break;
+                case "flatTextureColorDistance": p.FlatTextureColorDistance = v; break;
+                case "fullCoverage": p.FullCoverage = v; break;
+                case "partialCoverage": p.PartialCoverage = v; break;
                 default: continue;
             }
             n++;
@@ -56,13 +56,13 @@ public static class UstawieniaKomendy
         object Stan(bool? porownanie = null)
         {
             var pr = s.Projekt;
-            var progi = pr.Ustawienia?.Progi;
+            var progi = pr.Ustawienia?.Thresholds;
             var cache = s.RozmiarCache();
             return new
             {
                 kosz = pr.Ustawienia?.Kosz,
-                progi = ProgiJson(progi ?? Progi.Domyslne), progiDomyslne = ProgiJson(Progi.Domyslne),
-                progiZmienione = progi != null && !progi.Rowne(Progi.Domyslne),
+                progi = ProgiJson(progi ?? Thresholds.Default), progiDomyslne = ProgiJson(Thresholds.Default),
+                progiZmienione = progi != null && !progi.SameAs(Thresholds.Default),
                 cache = cache.ToDictionary(k => k.Key, k => new { pliki = k.Value.pliki, bajty = k.Value.bajty }),
                 folderCache = pr.FolderCache,
                 zrodla = pr.Zrodla.Count, pozycje = s.Catalog.Garments.Count,
@@ -88,13 +88,13 @@ public static class UstawieniaKomendy
                 pr.Ustawienia.Kosz = k.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(k.GetString()) ? k.GetString() : null;
             if (a.ValueKind == JsonValueKind.Object && a.TryGetProperty("progi", out var pj) && pj.ValueKind == JsonValueKind.Object)
             {
-                var nowe = (pr.Ustawienia.Progi ?? Progi.Domyslne).Kopia();
+                var nowe = (pr.Ustawienia.Thresholds ?? Thresholds.Default).Clone();
                 WczytajProgi(nowe, pj);
-                var bledy = nowe.Sprawdz();
+                var bledy = nowe.Validate();
                 if (bledy.Count > 0) throw new BladMostka("bad_args", string.Join(",", bledy));
-                var stare = pr.Ustawienia.Progi ?? Progi.Domyslne;
-                zmianaProgow = !nowe.Rowne(stare);
-                pr.Ustawienia.Progi = nowe.Rowne(Progi.Domyslne) ? null : nowe;
+                var stare = pr.Ustawienia.Thresholds ?? Thresholds.Default;
+                zmianaProgow = !nowe.SameAs(stare);
+                pr.Ustawienia.Thresholds = nowe.SameAs(Thresholds.Default) ? null : nowe;
             }
             pr.Zapisz();
             m.Zdarzenie("settings.changed", new { zrodlo = "project" });
@@ -106,8 +106,8 @@ public static class UstawieniaKomendy
         {
             Wymag();
             var pr = s.Projekt;
-            bool bylo = pr.Ustawienia?.Progi != null && !pr.Ustawienia.Progi.Rowne(Progi.Domyslne);
-            if (pr.Ustawienia != null) pr.Ustawienia.Progi = null;
+            bool bylo = pr.Ustawienia?.Thresholds != null && !pr.Ustawienia.Thresholds.SameAs(Thresholds.Default);
+            if (pr.Ustawienia != null) pr.Ustawienia.Thresholds = null;
             pr.Zapisz();
             m.Zdarzenie("settings.changed", new { zrodlo = "project" });
             bool? por = bylo && s.Wynik != null ? Porownaj() : null;

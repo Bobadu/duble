@@ -23,7 +23,7 @@ public class PorownanieTests
         return p;
     }
 
-    static WynikPorownania Uruchom(Progi progi, params Garment[] poz)
+    static WynikPorownania Uruchom(Thresholds progi, params Garment[] poz)
     {
         var k = new Catalog(); k.Upsert(poz);
         return Porownanie.Znajdz(k, s => { }, progi);
@@ -78,7 +78,7 @@ public class PorownanieTests
         var a = Poz("p1", "jbib", 1, "H1", 1000, 600, Hist(10), "S1", "S2");
         var b = Poz("p2", "jbib", 7, "H2", 1000, 600, Hist(12), "S1", "S2");   // hist rozny -> odleglosc 2.0 (max)
         Assert.Empty(Uruchom(null, a, b).Grupy);
-        var luzne = new Progi { GeoPodobna = 2.5, GeoIdentyczna = 2.5 };
+        var luzne = new Thresholds { GeometrySimilar = 2.5, GeometryIdentical = 2.5 };
         var g = Assert.Single(Uruchom(luzne, a, b).Grupy);
         Assert.Equal(Porownanie.Duplikat, g.Werdykt);
     }
@@ -108,23 +108,23 @@ public class PorownanieTests
     [Fact]
     public void Domyslne_progi_to_kalibracja_15_08()
     {
-        var p = Progi.Domyslne;
-        Assert.Equal(0.02, p.GeoIdentyczna); Assert.Equal(0.10, p.GeoPodobna); Assert.Equal(0.05, p.GeoPodobnaTri); Assert.Equal(0.15, p.GeoPodobnaBbox);
-        Assert.Equal(20, p.TexPHash); Assert.Equal(3.0, p.TexKolor); Assert.Equal(3.0f, p.TexWariancjaMin); Assert.Equal(1.0, p.TexKolorPlaska);
-        Assert.Equal(0.95, p.PelnePokrycie); Assert.Equal(0.5, p.CzesciowePokrycie);
+        var p = Thresholds.Default;
+        Assert.Equal(0.02, p.GeometryIdentical); Assert.Equal(0.10, p.GeometrySimilar); Assert.Equal(0.05, p.GeometryTriangleTolerance); Assert.Equal(0.15, p.GeometryBoundsTolerance);
+        Assert.Equal(20, p.TextureHashDistance); Assert.Equal(3.0, p.TextureColorDistance); Assert.Equal(3.0f, p.FlatTextureVariance); Assert.Equal(1.0, p.FlatTextureColorDistance);
+        Assert.Equal(0.95, p.FullCoverage); Assert.Equal(0.5, p.PartialCoverage);
     }
 
     [Fact]
     public void Progi_sprawdz_kopia_rowne()
     {
-        var p = Progi.Domyslne;
-        Assert.Empty(p.Sprawdz());
-        var k = p.Kopia(); Assert.True(p.Rowne(k)); Assert.NotSame(p, k);
-        k.TexPHash = 24; Assert.False(p.Rowne(k)); Assert.Empty(k.Sprawdz());
-        k.TexPHash = 300; k.GeoPodobna = 0.01; k.CzesciowePokrycie = 0.99; k.TexKolor = -1;
-        var b = k.Sprawdz();
-        Assert.Contains("TexPHash", b); Assert.Contains("GeoPodobna", b); Assert.Contains("CzesciowePokrycie", b); Assert.Contains("TexKolor", b);
-        Assert.DoesNotContain("GeoIdentyczna", b);
-        Assert.False(p.Rowne(null));
+        var p = Thresholds.Default;
+        Assert.Empty(p.Validate());
+        var k = p.Clone(); Assert.True(p.SameAs(k)); Assert.NotSame(p, k);
+        k.TextureHashDistance = 24; Assert.False(p.SameAs(k)); Assert.Empty(k.Validate());
+        k.TextureHashDistance = 300; k.GeometrySimilar = 0.01; k.PartialCoverage = 0.99; k.TextureColorDistance = -1;
+        var b = k.Validate();
+        Assert.Contains("TextureHashDistance", b); Assert.Contains("GeometrySimilar", b); Assert.Contains("PartialCoverage", b); Assert.Contains("TextureColorDistance", b);
+        Assert.DoesNotContain("GeometryIdentical", b);
+        Assert.False(p.SameAs(null));
     }
 }

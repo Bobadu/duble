@@ -78,8 +78,8 @@ public sealed class Sesja
         }
     }
 
-    /// <summary>Progi projektu (albo domyslne).</summary>
-    public Progi ProgiProjektu => Projekt?.Ustawienia?.Progi ?? Progi.Domyslne;
+    /// <summary>Thresholds projektu (albo domyslne).</summary>
+    public Thresholds ProgiProjektu => Projekt?.Ustawienia?.Thresholds ?? Thresholds.Default;
 
     /// <summary>Rozmiar cache projektu: (pliki, bajty) per folder + razem.</summary>
     public Dictionary<string, (int pliki, long bajty)> RozmiarCache()
@@ -119,7 +119,7 @@ public sealed class Sesja
     {
         var projekt = Projekt ?? throw new InvalidOperationException("brak projektu");
         var kopia = KatalogWlaczony();
-        var progi = projekt.Ustawienia?.Progi ?? Progi.Domyslne;
+        var progi = projekt.Ustawienia?.Thresholds ?? Thresholds.Default;
         var wynik = Porownanie.Znajdz(kopia, null, progi, postep, ct);
         lock (klucz)
         {

@@ -4,16 +4,16 @@ import { slupki } from '../wykres.js';
 
 // progi: klucz JSON (jak project.settings.get), krok, min, max, liczba miejsc; etykiety/opisy w i18n settings.th.* / settings.thd.*
 const PROGI = [
-  { grupa: 'geo', k: 'geoIdentyczna', krok: 0.001, min: 0, max: 1, m: 3 },
-  { grupa: 'geo', k: 'geoPodobna', krok: 0.01, min: 0, max: 1, m: 3 },
-  { grupa: 'geo', k: 'geoPodobnaTri', krok: 0.01, min: 0, max: 1, m: 2 },
-  { grupa: 'geo', k: 'geoPodobnaBbox', krok: 0.01, min: 0, max: 1, m: 2 },
-  { grupa: 'tex', k: 'texPHash', krok: 1, min: 0, max: 256, m: 0 },
-  { grupa: 'tex', k: 'texKolor', krok: 0.1, min: 0, max: 100, m: 1 },
-  { grupa: 'tex', k: 'texWariancjaMin', krok: 0.5, min: 0, max: 255, m: 1 },
-  { grupa: 'tex', k: 'texKolorPlaska', krok: 0.1, min: 0, max: 100, m: 1 },
-  { grupa: 'cover', k: 'pelnePokrycie', krok: 0.01, min: 0, max: 1, m: 2 },
-  { grupa: 'cover', k: 'czesciowePokrycie', krok: 0.01, min: 0, max: 1, m: 2 },
+  { grupa: 'geo', k: 'geometryIdentical', krok: 0.001, min: 0, max: 1, m: 3 },
+  { grupa: 'geo', k: 'geometrySimilar', krok: 0.01, min: 0, max: 1, m: 3 },
+  { grupa: 'geo', k: 'geometryTriangleTolerance', krok: 0.01, min: 0, max: 1, m: 2 },
+  { grupa: 'geo', k: 'geometryBoundsTolerance', krok: 0.01, min: 0, max: 1, m: 2 },
+  { grupa: 'tex', k: 'textureHashDistance', krok: 1, min: 0, max: 256, m: 0 },
+  { grupa: 'tex', k: 'textureColorDistance', krok: 0.1, min: 0, max: 100, m: 1 },
+  { grupa: 'tex', k: 'flatTextureVariance', krok: 0.5, min: 0, max: 255, m: 1 },
+  { grupa: 'tex', k: 'flatTextureColorDistance', krok: 0.1, min: 0, max: 100, m: 1 },
+  { grupa: 'cover', k: 'fullCoverage', krok: 0.01, min: 0, max: 1, m: 2 },
+  { grupa: 'cover', k: 'partialCoverage', krok: 0.01, min: 0, max: 1, m: 2 },
 ];
 
 let ctxRef = null, rootEl = null, odpisz = [], stanProjektu = null, ostatniaKalibracja = null, debounceProgi = null;
@@ -224,7 +224,7 @@ function rysujKalibracje() {
   const btn = rootEl.querySelector('#calib-run'); if (btn) { btn.disabled = false; btn.innerHTML = `${icon('play')}${t('settings.calibRun')}`; }
   out.innerHTML = '';
   const w = ostatniaKalibracja; if (!w) return;
-  const pr = w.progi || {}; const prop = w.propozycja || {};
+  const pr = w.usedThresholds || {}; const prop = w.propozycja || {};
   const f2 = v => Number(v).toFixed(2), f0 = v => String(Math.round(v)), f1 = v => Number(v).toFixed(1);
   const stat = (r, f) => r && r.n ? `${t('calib.n', { n: fmt.liczba(r.n) })} · ${t('calib.pct', { p05: f(r.p05), p50: f(r.p50), p95: f(r.p95) })}` : t('settings.calibNoData');
   const karta = (tytul, r, opcje, f) => {
@@ -234,26 +234,26 @@ function rysujKalibracje() {
   };
   out.append(el(`<p class="muted">${esc(t('settings.calibSummary', { poz: fmt.liczba(w.pozycjeZGeometria), tex: fmt.liczba(w.teksturyZdekodowane), kiedy: fmt.data(w.kiedy) }))}</p>`));
   const g1 = el('<div class="calib-grid"></div>');
-  const markiGeo = [{ wartosc: pr.geoIdentyczna, etykieta: t('calib.thIdentical'), klasa: 'm-a' }, { wartosc: pr.geoPodobna, etykieta: t('calib.thSimilar'), klasa: 'm-b' }];
+  const markiGeo = [{ wartosc: pr.geometryIdentical, etykieta: t('calib.thIdentical'), klasa: 'm-a' }, { wartosc: pr.geometrySimilar, etykieta: t('calib.thSimilar'), klasa: 'm-b' }];
   g1.append(karta(t('calib.geoNearest'), w.geoNajblizszyObcy, { progi: markiGeo, kolor: 'neg' }, f2));
   g1.append(karta(t('calib.geoSha'), w.geoIdentyczneSha, { progi: markiGeo, kolor: 'pos' }, f2));
   g1.append(karta(t('calib.geoSame'), w.geoTenSamHash, { progi: markiGeo, kolor: 'pos' }, f2));
-  const markPh = [{ wartosc: pr.texPHash, etykieta: t('calib.threshold'), klasa: 'm-a' }];
+  const markPh = [{ wartosc: pr.textureHashDistance, etykieta: t('calib.threshold'), klasa: 'm-a' }];
   g1.append(karta(t('calib.phVariants'), w.pHashWarianty, { progi: markPh, kolor: 'neg' }, f0));
   g1.append(karta(t('calib.phSha'), w.pHashIdentyczne, { progi: markPh, kolor: 'pos' }, f0));
   g1.append(karta(t('calib.phRandom'), w.pHashLosowe, { progi: markPh, kolor: 'neg' }, f0));
-  const markKol = [{ wartosc: pr.texKolor, etykieta: t('calib.threshold'), klasa: 'm-a' }];
+  const markKol = [{ wartosc: pr.textureColorDistance, etykieta: t('calib.threshold'), klasa: 'm-a' }];
   g1.append(karta(t('calib.colVariants'), w.kolorWarianty, { progi: markKol, kolor: 'neg' }, f1));
   g1.append(karta(t('calib.colRandom'), w.kolorLosowe, { progi: markKol, kolor: 'neg' }, f1));
   out.append(g1);
-  const propTekst = t('settings.calibProposal', { geo: f2(prop.geoIdentyczna), geo4: f2(prop.geoPodobna), ph: f0(prop.texPHash), kol: f2(prop.texKolor) });
-  const rozne = ['geoIdentyczna', 'geoPodobna', 'texPHash', 'texKolor'].some(k => Number(prop[k]) !== Number(pr[k]));
+  const propTekst = t('settings.calibProposal', { geo: f2(prop.geometryIdentical), geo4: f2(prop.geometrySimilar), ph: f0(prop.textureHashDistance), kol: f2(prop.textureColorDistance) });
+  const rozne = ['geometryIdentical', 'geometrySimilar', 'textureHashDistance', 'textureColorDistance'].some(k => Number(prop[k]) !== Number(pr[k]));
   const pp = el(`<div class="calib-prop"><span>${icon('info')} ${esc(propTekst)}</span>${rozne ? `<button class="btn sm" id="calib-use">${icon('check')}${t('settings.calibUse')}</button>` : `<span class="badge ok">${t('settings.calibSame')}</span>`}</div>`);
   pp.querySelector('#calib-use')?.addEventListener('click', async () => {
     try {
-      const r = await bridge.call('project.settings.set', { progi: { geoIdentyczna: prop.geoIdentyczna, geoPodobna: prop.geoPodobna, texPHash: prop.texPHash, texKolor: prop.texKolor } });
+      const r = await bridge.call('project.settings.set', { progi: { geometryIdentical: prop.geometryIdentical, geometrySimilar: prop.geometrySimilar, textureHashDistance: prop.textureHashDistance, textureColorDistance: prop.textureColorDistance } });
       toast(r.porownanie ? t('settings.thresholdSavedCompare') : t('settings.saved'), { typ: 'ok' });
-      ostatniaKalibracja.progi = { ...pr, geoIdentyczna: prop.geoIdentyczna, geoPodobna: prop.geoPodobna, texPHash: prop.texPHash, texKolor: prop.texKolor };
+      ostatniaKalibracja.progi = { ...pr, geometryIdentical: prop.geometryIdentical, geometrySimilar: prop.geometrySimilar, textureHashDistance: prop.textureHashDistance, textureColorDistance: prop.textureColorDistance };
       odswiezStan();
     } catch (e) { toast(e.message, { typ: 'error' }); }
   });

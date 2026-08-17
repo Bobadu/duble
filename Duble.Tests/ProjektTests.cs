@@ -25,7 +25,7 @@ public class ProjektTests
             Assert.NotEqual(z1.Id, z2.Id);
             pr.Decyzje["abc123"] = new Decyzja { Zwyciezca = "p|k|jbib|1|u", Odrzucone = { "p|k|jbib|2|u" }, Notatka = "ta jest lepsza" };
             pr.Decyzje["ign"] = new Decyzja { Ignoruj = true };
-            pr.Ustawienia.Progi = new Progi { TexPHash = 24 };
+            pr.Ustawienia.Thresholds = new Thresholds { TextureHashDistance = 24 };
             pr.Zapisz();
             Assert.True(File.Exists(plik));
 
@@ -37,8 +37,8 @@ public class ProjektTests
             Assert.Equal("ta jest lepsza", w.Decyzje["abc123"].Notatka);
             Assert.Single(w.Decyzje["abc123"].Odrzucone);
             Assert.True(w.Decyzje["ign"].Ignoruj);
-            Assert.Equal(24, w.Ustawienia.Progi.TexPHash);
-            Assert.Equal(0.02, w.Ustawienia.Progi.GeoIdentyczna);
+            Assert.Equal(24, w.Ustawienia.Thresholds.TextureHashDistance);
+            Assert.Equal(0.02, w.Ustawienia.Thresholds.GeometryIdentical);
             Assert.EndsWith(Path.Combine("Studio.duble.cache", "thumbs"), w.FolderMiniatur);
         }
         finally { Directory.Delete(tmp, true); }

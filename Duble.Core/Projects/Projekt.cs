@@ -31,7 +31,7 @@ public class Decyzja
 public class UstawieniaProjektu
 {
     public string Kosz { get; set; }         // null = _odrzucone obok zrodla
-    public Progi Progi { get; set; }         // null = domyslne
+    public Thresholds Thresholds { get; set; }         // null = domyslne
 }
 
 public class Projekt
