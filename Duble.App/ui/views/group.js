@@ -62,7 +62,7 @@ function naglowek(g, ctx) {
       <div class="actions">
         <div class="filtr-szukaj note"><span class="ico-wrap">${icon('file')}</span><input class="input" id="group-note" placeholder="${esc(t('group.notePlaceholder'))}" value="${esc(r.notatka || '')}" aria-label="${esc(t('group.note'))}"></div>
         <button class="btn" id="g-ign" aria-pressed="${!!r.ignoruj}">${icon(r.ignoruj ? 'ok' : 'x')}${r.ignoruj ? t('group.isDuplicate') : t('group.notDuplicate')}</button>
-        ${!r.domyslna ? `<button class="btn icon" id="g-reset" title="${esc(t('group.reset'))}" aria-label="${esc(t('group.reset'))}">${icon('refresh')}</button>` : ''}
+        <button class="btn icon" id="g-reset" title="${esc(t('group.reset'))}" aria-label="${esc(t('group.reset'))}" ${r.domyslna ? 'style="visibility:hidden"' : ''}>${icon('refresh')}</button>
       </div>
     </div>`);
   h.querySelector('#g-back').onclick = (e) => { e.preventDefault(); navigate('duplicates'); };

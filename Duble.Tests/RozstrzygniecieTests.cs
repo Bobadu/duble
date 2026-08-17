@@ -36,6 +36,25 @@ public class RozstrzygniecieTests
         Assert.Equal(new[] { "b" }, r.Odrzucone);
     }
 
+    [Fact]
+    public void Decyzja_rowna_domyslnej_znowu_jest_domyslna()
+    {
+        var g = G(Porownanie.Duplikat, "a", "a", "b", "c");
+        // „to nie duplikat" -> nie domyslna; „jednak duplikat" (wpis zostaje, ale wynik = domyslny) -> znowu domyslna
+        var d = new Decyzja { Zwyciezca = "a", Odrzucone = { "b", "c" }, Ignoruj = true };
+        Assert.False(Rozstrzygniecie.Policz(g, d).Domyslna);
+        d.Ignoruj = false;
+        Assert.True(Rozstrzygniecie.Policz(g, d).Domyslna);
+        d.Notatka = "sprawdzic pozniej";                                     // sama notatka = decyzja uzytkownika
+        Assert.False(Rozstrzygniecie.Policz(g, d).Domyslna);
+        d.Notatka = null; d.Odrzucone = new List<string> { "b" };             // c zachowane recznie
+        Assert.False(Rozstrzygniecie.Policz(g, d).Domyslna);
+        // do wgladu: domyslnie nikt nie odpada, wiec pusta lista = domyslna
+        var w = G(Porownanie.DoWgladu, "a", "a", "b");
+        Assert.True(Rozstrzygniecie.Policz(w, new Decyzja { Zwyciezca = "a", Odrzucone = new List<string>() }).Domyslna);
+        Assert.False(Rozstrzygniecie.Policz(w, new Decyzja { Zwyciezca = "b" }).Domyslna);
+    }
+
     static Grupa Gid(string werdykt, string zw, params string[] ids) { var g = G(werdykt, zw, ids); g.Id = Grupa.PoliczId(g.Pozycje); return g; }
 
     [Fact]
