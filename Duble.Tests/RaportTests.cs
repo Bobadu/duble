@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Duble.Tests;
@@ -8,6 +9,8 @@ namespace Duble.Tests;
 /// <summary>Raport HTML w jezyku UI z rozstrzygnieciami (decyzje uzytkownika) i CSV grup/decyzji — na sztucznym katalogu.</summary>
 public class RaportTests
 {
+    static readonly IArchiveCache Archiwa = new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IArchiveCache>();
+
     static (Catalog kat, WynikPorownania wynik, string tmp) Swiat()
     {
         var tmp = Sciezki.Tymczasowy("raport");
@@ -31,7 +34,7 @@ public class RaportTests
             };
             var plik = Path.Combine(tmp, "r.html");
             var log = new List<string>();
-            Raport.Zbuduj(kat, wynik, plik, log.Add, "en", g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "My project");
+            Raport.Zbuduj(Archiwa, kat, wynik, plik, log.Add, "en", g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "My project");
             var html = File.ReadAllText(plik);
             Assert.Contains("<html lang=\"en\">", html);
             Assert.Contains("Duble — My project", html);
@@ -47,7 +50,7 @@ public class RaportTests
 
             // po polsku, domyslne rozstrzygniecia: a zostaje, b odrzucona; f,g odrzucone -> 3
             var plikPl = Path.Combine(tmp, "r-pl.html");
-            Raport.Zbuduj(kat, wynik, plikPl, null);
+            Raport.Zbuduj(Archiwa, kat, wynik, plikPl, null);
             var pl = File.ReadAllText(plikPl);
             Assert.Contains("<html lang=\"pl\">", pl);
             Assert.Contains(">ZOSTAJE<", pl); Assert.Contains("do odrzucenia <b>3</b>", pl);

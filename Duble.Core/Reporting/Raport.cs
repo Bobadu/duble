@@ -1,7 +1,7 @@
 // Raport.cs — viewer porownan: zwykly, samowystarczalny plik HTML.
 //
 // Miniatury sa wpisane w plik jako data:image/png;base64, wiec raport dziala po
-// skopiowaniu gdziekolwiek i bez internetu. Tekstury dekodujemy PONOWNIE ze zrodel
+// skopiowaniu gdziekolwiek i bez internetu. TextureDecoder dekodujemy PONOWNIE ze zrodel
 // (katalog trzyma tylko odciski, nie obrazy) — dlatego kazda tekstura zna swoja sciezke.
 using System;
 using System.Collections.Generic;
@@ -44,7 +44,7 @@ public static class Raport
 
     /// <summary>Samowystarczalny raport HTML. `rozstrzygnij` (aplikacja: decyzje uzytkownika) mowi, kto zostaje / jest odrzucony /
     /// zignorowany; brak = domyslne z porownania. `tytul` = nazwa projektu (naglowek strony).</summary>
-    public static void Zbuduj(Catalog katalog, WynikPorownania wynik, string plik, Action<string> log, string jezyk = "pl",
+    public static void Zbuduj(IArchiveCache archiwa, Catalog katalog, WynikPorownania wynik, string plik, Action<string> log, string jezyk = "pl",
                               Func<Grupa, Resolution> rozstrzygnij = null, string tytul = null)
     {
         log ??= _ => { };
@@ -80,7 +80,7 @@ public static class Raport
         int zrobione = 0;
         foreach (var g in grupy)
         {
-            sb.Append(Karta(g, wgId, jezyk, rozstrzygniecia[g]));
+            sb.Append(Karta(archiwa, g, wgId, jezyk, rozstrzygniecia[g]));
             if (++zrobione % 10 == 0) log($"  grup: {zrobione}/{grupy.Count}");
         }
 
@@ -138,11 +138,11 @@ public static class Raport
 
     // ===================== miniatury =====================
 
-    static string Miniatura(TextureInfo t)
+    static string Miniatura(IArchiveCache archiwa, TextureInfo t)
     {
         if (t?.Path == null) { bezPliku++; return null; }
         if (CacheMiniatur.TryGetValue(t.Sha256, out var gotowa)) return gotowa;
-        var bajty = Zrodla.Bajty(t.Path);
+        var odczyt = archiwa.Read(t.Path); var bajty = odczyt.IsSuccess ? odczyt.Value : null;
         if (bajty == null) { bezPliku++; return null; }
         try
         {
@@ -150,20 +150,20 @@ public static class Raport
             var ytd = new YtdFile();
             RpfFile.LoadResourceFile(ytd, bajty, 13);
             var tex = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
-            var rgb = tex == null ? null : Odciski.Miniatura(tex, Bok);
+            var rgb = tex == null ? null : Thumbnail.Render(tex, Bok);
             if (rgb == null) { bezPodgladu++; return null; }
-            var uri = "data:image/png;base64," + Convert.ToBase64String(Png.Rgb(rgb, Bok, Bok));
+            var uri = "data:image/png;base64," + Convert.ToBase64String(PngWriter.Rgb(rgb, Bok, Bok));
             CacheMiniatur[t.Sha256] = uri;
             return uri;
         }
         catch { bezPodgladu++; return null; }
     }
 
-    static string Kafelek(TextureInfo t, string jezyk, string etykieta = null)
+    static string Kafelek(IArchiveCache archiwa, TextureInfo t, string jezyk, string etykieta = null)
     {
         if (t == null)
             return $"<div class=\"kafelek pusty\"><div class=\"placeholder\">{E(Tx(jezyk, "raport.brakOdpowiednika")).Replace(" ", "<br>")}</div></div>";
-        var uri = Miniatura(t);
+        var uri = Miniatura(archiwa, t);
         var obraz = uri != null
             ? $"<img src=\"{uri}\" alt=\"{E(t.FileName)}\" loading=\"lazy\" width=\"{Bok}\" height=\"{Bok}\">"
             : $"<div class=\"placeholder\">{E(t.Format)}<br>{E(Tx(jezyk, "raport.bezPodgladu"))}</div>";
@@ -181,7 +181,7 @@ public static class Raport
 
     // ===================== karta grupy =====================
 
-    static string Karta(Grupa g, Dictionary<string, Garment> wgId, string jezyk, Resolution roz)
+    static string Karta(IArchiveCache archiwa, Grupa g, Dictionary<string, Garment> wgId, string jezyk, Resolution roz)
     {
         roz ??= Rozstrzygniecia.Resolve(g, null);
         var zwyciezca = roz.Winner ?? g.Zwyciezca;
@@ -268,11 +268,11 @@ public static class Raport
             if (wierszy >= MaxWierszy) { pominietych++; continue; }
             wierszy++;
             sb.Append("<div class=\"wiersz\">");
-            sb.Append(Kafelek(wz, jezyk));
+            sb.Append(Kafelek(archiwa, wz, jezyk));
             for (int i = 1; i < czlonkowie.Count; i++)
             {
                 var inny = wgId[czlonkowie[i]];
-                sb.Append(Kafelek(trafienia[i] >= 0 ? inny.Textures[trafienia[i]] : null, jezyk));
+                sb.Append(Kafelek(archiwa, trafienia[i] >= 0 ? inny.Textures[trafienia[i]] : null, jezyk));
             }
             sb.Append("</div>");
         }
@@ -289,7 +289,7 @@ public static class Raport
             bool stracisz = !roz.Ignored && roz.Rejected.Contains(id);
             sb.Append($"<h4>{E(Tx(jezyk, "raport.tylkoW"))} <em>{E(p.Label)}</em> — {E(Tx(jezyk, "raport.tekstur", ("n", unikalne.Count)))}{(stracisz ? $" <span class=\"zle\">{E(Tx(jezyk, "raport.stracisz"))}</span>" : "")}</h4>");
             sb.Append("<div class=\"pasek\">");
-            foreach (var k in unikalne.Take(MaxUnikalnych)) sb.Append(Kafelek(p.Textures[k], jezyk));
+            foreach (var k in unikalne.Take(MaxUnikalnych)) sb.Append(Kafelek(archiwa, p.Textures[k], jezyk));
             sb.Append("</div>");
             if (unikalne.Count > MaxUnikalnych)
                 sb.Append($"<p class=\"uwaga\">{E(Tx(jezyk, "raport.dalszych", ("n", unikalne.Count - MaxUnikalnych)))}</p>");

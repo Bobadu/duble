@@ -68,7 +68,7 @@ public sealed class WynikKalibracji
     public string Kiedy { get; set; }
     public int Pozycje { get; set; }
     public int PozycjeZGeometria { get; set; }
-    public int Tekstury { get; set; }
+    public int TextureDecoder { get; set; }
     public int TeksturyZdekodowane { get; set; }
 
     // geometria (odleglosc histogramow 0..)
@@ -126,7 +126,7 @@ public static class Kalibracja
             {
                 if (i == j) continue;
                 var a = poz[i]; var b = poz[j];
-                double d = Odciski.OdlegloscGeo(a.Geometry.ShapeHistogram, b.Geometry.ShapeHistogram);
+                double d = Distance.ShapeHistogram(a.Geometry.ShapeHistogram, b.Geometry.ShapeHistogram);
                 bool tenSamMesh = a.Geometry.PositionHash != null && a.Geometry.PositionHash == b.Geometry.PositionHash;
                 if (j > i)
                 {
@@ -144,12 +144,12 @@ public static class Kalibracja
         w.GeoNajblizszyObcy = Rozklad.Z(najblizszyObcy, 0, GeoZakres, GeoKubelki);
         w.GeoPodejrzane = podejrzane.Count;
         w.Podejrzane = podejrzane.OrderBy(x => x.d).Take(25)
-            .Select(x => new PodejrzanaPara { D = x.d, Bbox = Odciski.OdlegloscBbox(x.a.Geometry.BoundingBox, x.b.Geometry.BoundingBox), A = x.a.Label + x.a.Suffix, B = x.b.Label + x.b.Suffix, TriA = x.a.Geometry.Triangles, TriB = x.b.Geometry.Triangles }).ToList();
+            .Select(x => new PodejrzanaPara { D = x.d, Bbox = Distance.BoundingBox(x.a.Geometry.BoundingBox, x.b.Geometry.BoundingBox), A = x.a.Label + x.a.Suffix, B = x.b.Label + x.b.Suffix, TriA = x.a.Geometry.Triangles, TriB = x.b.Geometry.Triangles }).ToList();
 
         // ================= TEKSTURY =================
         ct.ThrowIfCancellationRequested();
         var wszystkie = katalog.Garments.SelectMany(p => p.Textures.Where(t => t.IsDecoded).Select(t => (poz: p, tex: t))).ToList();
-        w.Tekstury = katalog.Garments.Sum(p => p.Textures.Count);
+        w.TextureDecoder = katalog.Garments.Sum(p => p.Textures.Count);
         w.TeksturyZdekodowane = wszystkie.Count;
 
         // pozytywy: ten sam SHA
@@ -160,8 +160,8 @@ public static class Kalibracja
             for (int i = 0; i < l.Count; i++)
                 for (int j = i + 1; j < l.Count; j++)
                 {
-                    phSha.Add(Odciski.Hamming(l[i].tex.PerceptualHash, l[j].tex.PerceptualHash));
-                    kolSha.Add(Odciski.OdlegloscKoloru(l[i].tex.ColorSignature, l[j].tex.ColorSignature));
+                    phSha.Add(Distance.Hamming(l[i].tex.PerceptualHash, l[j].tex.PerceptualHash));
+                    kolSha.Add(Distance.Color(l[i].tex.ColorSignature, l[j].tex.ColorSignature));
                 }
         }
         // trudne negatywy: warianty koloru tego samego ciucha
@@ -173,8 +173,8 @@ public static class Kalibracja
                 for (int j = i + 1; j < l.Count; j++)
                 {
                     if (l[i].Sha256 == l[j].Sha256) continue;
-                    phWar.Add(Odciski.Hamming(l[i].PerceptualHash, l[j].PerceptualHash));
-                    kolWar.Add(Odciski.OdlegloscKoloru(l[i].ColorSignature, l[j].ColorSignature));
+                    phWar.Add(Distance.Hamming(l[i].PerceptualHash, l[j].PerceptualHash));
+                    kolWar.Add(Distance.Color(l[i].ColorSignature, l[j].ColorSignature));
                 }
         }
         ct.ThrowIfCancellationRequested();
@@ -188,8 +188,8 @@ public static class Kalibracja
             var a = wszystkie[rnd.Next(wszystkie.Count)];
             var b = wszystkie[rnd.Next(wszystkie.Count)];
             if (ReferenceEquals(a.poz, b.poz) || a.tex.Sha256 == b.tex.Sha256) continue;
-            int ph = Odciski.Hamming(a.tex.PerceptualHash, b.tex.PerceptualHash);
-            double kol = Odciski.OdlegloscKoloru(a.tex.ColorSignature, b.tex.ColorSignature);
+            int ph = Distance.Hamming(a.tex.PerceptualHash, b.tex.PerceptualHash);
+            double kol = Distance.Color(a.tex.ColorSignature, b.tex.ColorSignature);
             phLos.Add(ph); kolLos.Add(kol);
             if (ph <= 24) bliskie.Add(new BliskaLosowa { PHash = ph, Kolor = kol, A = $"{a.poz.Label}/{a.tex.FileName}", B = $"{b.poz.Label}/{b.tex.FileName}" });
         }
@@ -232,7 +232,7 @@ public static class Kalibracja
         log(""); log($"  --- pary o ROZNYM meshu, a odlegloscia < 0,05: {w.GeoPodejrzane} ---");
         foreach (var p in w.Podejrzane) log($"    d={p.D.ToString("F4", inv)} bbox={p.Bbox.ToString("F3", inv)}  {p.A} (tri {p.TriA})  vs  {p.B} (tri {p.TriB})");
         log(""); log("=== TEKSTURY ===");
-        log($"tekstur zdekodowanych: {w.TeksturyZdekodowane} / {w.Tekstury}");
+        log($"tekstur zdekodowanych: {w.TeksturyZdekodowane} / {w.TextureDecoder}");
         log($"  identyczne co do bajtu — PHash    : {w.PHashIdentyczne.Tekst("F1")}");
         log($"  identyczne co do bajtu — kolor    : {w.KolorIdentyczne.Tekst("F2")}");
         log($"  WARIANTY KOLORU tego samego ciucha — PHash : {w.PHashWarianty.Tekst("F1")}");

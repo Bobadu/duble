@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,7 +24,7 @@ public class GlbTests
         Indeksy = new uint[] { 0, 1, 2, 0, 2, 3 },
     };
 
-    static byte[] Png2x2() => Png.Rgba(new byte[] { 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 128 }, 2, 2);
+    static byte[] Png2x2() => PngWriter.Rgba(new byte[] { 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 128 }, 2, 2);
 
     static JsonElement Json(byte[] glb)
     {
@@ -90,9 +91,9 @@ public class GlbTests
     public void Glb_z_prawdziwego_modelu_studio_body()
     {
         if (!Sciezki.JestGra) { wyj.WriteLine("POMINIETY: brak studio_body\\dlc.rpf"); return; }
-        var poz = Indeks.Zrodlo(Sciezki.Dlc("studio_body"), "studio_body", s => { });
+        var poz = new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IGarmentIndexer>().Index(Sciezki.Dlc("studio_body"), "studio_body", new IndexOptions()).Value.Garments;
         var uppr = poz.First(p => p.Slot == "uppr" && p.Number == 15);
-        var glb = Podglad3D.Glb(uppr, null, wyj.WriteLine);
+        var glb = Podglad3D.Glb(new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IArchiveCache>(), uppr, null, wyj.WriteLine);
         Assert.True(glb.Length > 10000);
         var json = Json(glb);
         Assert.True(json.GetProperty("meshes")[0].GetProperty("primitives").GetArrayLength() >= 1);

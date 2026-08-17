@@ -132,7 +132,7 @@ public static class UstawieniaKomendy
             bool ok = jr.SprobujUruchom("kalibracja", s.Project.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                postep(new Postep("kalibracja", 0, 0, null));
+                postep(new ProgressReport("kalibracja", 0, 0, null));
                 var w = Kalibracja.Policz(katalog, progi, ct);
                 m.Zdarzenie("calibrate.done", new { wynik = w });
             });

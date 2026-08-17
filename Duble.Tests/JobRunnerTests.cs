@@ -16,7 +16,7 @@ public class JobRunnerTests
         var zd = new List<string>();
         var jr = new JobRunner((n, d) => zd.Add(n + " " + J(d)));
         var start = new TaskCompletionSource(); var pusc = new TaskCompletionSource();
-        var t1 = jr.Uruchom("indeks", "A", async (ct, postep) => { start.SetResult(); await pusc.Task; postep(new Duble.Core.Indexing.Postep("modele", 5, 10, "A")); });
+        var t1 = jr.Uruchom("indeks", "A", async (ct, postep) => { start.SetResult(); await pusc.Task; postep(new Duble.Core.ProgressReport("modele", 5, 10, "A")); });
         await start.Task;
         Assert.True(jr.Zajety);
         Assert.False(await jr.Uruchom("indeks", "B", (ct, p) => Task.CompletedTask));   // zajety
@@ -35,9 +35,9 @@ public class JobRunnerTests
         var jr = new JobRunner((n, d) => zd.Add(J(d)));
         await jr.Uruchom("zastosuj", "A", (ct, postep) =>
         {
-            for (int i = 0; i < 500; i++) postep(new Duble.Core.Indexing.Postep("zastosuj", i, 500, "x"));   // 500 zgloszen w ulamku sekundy
-            postep(new Duble.Core.Indexing.Postep("zastosuj", 500, 500, null));                              // koniec etapu
-            postep(new Duble.Core.Indexing.Postep("porownaj", 0, 0, null));                                  // nowy etap
+            for (int i = 0; i < 500; i++) postep(new Duble.Core.ProgressReport("zastosuj", i, 500, "x"));   // 500 zgloszen w ulamku sekundy
+            postep(new Duble.Core.ProgressReport("zastosuj", 500, 500, null));                              // koniec etapu
+            postep(new Duble.Core.ProgressReport("porownaj", 0, 0, null));                                  // nowy etap
             return Task.CompletedTask;
         });
         int postepow = zd.FindAll(z => z.Contains("\"stan\":\"postep\"")).Count;

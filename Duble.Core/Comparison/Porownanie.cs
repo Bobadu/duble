@@ -101,7 +101,7 @@ public static class Porownanie
         => Znajdz(katalog, log, progi, null, default);
 
     /// <summary>Jak wyzej, z postepem (Etap "porownaj") i anulowaniem — dla aplikacji okienkowej.</summary>
-    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Thresholds progi, Action<Postep> postep, System.Threading.CancellationToken anuluj)
+    public static WynikPorownania Znajdz(Catalog katalog, Action<string> log, Thresholds progi, Action<ProgressReport> postep, System.Threading.CancellationToken anuluj)
     {
         progi ??= Thresholds.Default;
         log ??= _ => { };
@@ -113,7 +113,7 @@ public static class Porownanie
         for (int i = 0; i < poz.Count; i++)
         {
             anuluj.ThrowIfCancellationRequested();
-            if ((i + 1) % 50 == 0 || i + 1 == poz.Count) postep?.Invoke(new Postep("porownaj", i + 1, poz.Count, null));
+            if ((i + 1) % 50 == 0 || i + 1 == poz.Count) postep?.Invoke(new ProgressReport("porownaj", i + 1, poz.Count, null));
             for (int j = i + 1; j < poz.Count; j++)
             {
                 var a = poz[i]; var b = poz[j];
@@ -199,7 +199,7 @@ public static class Porownanie
 
         if (a.Geometry.PositionHash != null && a.Geometry.PositionHash == b.Geometry.PositionHash) { dist = 0; return "identyczna"; }
 
-        dist = Odciski.OdlegloscGeo(a.Geometry.ShapeHistogram, b.Geometry.ShapeHistogram);
+        dist = Distance.ShapeHistogram(a.Geometry.ShapeHistogram, b.Geometry.ShapeHistogram);
         if (dist > progi.GeometrySimilar) return null;
 
         if (dist <= progi.GeometryIdentical
@@ -211,7 +211,7 @@ public static class Porownanie
         if (maxTri < 1) return null;
         double roznicaTri = Math.Abs(a.Geometry.Triangles - b.Geometry.Triangles) / maxTri;
         if (roznicaTri > progi.GeometryTriangleTolerance) return null;
-        if (Odciski.OdlegloscBbox(a.Geometry.BoundingBox, b.Geometry.BoundingBox) > progi.GeometryBoundsTolerance) return null;
+        if (Distance.BoundingBox(a.Geometry.BoundingBox, b.Geometry.BoundingBox) > progi.GeometryBoundsTolerance) return null;
         return "podobna";
     }
 
@@ -221,12 +221,12 @@ public static class Porownanie
         progi ??= Thresholds.Default;
         if (x.Sha256 == y.Sha256) return true;
         if (!x.IsDecoded || !y.IsDecoded) return false;
-        double kol = Odciski.OdlegloscKoloru(x.ColorSignature, y.ColorSignature);
+        double kol = Distance.Color(x.ColorSignature, y.ColorSignature);
         // Plaska tekstura (np. jednolity kolor) daje PHash z szumu — wtedy ufamy samemu
         // kolorowi, ale wymagamy scislejszej zgodnosci.
         if (x.Variance < progi.FlatTextureVariance || y.Variance < progi.FlatTextureVariance)
             return kol <= progi.FlatTextureColorDistance;
-        int ph = Odciski.Hamming(x.PerceptualHash, y.PerceptualHash);
+        int ph = Distance.Hamming(x.PerceptualHash, y.PerceptualHash);
         return ph >= 0 && ph <= progi.TextureHashDistance && kol <= progi.TextureColorDistance;
     }
 

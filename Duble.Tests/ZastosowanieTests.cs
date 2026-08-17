@@ -79,7 +79,7 @@ public class ZastosowanieTests
         try
         {
             var plan = Zastosowanie.Zaplanuj(kat, new[] { "z1|k.rpf|jbib|7|u", "z1|k.rpf|feet|50|u_1" }, cel);
-            var postepy = new List<Postep>();
+            var postepy = new List<ProgressReport>();
             var cofka = Zastosowanie.Wykonaj(plan, "test", postepy.Add);
             Assert.False(cofka.Przerwano);
             Assert.Equal(3, cofka.Ruchy.Count); Assert.Equal(2, cofka.Pozycje.Count);
@@ -89,7 +89,7 @@ public class ZastosowanieTests
             Assert.False(File.Exists(Path.Combine(src, "k.rpf", "jbib_007_u.ydd")));
             Assert.True(File.Exists(Path.Combine(src, "k.rpf", "feet_diff_050_a_uni.ytd")));   // wspoldzielona zostala
             Assert.True(File.Exists(Path.Combine(src, "k.rpf", "feet_050_u.ydd")));
-            Assert.Contains(postepy, p => p.Etap == "zastosuj" && p.Wszystkie == 3);
+            Assert.Contains(postepy, p => p.Stage == "zastosuj" && p.Total == 3);
             Assert.True(cofka.MoznaCofnac); Assert.True(cofka.MoznaCofnacPozycje("z1|k.rpf|jbib|7|u"));
 
             var plik = Path.Combine(tmp, "historia", "c.json");
@@ -129,7 +129,7 @@ public class ZastosowanieTests
         {
             var plan = Zastosowanie.Zaplanuj(kat, new[] { "z1|k.rpf|jbib|7|u", "z1|k.rpf|feet|50|u_1" }, cel);
             using var cts = new CancellationTokenSource();
-            var cofka = Zastosowanie.Wykonaj(plan, "test", p => { if (p.Zrobione == 1) cts.Cancel(); }, cts.Token);
+            var cofka = Zastosowanie.Wykonaj(plan, "test", p => { if (p.Done == 1) cts.Cancel(); }, cts.Token);
             Assert.True(cofka.Przerwano);
             Assert.Single(cofka.Ruchy);
             Assert.Single(Directory.GetFiles(kosz, "*", SearchOption.AllDirectories));

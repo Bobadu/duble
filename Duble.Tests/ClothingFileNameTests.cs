@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Duble.Tests;
 
-public class NazwyTests
+public class ClothingFileNameTests
 {
     [Theory]
     [InlineData("jbib_027_u.ydd", "jbib", 27, "u", false, null)]
@@ -14,10 +14,10 @@ public class NazwyTests
     [InlineData("mp_f_freemode_01_p_paczka^p_head_002.ydd", "p_head", 2, "u", true, "mp_f_freemode_01_p_paczka")]
     public void Model_rozpoznaje_konwencje(string plik, string typ, int numer, string sufiks, bool props, string kontener)
     {
-        var n = Nazwy.ParseModel(plik);
+        var n = ClothingFileName.ParseModel(plik);
         Assert.NotNull(n);
-        Assert.Equal(typ, n.Typ); Assert.Equal(numer, n.Numer); Assert.Equal(sufiks, n.Sufiks);
-        Assert.Equal(props, n.Props); Assert.Equal(kontener, n.Kontener);
+        Assert.Equal(typ, n.Slot); Assert.Equal(numer, n.Number); Assert.Equal(sufiks, n.Suffix);
+        Assert.Equal(props, n.IsProp); Assert.Equal(kontener, n.Container);
     }
 
     [Theory]
@@ -28,10 +28,10 @@ public class NazwyTests
     [InlineData("mp_f_freemode_01_paczka^jbib_diff_000_c_uni.ytd", "jbib", 0, "c", "uni", false, "mp_f_freemode_01_paczka")]
     public void Tekstura_rozpoznaje_konwencje(string plik, string typ, int numer, string litera, string rasa, bool props, string kontener)
     {
-        var n = Nazwy.ParseTexture(plik);
+        var n = ClothingFileName.ParseTexture(plik);
         Assert.NotNull(n);
-        Assert.Equal(typ, n.Typ); Assert.Equal(numer, n.Numer); Assert.Equal(litera, n.Litera);
-        Assert.Equal(rasa, n.Rasa); Assert.Equal(props, n.Props); Assert.Equal(kontener, n.Kontener);
+        Assert.Equal(typ, n.Slot); Assert.Equal(numer, n.Number); Assert.Equal(litera, n.Letter);
+        Assert.Equal(rasa, n.Race); Assert.Equal(props, n.IsProp); Assert.Equal(kontener, n.Container);
     }
 
     [Theory]
@@ -42,7 +42,7 @@ public class NazwyTests
     [InlineData("mp_f_freemode_01_mp_f_civil01.ymt")]
     public void Smieci_daja_null(string plik)
     {
-        Assert.Null(Nazwy.ParseModel(plik));
-        Assert.Null(Nazwy.ParseTexture(plik));
+        Assert.Null(ClothingFileName.ParseModel(plik));
+        Assert.Null(ClothingFileName.ParseTexture(plik));
     }
 }

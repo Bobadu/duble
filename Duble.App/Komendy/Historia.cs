@@ -109,8 +109,8 @@ public static class Historia
             bool ok = jr.SprobujUruchom("raport", Path.GetFileName(plik), async (ct, postep) =>
             {
                 await Task.Yield();
-                postep(new Postep("raport", 0, 0, Path.GetFileName(plik)));
-                Raport.Zbuduj(s.Catalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
+                postep(new ProgressReport("raport", 0, 0, Path.GetFileName(plik)));
+                Raport.Zbuduj(s.Archiwa, s.Catalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
                 m.Zdarzenie("report.done", new { plik, typ = "html" });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");

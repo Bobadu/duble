@@ -237,7 +237,7 @@ public static class Zastosowanie
 
     /// <summary>Przenosi pliki w stanie Przenies. Nie rzuca przy anulowaniu — konczy petle i ustawia Przerwano, zeby wolajacy
     /// ZAWSZE mogl zapisac cofke z tym, co juz sie przenioslo. Wyjatek IO przy pojedynczym pliku tez przerywa (Blad).</summary>
-    public static Cofka Wykonaj(PlanZastosowania plan, string opis, Action<Postep> postep = null, CancellationToken ct = default)
+    public static Cofka Wykonaj(PlanZastosowania plan, string opis, Action<ProgressReport> postep = null, CancellationToken ct = default)
     {
         var cofka = new Cofka
         {
@@ -249,7 +249,7 @@ public static class Zastosowanie
         var pozycje = new Dictionary<string, PozycjaCofki>();
         foreach (var (p, r) in ruchy)
         {
-            postep?.Invoke(new Postep("zastosuj", i, n, p.Nazwa));
+            postep?.Invoke(new ProgressReport("zastosuj", i, n, p.Nazwa));
             if (ct.IsCancellationRequested) { cofka.Przerwano = true; break; }
             try
             {
@@ -264,7 +264,7 @@ public static class Zastosowanie
             pc.Pliki++;
             i++;
         }
-        postep?.Invoke(new Postep("zastosuj", i, n, null));
+        postep?.Invoke(new ProgressReport("zastosuj", i, n, null));
         cofka.Pozycje = pozycje.Values.ToList();
         return cofka;
     }
@@ -273,14 +273,14 @@ public static class Zastosowanie
 
     /// <summary>Przywraca pliki (wszystkie albo tylko podanych pozycji). Ruch pominiety, gdy pliku nie ma juz w koszu albo
     /// miejsce zrodlowe jest zajete. Oznacza Cofniety; gdy nie zostal zaden niecofniety ruch — ustawia Cofnieto.</summary>
-    public static (int wrocilo, int pominieto) Cofnij(Cofka cofka, IEnumerable<string> tylkoPozycje = null, Action<Postep> postep = null)
+    public static (int wrocilo, int pominieto) Cofnij(Cofka cofka, IEnumerable<string> tylkoPozycje = null, Action<ProgressReport> postep = null)
     {
         var tylko = tylkoPozycje == null ? null : new HashSet<string>(tylkoPozycje);
         var doCofniecia = cofka.Ruchy.Where(r => !r.Cofniety && (tylko == null || tylko.Contains(r.GarmentId))).ToList();
         int wrocilo = 0, pominieto = 0, i = 0;
         foreach (var r in doCofniecia)
         {
-            postep?.Invoke(new Postep("cofnij", i++, doCofniecia.Count, Path.GetFileName(r.Z)));
+            postep?.Invoke(new ProgressReport("cofnij", i++, doCofniecia.Count, Path.GetFileName(r.Z)));
             if (!File.Exists(r.Do))
             {
                 // pliku nie ma w koszu, a jest na starym miejscu = w praktyce juz cofniety (np. cofka nie zdazyla sie zapisac) — uznajemy

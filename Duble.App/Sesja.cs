@@ -16,13 +16,22 @@ public sealed class Sesja
     readonly IProjectStore projekty;
     readonly IClock zegar;
 
-    public Sesja(ICatalogStore katalogi, IProjectStore projekty, IResolutionService rozstrzygniecia, IClock zegar)
+    public Sesja(ICatalogStore katalogi, IProjectStore projekty, IResolutionService rozstrzygniecia,
+                 IGarmentIndexer indeksator, IArchiveCache archiwa, IClock zegar)
     {
         this.katalogi = katalogi;
         this.projekty = projekty;
         this.zegar = zegar;
         Rozstrzygniecia = rozstrzygniecia;
+        Indeksator = indeksator;
+        Archiwa = archiwa;
     }
+
+    /// <summary>Indeksowanie zrodel — komendy wolaja je przez JobRunner.</summary>
+    public IGarmentIndexer Indeksator { get; }
+
+    /// <summary>Ponowny odczyt zaindeksowanych plikow (miniatury, podglady) — trzyma otwarte archiwa.</summary>
+    public IArchiveCache Archiwa { get; }
 
     /// <summary>Reguly "kto zostaje" — komendy licza je dla grup, ktore pokazuja.</summary>
     public IResolutionService Rozstrzygniecia { get; }
@@ -137,7 +146,7 @@ public sealed class Sesja
     }
 
     /// <summary>Porownanie pozycji WLACZONYCH zrodel progami projektu; wynik zapamietany i zapisany do duble.json.</summary>
-    public void Porownaj(CancellationToken ct, Action<Postep> postep)
+    public void Porownaj(CancellationToken ct, Action<ProgressReport> postep)
     {
         var projekt = Project ?? throw new InvalidOperationException("brak projektu");
         var kopia = KatalogWlaczony();
@@ -173,7 +182,7 @@ public sealed class Sesja
         {
             var sciezka = z.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             var nad = Path.GetDirectoryName(sciezka) ?? sciezka;
-            kosz = Path.Combine(nad, Indeks.FolderOdrzuconych);
+            kosz = Path.Combine(nad, BinFolder.Name);
         }
         return Path.Combine(kosz, Bezpieczna(z.Name));
     }
@@ -305,12 +314,12 @@ public sealed class Sesja
         {
             var poz = ZnajdzPozycje(idPozycji);
             if (poz == null || string.IsNullOrEmpty(poz.ModelPath)) return null;
-            var tex = poz.Textures.FirstOrDefault(t => litera != null && string.Equals(Nazwy.ParseTexture(t.FileName)?.Litera, litera, StringComparison.OrdinalIgnoreCase))
+            var tex = poz.Textures.FirstOrDefault(t => litera != null && string.Equals(ClothingFileName.ParseTexture(t.FileName)?.Letter, litera, StringComparison.OrdinalIgnoreCase))
                       ?? poz.Textures.FirstOrDefault();
             string Krotki(string sha) => string.IsNullOrEmpty(sha) ? "brak" : sha.Length > 16 ? sha.Substring(0, 16) : sha;
             var plik = Path.Combine(Project.MeshFolder, $"{Krotki(poz.ModelSha256)}_{Krotki(tex?.Sha256)}.glb");
             if (File.Exists(plik)) return plik;
-            var glb = Podglad3D.Glb(poz, tex != null ? Nazwy.ParseTexture(tex.FileName)?.Litera : null);
+            var glb = Podglad3D.Glb(Archiwa, poz, tex != null ? ClothingFileName.ParseTexture(tex.FileName)?.Letter : null);
             Directory.CreateDirectory(Project.MeshFolder);
             var tmp = plik + "." + Guid.NewGuid().ToString("N").Substring(0, 6) + ".tmp";
             File.WriteAllBytes(tmp, glb);
@@ -327,13 +336,14 @@ public sealed class Sesja
         {
             var t = ZnajdzTeksture(sha);
             if (t?.Path == null) return false;
-            var bajty = Zrodla.Bajty(t.Path);
+            var odczyt = Archiwa.Read(t.Path);
+            var bajty = odczyt.IsSuccess ? odczyt.Value : null;
             if (bajty == null) return false;
             CodeWalkerRuntime.Initialize();
             var ytd = new YtdFile();
             RpfFile.LoadResourceFile(ytd, bajty, 13);
             var tex = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
-            var png = tex == null ? null : Tekstury.PngRgba(tex, 1024);
+            var png = tex == null ? null : TextureDecoder.PngRgba(tex, 1024);
             if (png == null) return false;
             Directory.CreateDirectory(Path.GetDirectoryName(plik));
             var tmp = plik + "." + Guid.NewGuid().ToString("N").Substring(0, 6) + ".tmp";

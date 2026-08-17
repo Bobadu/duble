@@ -1,4 +1,4 @@
-// Png.cs — minimalny koder PNG (RGB i RGBA, bez filtrow, bez przeplotu).
+// PngWriter.cs — minimalny koder PNG (RGB i RGBA, bez filtrow, bez przeplotu).
 //
 // PO CO WLASNY: raport ma osadzac miniatury jako data:image/png;base64, a caly projekt
 // stoi wylacznie na CodeWalker.Core — nie chcemy ciagnac System.Drawing.Common ani
@@ -10,7 +10,7 @@ using System.IO.Compression;
 
 namespace Duble.Core.Formats;
 
-public static class Png
+public static class PngWriter
 {
     static readonly byte[] Sygnatura = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
     static readonly uint[] TablicaCrc = ZbudujCrc();

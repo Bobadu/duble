@@ -34,6 +34,9 @@ try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
 using var uslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
 uslugi.GetRequiredService<CodeWalkerRuntime>();
 var katalogi = uslugi.GetRequiredService<ICatalogStore>();
+var indeksator = uslugi.GetRequiredService<IGarmentIndexer>();
+var archiwa = uslugi.GetRequiredService<IArchiveCache>();
+var odciskiTekstur = uslugi.GetRequiredService<ITextureFingerprinter>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -97,7 +100,10 @@ switch (cmd)
                 if (nazwa.EndsWith(".rpf", StringComparison.OrdinalIgnoreCase)) nazwa = Path.GetFileNameWithoutExtension(nazwa);
                 var start = DateTime.Now;
                 // przyrostowo: pliki bez zmian (rozmiar|data) biora odcisk z poprzedniego katalogu; --wymus liczy wszystko
-                var pozycje = Indeks.Zrodlo(zrodlo, nazwa, new OpcjeIndeksu { Log = Log, Poprzedni = katalog, Wymus = wymus, FolderMiniatur = miniatury });
+                var wynikIndeksu = indeksator.Index(zrodlo, nazwa,
+                    new IndexOptions { PreviousCatalog = katalog, Force = wymus, ThumbnailFolder = miniatury });
+                if (wynikIndeksu.IsFailure) { Console.Error.WriteLine("[blad] " + wynikIndeksu.Error); return 1; }
+                var pozycje = wynikIndeksu.Value.Garments;
                 katalog.RemovePack(nazwa);
                 katalog.Upsert(pozycje);
                 katalog.Sources[nazwa] = Path.GetFullPath(zrodlo);
@@ -134,7 +140,7 @@ switch (cmd)
             // waniliowe vs Killstore). Format (legacy/gen9) z naglowka RSC7; tryb gen9 czyta oba (Format.cs).
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble obj <plik.ydd> [--out plik.obj]"); return 2; }
             var bajty = File.ReadAllBytes(argv[0]);
-            YddFile ydd = null; string fmt = Rsc7.Gen9(bajty, ".ydd") is bool g9 ? GameFormats.FromHeader(g9).ToLabel() : "?";
+            YddFile ydd = null; string fmt = Rsc7Header.Gen9(bajty, ".ydd") is bool g9 ? GameFormats.FromHeader(g9).ToLabel() : "?";
             try
             {
                 var y = new YddFile();
@@ -285,13 +291,13 @@ switch (cmd)
             Directory.CreateDirectory(folder);
             foreach (var t in ytdT.TextureDict.Textures.data_items)
             {
-                var px = Tekstury.Piksele(t, 0, out int tw, out int th);   // DDSIO + BC7
-                if (px == null) { Log($"{t.Name}: nie zdekodowano ({Odciski.NazwaFormatu(t)})"); continue; }
+                var px = TextureDecoder.Piksele(t, 0, out int tw, out int th);   // DDSIO + BC7
+                if (px == null) { Log($"{t.Name}: nie zdekodowano ({TextureFingerprinter.FormatName(t)})"); continue; }
                 var rgb = new byte[tw * th * 3];
                 for (int i = 0, j = 0; i < px.Length; i += 4, j += 3) { rgb[j] = px[i + 2]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i]; }
                 var pngT = Path.Combine(folder, t.Name + ".png");
-                File.WriteAllBytes(pngT, Png.Rgb(rgb, tw, th));
-                Log($"{t.Name}  {tw}x{th} {Odciski.NazwaFormatu(t)} -> {pngT}");
+                File.WriteAllBytes(pngT, PngWriter.Rgb(rgb, tw, th));
+                Log($"{t.Name}  {tw}x{th} {TextureFingerprinter.FormatName(t)} -> {pngT}");
             }
             return 0;
         }
@@ -309,7 +315,7 @@ switch (cmd)
                 t.Name = Path.GetFileNameWithoutExtension(dds);
                 t.NameHash = JenkHash.GenHash(t.Name.ToLowerInvariant());
                 lista.Add(t);
-                Log($"{t.Name}  {t.Width}x{t.Height} {Odciski.NazwaFormatu(t)} mipy={t.Levels}");
+                Log($"{t.Name}  {t.Width}x{t.Height} {TextureFingerprinter.FormatName(t)} mipy={t.Levels}");
             }
             var tdNew = new TextureDictionary();
             tdNew.BuildFromTextureList(lista);
@@ -338,15 +344,14 @@ switch (cmd)
             // Sluzy do sprawdzenia, czy kolejnosc kanalow (DDSIO oddaje BGRA) jest dobra —
             // przy pomylce skora wychodzi niebieska, a tego na liczbach nie widac.
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble podglad <plik.ytd> [--out plik.png]"); return 2; }
-            var ytd = new YtdFile();
-            RpfFile.LoadResourceFile(ytd, File.ReadAllBytes(argv[0]), 13);   // tryb gen9 czyta oba formaty po naglowku
-            var tx = ytd.TextureDict?.Textures?.data_items?.FirstOrDefault();
-            if (tx == null) { Console.Error.WriteLine("[blad] brak tekstury w pliku"); return 1; }
-            var odc = new TextureInfo();
-            var rgb = Odciski.FingerprintTexture(tx, odc, 256);
+            byte[] rgb = null;
+            var odcisk = odciskiTekstur.Compute(File.ReadAllBytes(argv[0]),
+                new ThumbnailRequest(256, (px, w, h) => rgb = Thumbnail.FromPixels(px, w, h, 256)));
+            if (odcisk.IsFailure) { Console.Error.WriteLine("[blad] " + odcisk.Error); return 1; }
+            var odc = odcisk.Value;
             if (rgb == null) { Console.Error.WriteLine("[blad] nie udalo sie zdekodowac (BC7?)"); return 1; }
             var png = wyjscie ?? Path.ChangeExtension(argv[0], ".png");
-            File.WriteAllBytes(png, Png.Rgb(rgb, 256, 256));
+            File.WriteAllBytes(png, PngWriter.Rgb(rgb, 256, 256));
             Log($"{odc.Name}  {odc.Width}x{odc.Height} {odc.Format} mipy={odc.MipLevels} alfa={odc.AlphaShare:P1}");
             Log($"PNG: {png}");
             return 0;
@@ -377,7 +382,7 @@ switch (cmd)
             var wynik = WynikPorownania.Wczytaj(sciezkaDubli);
             if (wynik.Grupy.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");
-            Raport.Zbuduj(katalog, wynik, plik, Log, jezyk);
+            Raport.Zbuduj(archiwa, katalog, wynik, plik, Log, jezyk);
             Log($"raport: {plik}");
             return 0;
         }

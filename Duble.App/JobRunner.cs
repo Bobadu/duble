@@ -18,7 +18,7 @@ public sealed class JobRunner
     public JobRunner(Action<string, object> zdarzenie) { this.zdarzenie = zdarzenie; }
 
     /// <summary>Uruchamia prace w tle. false = inne zadanie w toku (nic nie uruchomiono).</summary>
-    public async Task<bool> Uruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.Indexing.Postep>, Task> praca)
+    public async Task<bool> Uruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.ProgressReport>, Task> praca)
     {
         CancellationTokenSource moj;
         lock (klucz)
@@ -31,25 +31,25 @@ public sealed class JobRunner
         // postep bywa zglaszany per plik (zastosuj/cofnij: setki razy na sekunde) — do UI idzie najwyzej co ~100 ms
         // (plus zawsze: nowy etap i ostatni krok etapu), bo kazde zdarzenie odswieza widoki
         long ostatniTik = 0; string ostatniEtap = null; var klucz2 = new object();
-        void Postep(Duble.Core.Indexing.Postep p)
+        void ProgressReport(Duble.Core.ProgressReport p)
         {
             lock (klucz2)
             {
                 var teraz = Environment.TickCount64;
-                bool koniecEtapu = p.Wszystkie > 0 && p.Zrobione >= p.Wszystkie;
-                bool nowyEtap = p.Etap != ostatniEtap;
+                bool koniecEtapu = p.Total > 0 && p.Done >= p.Total;
+                bool nowyEtap = p.Stage != ostatniEtap;
                 if (!koniecEtapu && !nowyEtap && teraz - ostatniTik < 100) return;
-                ostatniTik = teraz; ostatniEtap = p.Etap;
+                ostatniTik = teraz; ostatniEtap = p.Stage;
             }
             zdarzenie("job", new
             {
-                typ, opis, stan = "postep", etap = p.Etap, zrobione = p.Zrobione, wszystkie = p.Wszystkie,
-                procent = p.Wszystkie > 0 ? (int)(100L * p.Zrobione / p.Wszystkie) : 0, tekst = p.Kontener,
+                typ, opis, stan = "postep", etap = p.Stage, zrobione = p.Done, wszystkie = p.Total,
+                procent = p.Total > 0 ? (int)(100L * p.Done / p.Total) : 0, tekst = p.Container,
             });
         }
         try
         {
-            await Task.Run(() => praca(ct, Postep), ct).ConfigureAwait(false);
+            await Task.Run(() => praca(ct, ProgressReport), ct).ConfigureAwait(false);
             zdarzenie("job", new { typ, opis, stan = "koniec" });
         }
         catch (OperationCanceledException) { zdarzenie("job", new { typ, opis, stan = "anulowano" }); }
@@ -63,7 +63,7 @@ public sealed class JobRunner
     }
 
     /// <summary>Jak Uruchom, ale nie czeka na koniec: true = wystartowalo (w tle), false = zajety.</summary>
-    public bool SprobujUruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.Indexing.Postep>, Task> praca)
+    public bool SprobujUruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.ProgressReport>, Task> praca)
     {
         lock (klucz) { if (Zajety) return false; }
         _ = Uruchom(typ, opis, praca);   // ustawia Zajety synchronicznie (do pierwszego await)
