@@ -10,12 +10,6 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>assets\duble.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <Version>1.0.0</Version>
-    <Company>Bobadu</Company>
-    <Product>Duble</Product>
-    <Authors>Bobadu</Authors>
-    <Copyright>Bobadu</Copyright>
-    <Description>Duble — duplikaty ubran do GTA V (Legacy i Enhanced)</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Duble.Core\Duble.Core.csproj" />

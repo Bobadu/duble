@@ -1,0 +1,80 @@
+name: Bug report
+description: Something in Duble does not work the way it should
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please describe **what you did** and **what happened** —
+        a screenshot of the screen where it went wrong helps a lot.
+
+        Duble never deletes files: rejected garments are moved to the bin folder and **History → Undo**
+        brings them back. If something went missing, check History first.
+
+  - type: input
+    id: version
+    attributes:
+      label: Duble version
+      description: Shown on the "About" screen (e.g. 1.0.0)
+      placeholder: '1.0.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: What kind of source were you working with?
+      multiple: true
+      options:
+        - Folder with packs (dlcpacks / mods)
+        - Single .rpf archive
+        - FiveM resource (stream/)
+        - Unpacked copy made by Duble
+        - Not related to a source
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: Game format
+      options:
+        - GTA V Enhanced (gen9)
+        - GTA V Legacy
+        - Both / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. New project, added source …
+        2. Index all
+        3. Duplicates → group …
+        4. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, error text, pack name
+      description: |
+        If Duble showed an error message, paste it here. If the problem is about one specific pack,
+        write which one (a public link helps — do not attach paid packs).
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: 'Windows 11 24H2'

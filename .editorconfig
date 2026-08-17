@@ -1,0 +1,40 @@
+# Duble — editor settings. Keep new code looking like the code around it.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{js,css,html,json,yml,yaml,xaml,csproj,props,targets}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{ps1,cmd,bat}]
+end_of_line = crlf
+
+[*.cs]
+indent_size = 4
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_prefer_braces = when_multiline:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_using_directive_placement = outside_namespace:suggestion
+csharp_style_namespace_declarations = file_scoped:suggestion
+dotnet_sort_system_directives_first = true
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_naming_rule.types_pascal.severity = suggestion
+dotnet_naming_rule.types_pascal.symbols = all_types
+dotnet_naming_rule.types_pascal.style = pascal
+dotnet_naming_symbols.all_types.applicable_kinds = class,struct,interface,enum,delegate,method,property,event
+dotnet_naming_style.pascal.capitalization = pascal_case

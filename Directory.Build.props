@@ -1,0 +1,20 @@
+<Project>
+  <!--
+    Shared metadata for every Duble project. The release workflow overrides the version:
+      .\build.ps1 -Publish -Wersja 1.0.1   ->   dotnet build/publish -p:Version=1.0.1
+    CodeWalker.Core lives outside this folder, so it does not inherit any of this.
+  -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>Duble</Product>
+    <Company>Bobadu</Company>
+    <Authors>Bobadu</Authors>
+    <Copyright>Copyright (c) 2026 Bobadu</Copyright>
+    <Description>Duble - duplicate clothing finder for GTA V (Legacy and Enhanced)</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://qorion.net/duble</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/qorion-net/duble</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+</Project>

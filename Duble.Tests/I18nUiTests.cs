@@ -10,7 +10,7 @@ namespace Duble.Tests;
 /// <summary>Slowniki UI (ui\i18n\pl.json, en.json): te same klucze, brak pustych, kazdy klucz uzyty w JS/HTML istnieje.</summary>
 public class I18nUiTests
 {
-    static string Ui => Path.Combine(Sciezki.Korzen, "tools", "Duble", "Duble.App", "ui");
+    static string Ui => Sciezki.Ui;
     static Dictionary<string, string> Slownik(string j) => JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(Ui, "i18n", j + ".json")));
 
     [Fact]

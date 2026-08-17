@@ -1,0 +1,59 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**', '.github/ISSUE_TEMPLATE/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build + tests (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # CodeWalker.Core (dexyfex, MIT) is not part of this repo — build.ps1 clones it next to the
+      # workspace at a pinned commit, exactly like a local build does.
+      - name: Cache CodeWalker
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../CodeWalker
+          key: codewalker-485d56b
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Build and test
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: Publish single file
+        shell: pwsh
+        run: ./build.ps1 -Publish -BezTestow
+
+      - name: Upload Duble.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: Duble-exe-${{ github.sha }}
+          path: publish/Duble.exe
+          retention-days: 14
