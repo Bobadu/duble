@@ -58,7 +58,7 @@ public static class KatalogPozycji
                 pozycje.Add(new
                 {
                     id = p.Id, zrodloId = p.SourceId, zrodlo = Zrodlo(p), kontener = p.Container, typ = p.Slot, numer = p.Number, sufiks = p.Suffix,
-                    gen9 = p.GameFormat, props = p.IsProp, thumb = Widoki.Miniatura(p), tekstur = p.Textures.Count,
+                    gen9 = p.GameFormat == GameFormat.Enhanced, props = p.IsProp, thumb = Widoki.Miniatura(p), tekstur = p.Textures.Count,
                     bajty = p.ModelSize + p.Textures.Sum(t => t.Size), wArchiwum = Widoki.WArchiwum(p),
                     bezMipow, bc1Alfa, bc7, grupa = werdykt,
                 });

@@ -26,7 +26,7 @@ public static class Widoki
         var podst = new Dictionary<string, object>
         {
             ["id"] = p.Id, ["zrodloId"] = p.SourceId, ["zrodlo"] = zrodlo(p), ["kontener"] = p.Container, ["typ"] = p.Slot, ["numer"] = p.Number, ["sufiks"] = p.Suffix,
-            ["gen9"] = p.GameFormat, ["props"] = p.IsProp, ["punkty"] = punkty, ["thumb"] = Miniatura(p),
+            ["gen9"] = p.GameFormat == GameFormat.Enhanced, ["props"] = p.IsProp, ["punkty"] = punkty, ["thumb"] = Miniatura(p),
             ["tekstur"] = p.Textures.Count, ["wierzcholki"] = p.Geometry?.Vertices ?? 0, ["trojkaty"] = p.Geometry?.Triangles ?? 0, ["lody"] = p.Geometry?.LodLevels ?? 0,
             ["bajty"] = p.ModelSize + p.Textures.Sum(t => t.Size), ["wArchiwum"] = WArchiwum(p),
         };

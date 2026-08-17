@@ -37,6 +37,8 @@ public class KatalogKomendyTests
             Assert.Equal(7, l.GetProperty("filtry").GetProperty("formaty").GetProperty("legacy").GetInt32());
             var b = l.GetProperty("pozycje").EnumerateArray().First(p => p.GetProperty("typ").GetString() == "jbib" && p.GetProperty("numer").GetInt32() == 7);
             Assert.True(b.GetProperty("bezMipow").GetBoolean());
+            // the interface reads gen9 as a boolean; the format being an enum in Core must not leak as a number
+            Assert.Equal(JsonValueKind.False, b.GetProperty("gen9").ValueKind);
             Assert.Equal(Porownanie.Duplikat, b.GetProperty("grupa").GetString());
             var c = l.GetProperty("pozycje").EnumerateArray().First(p => p.GetProperty("typ").GetString() == "lowr" && p.GetProperty("numer").GetInt32() == 3);
             Assert.Equal(Porownanie.Przemalowanie, c.GetProperty("grupa").GetString());
