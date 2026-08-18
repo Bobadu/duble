@@ -13,8 +13,8 @@ All notable changes to Duble are documented here. The format follows
   newer is now needed, alongside the .NET SDK.
 - **The desktop application is in English throughout its C# code**, as the engine and the command line already
   were: `Sesja` → `Session`, `Mostek` → `Bridge`, `Komendy` → `Commands`, and one class per group of commands
-  instead of one long registration method. The interface (`Duble.App/ui`) is unchanged and so is the vocabulary
-  it speaks over the bridge; both move together in the next step.
+  instead of one long registration method. The vocabulary spoken over the bridge is unchanged, and is now
+  written down in one file on each side.
 - **Settings written by 1.0.0 are read and carried over.** `settings.json` now uses English names; the file
   from an earlier version is still read, so the language, the theme, the window position and the recent
   projects survive the update. The file is rewritten in the new shape the next time Duble exits.
