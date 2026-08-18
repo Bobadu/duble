@@ -118,10 +118,10 @@ public class GlbWriterTests
     [Fact, Trait("Speed", "Slow")]
     public void A_real_model_produces_a_preview_a_viewer_would_accept()
     {
-        if (!Sciezki.JestGra) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
+        if (!TestPaths.HasGame) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
 
         var garments = Services.GetRequiredService<IGarmentIndexer>()
-            .Index(Sciezki.Dlc("studio_body"), "studio_body", new IndexOptions()).Value.Garments;
+            .Index(TestPaths.Dlc("studio_body"), "studio_body", new IndexOptions()).Value.Garments;
         var uppr = garments.First(g => g.Slot == "uppr" && g.Number == 15);
 
         var glb = Preview.Build(uppr, null, output.WriteLine).Value;

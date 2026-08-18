@@ -1,264 +1,365 @@
-// MainWindow.xaml.cs — okno bez systemowego paska (pasek tytulu rysuje UI w HTML), WebView2 na caly obszar,
-// mostek UI<->C# (Mostek), dialogi systemowe (IDialogi), przeciaganie plikow z Eksploratora.
+// MainWindow.xaml.cs — the window: no system title bar (the interface draws its own in HTML), a WebView2
+// filling it, the bridge between the two, the system dialogs, and files dragged in from Explorer.
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using Duble.App.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
 
 namespace Duble.App;
 
-public partial class MainWindow : Window, IOkno, IDialogi
+public partial class MainWindow : Window, IHostWindow, IFileDialogs
 {
-    public Zasoby Zasoby { get; private set; }
-    public Mostek Mostek { get; private set; }
-    public Sesja Sesja { get; } = App.Services.GetRequiredService<Sesja>();
-    public bool UiGotowe { get; private set; }
+    public Session Session { get; } = App.Services.GetRequiredService<Session>();
 
-    /// <summary>Dziennik trybu dev: %TEMP%\duble-app\duble-log.txt (diagnostyka startu WebView2 i mostka).</summary>
-    public static void Log(string s)
+    /// <summary>Serves the interface and its data to WebView2. Not called Resources: a Window has one already.</summary>
+    public WebResources? Assets { get; private set; }
+
+    public Bridge? Bridge { get; private set; }
+    public JobRunner? Jobs { get; private set; }
+
+    /// <summary>Whether the interface has reported that it is up.</summary>
+    public bool UiReady { get; private set; }
+
+    /// <summary>Files dropped on the window, either through WPF or through WebView2.</summary>
+    public event Action<string[]>? Dropped;
+
+    /// <summary>The developer-mode log: %TEMP%\duble-app\duble-log.txt, for diagnosing WebView2 and the bridge.</summary>
+    public static void Log(string line)
     {
-        if (App.Argumenty == null || !App.Argumenty.Dev) return;
+        if (App.Options == null || !App.Options.Dev) return;
         try
         {
-            var f = Path.Combine(Path.GetTempPath(), "duble-app", "duble-log.txt");
-            Directory.CreateDirectory(Path.GetDirectoryName(f));
-            File.AppendAllText(f, DateTime.Now.ToString("HH:mm:ss.fff") + " " + s + Environment.NewLine);
+            var file = Path.Combine(Path.GetTempPath(), "duble-app", "duble-log.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.AppendAllText(file, DateTime.Now.ToString("HH:mm:ss.fff") + " " + line + Environment.NewLine);
         }
-        catch { }
+        catch { /* the log is a convenience, never a reason to fail */ }
     }
 
     public MainWindow()
     {
         InitializeComponent();
-        var u = App.Ustawienia;
-        if (u?.Okno != null && u.Okno.W >= 600 && u.Okno.H >= 400)
+
+        var placement = App.Settings?.Window;
+        if (placement != null && placement.Width >= 600 && placement.Height >= 400)
         {
-            Left = u.Okno.X; Top = u.Okno.Y; Width = u.Okno.W; Height = u.Okno.H;
+            Left = placement.X;
+            Top = placement.Y;
+            Width = placement.Width;
+            Height = placement.Height;
             WindowStartupLocation = WindowStartupLocation.Manual;
-            if (u.Okno.Maks) WindowState = WindowState.Maximized;
+            if (placement.Maximized) WindowState = WindowState.Maximized;
         }
-        Loaded += async (s, e) => await Start();
-        Closing += (s, e) =>
+
+        Loaded += async (_, _) => await Start();
+        Closing += (_, _) =>
         {
-            Zadania?.Anuluj();   // indeksowanie w tle: przerwij, zeby proces nie wisial
-            var st = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
-            if (App.Ustawienia != null) App.Ustawienia.Okno = new OknoStan { X = st.X, Y = st.Y, W = st.Width, H = st.Height, Maks = WindowState == WindowState.Maximized };
+            Jobs?.Cancel();   // a job left running would keep the process alive after the window has gone
+            var bounds = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
+            if (App.Settings != null)
+                App.Settings.Window = new WindowPlacement
+                {
+                    X = bounds.X, Y = bounds.Y, Width = bounds.Width, Height = bounds.Height,
+                    Maximized = WindowState == WindowState.Maximized,
+                };
         };
-        StateChanged += (s, e) => Mostek?.Zdarzenie("window.state", new { maks = WindowState == WindowState.Maximized });
+        StateChanged += (_, _) => Bridge?.Event("window.state", new { maks = WindowState == WindowState.Maximized });
     }
 
     async Task Start()
     {
-        var arg = App.Argumenty;
-        string uiFolder = null;
-        if (arg.Dev) uiFolder = arg.UiFolder ?? ZnajdzFolderUi();
-        Zasoby = new Zasoby(uiFolder) { Dane = (kategoria, klucz, query) => Sesja.Zasob(kategoria, klucz, query) };
-        Log($"start dev={arg.Dev} ui={(uiFolder ?? "(osadzone)")} zrzut={arg.Zrzut}");
+        var options = App.Options;
+        var uiFolder = options.Dev ? options.UiFolder ?? FindUiFolder() : null;
+        Assets = new WebResources(uiFolder) { Data = Session.Asset };
+        Log($"start dev={options.Dev} ui={uiFolder ?? "(embedded)"} screenshot={options.ScreenshotFile}");
+
         try
         {
-            var env = await CoreWebView2Environment.CreateAsync(null, Ustawienia.FolderWebView2, new CoreWebView2EnvironmentOptions());
-            await web.EnsureCoreWebView2Async(env);
+            var environment = await CoreWebView2Environment.CreateAsync(null, Settings.WebView2Folder, new CoreWebView2EnvironmentOptions());
+            await web.EnsureCoreWebView2Async(environment);
             var core = web.CoreWebView2;
-            core.Settings.IsNonClientRegionSupportEnabled = true;    // app-region: drag w HTML = przeciaganie okna
-            core.Settings.AreDefaultContextMenusEnabled = arg.Dev;
-            core.Settings.AreDevToolsEnabled = arg.Dev;
-            core.Settings.AreBrowserAcceleratorKeysEnabled = arg.Dev;
-            core.Settings.IsZoomControlEnabled = false; core.Settings.IsPinchZoomEnabled = false;
-            core.Settings.IsStatusBarEnabled = false; core.Settings.IsSwipeNavigationEnabled = false;
+
+            core.Settings.IsNonClientRegionSupportEnabled = true;    // app-region: drag in HTML moves the window
+            core.Settings.AreDefaultContextMenusEnabled = options.Dev;
+            core.Settings.AreDevToolsEnabled = options.Dev;
+            core.Settings.AreBrowserAcceleratorKeysEnabled = options.Dev;
+            core.Settings.IsZoomControlEnabled = false;
+            core.Settings.IsPinchZoomEnabled = false;
+            core.Settings.IsStatusBarEnabled = false;
+            core.Settings.IsSwipeNavigationEnabled = false;
+
             core.AddWebResourceRequestedFilter("https://duble.app/*", CoreWebView2WebResourceContext.All);
             core.AddWebResourceRequestedFilter("https://duble.data/*", CoreWebView2WebResourceContext.All);
-            core.WebResourceRequested += (s, e) =>
-            {
-                void Odpowiedz(bool ok, Stream tresc, string mime, int status)
-                {
-                    try
-                    {
-                        if (ok)
-                            // CORS: strona z duble.app pobiera dane z duble.data (fetch/three.js) — bez tego naglowka przegladarka odrzuca odpowiedz
-                            e.Response = env.CreateWebResourceResponse(tresc, 200, "OK", $"Content-Type: {mime}\nCache-Control: no-cache\nAccess-Control-Allow-Origin: *");
-                        else
-                        {
-                            Log("404 " + e.Request.Uri);
-                            e.Response = env.CreateWebResourceResponse(new MemoryStream(), status, status == 404 ? "Not Found" : "Error", "Content-Type: text/plain\nAccess-Control-Allow-Origin: *");
-                        }
-                    }
-                    catch (Exception ex) { Log("zasob BLAD " + e.Request.Uri + ": " + ex.Message); }
-                }
-                var uri = e.Request.Uri;
-                if (uri.StartsWith("https://duble.data/", StringComparison.OrdinalIgnoreCase))
-                {
-                    // dane (tekstura generowana z pliku gry ~50-200 ms) — poza watkiem UI, odpowiedz z odroczeniem
-                    var odroczenie = e.GetDeferral();
-                    _ = Task.Run(() =>
-                    {
-                        bool ok; Stream tresc = null; string mime = null; int status = 500;
-                        try { ok = Zasoby.Rozwiaz(uri, out tresc, out mime, out status); }
-                        catch (Exception ex) { Log("zasob BLAD " + uri + ": " + ex.Message); ok = false; }
-                        Dispatcher.InvokeAsync(() => { Odpowiedz(ok, tresc, mime, status); odroczenie.Complete(); });
-                    });
-                    return;
-                }
-                bool ok2 = Zasoby.Rozwiaz(uri, out var tresc2, out var mime2, out int status2);
-                Odpowiedz(ok2, tresc2, mime2, status2);
-            };
+            core.WebResourceRequested += (_, e) => Serve(environment, e);
 
-            Mostek = new Mostek(this, this, App.Ustawienia, json => Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(json)))
+            var bridge = new Bridge(this, this, App.Settings,
+                json => Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(json)))
             {
-                Dev = arg.Dev,
-                // tryb kontrolny (--screenshot): ustawienia (ostatnie projekty, jezyk) ida do pliku tymczasowego, nie do %AppData%
-                PlikUstawien = string.IsNullOrEmpty(arg.Zrzut) ? null : Path.Combine(Path.GetTempPath(), "duble-app", "settings-zrzut.json"),
+                Dev = options.Dev,
+                // a screenshot run keeps its settings (recent projects, language) in a temporary file
+                SettingsFile = string.IsNullOrEmpty(options.ScreenshotFile) ? null
+                    : Path.Combine(Path.GetTempPath(), "duble-app", "settings-screenshot.json"),
             };
-            Komendy.Okno.Zarejestruj(Mostek);
-            Komendy.Okno.UiGotowe += UiJestGotowe;
-            Upuszczono += sciezki => Mostek.Zdarzenie("files.dropped", new { sciezki });
-            ZarejestrujKomendy();
+            Bridge = bridge;
+            Jobs = new JobRunner(bridge.Event);
 
-            core.WebMessageReceived += (s, e) =>
+            foreach (var module in CommandModules.Create(App.Services, bridge, Session, Jobs))
             {
-                // przeciagniecie plikow z Eksploratora: strona (app.js) wysyla postMessageWithAdditionalObjects z obiektami File,
-                // WebView2 daje nam je jako CoreWebView2File ze SCIEZKA (sam HTML5 drop nie zna sciezek). Dziecko-HWND WebView2
-                // nie przekazuje OLE drop do okna WPF, wiec to jedyna droga, ktora naprawde dziala.
-                if (e.AdditionalObjects != null && e.AdditionalObjects.Count > 0)
-                {
-                    var sciezki = new System.Collections.Generic.List<string>();
-                    foreach (var o in e.AdditionalObjects) if (o is CoreWebView2File f && !string.IsNullOrEmpty(f.Path)) sciezki.Add(f.Path);
-                    Log("drop " + sciezki.Count + " plikow");
-                    if (sciezki.Count > 0) Upuszczono?.Invoke(sciezki.ToArray());
-                    return;
-                }
-                var json = e.WebMessageAsJson;
-                Log("msg " + (json.Length > 300 ? json.Substring(0, 300) + "…" : json));
-                // handlery bywaja dlugie (dialogi, dysk) — nie blokujemy watku UI; odpowiedz wraca przez Dispatcher w wyslij()
-                _ = Task.Run(async () => { var odp = await Mostek.Obsluz(json); await Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(odp)); });
-            };
-            core.NavigationCompleted += (s, e) => Log($"navigation completed ok={e.IsSuccess} status={e.HttpStatusCode} err={e.WebErrorStatus}");
-            var q = new System.Collections.Generic.List<string>();
-            if (!string.IsNullOrEmpty(arg.Widok)) q.Add("view=" + Uri.EscapeDataString(arg.Widok));
-            if (!string.IsNullOrEmpty(arg.Jezyk)) q.Add("lang=" + Uri.EscapeDataString(arg.Jezyk));
-            if (!string.IsNullOrEmpty(arg.Motyw)) q.Add("theme=" + Uri.EscapeDataString(arg.Motyw));
-            var url = "https://duble.app/index.html" + (q.Count > 0 ? "?" + string.Join("&", q) : "");
+                module.Register();
+                if (module is AppCommands app) app.UiReady += OnUiReady;
+            }
+
+            Dropped += paths => bridge.Event("files.dropped", new { sciezki = paths });
+            core.WebMessageReceived += (_, e) => OnWebMessage(bridge, e);
+            core.NavigationCompleted += (_, e) => Log($"navigation completed ok={e.IsSuccess} status={e.HttpStatusCode} err={e.WebErrorStatus}");
+
+            var url = StartUrl(options);
             Log("navigate " + url);
             core.Navigate(url);
         }
         catch (Exception e)
         {
-            Log("BLAD startu: " + e);
-            MessageBox.Show("Nie udalo sie uruchomic WebView2 (potrzebny Microsoft Edge WebView2 Runtime):\n\n" + e.Message, "Duble", MessageBoxButton.OK, MessageBoxImage.Error);
+            Log("start FAILED: " + e);
+            MessageBox.Show(
+                (InPolish
+                    ? "Nie udalo sie uruchomic WebView2 (potrzebny Microsoft Edge WebView2 Runtime):\n\n"
+                    : "WebView2 could not be started (the Microsoft Edge WebView2 Runtime is required):\n\n") + e.Message,
+                "Duble", MessageBoxButton.OK, MessageBoxImage.Error);
             Close();
         }
     }
 
-    /// <summary>Komendy z danymi: projekt, zrodla (+rozpakuj), grupy (+zastosuj), historia (+eksport), katalog.</summary>
-    void ZarejestrujKomendy()
+    /// <summary>--view, --lang and --theme reach the interface as query parameters, for this run only.</summary>
+    static string StartUrl(StartupOptions options)
     {
-        Komendy.Projekty.Zarejestruj(Mostek, Sesja);
-        Zadania = new JobRunner(Mostek.Zdarzenie);
-        Komendy.Zrodla.Zarejestruj(Mostek, Sesja, Zadania);
-        Komendy.Grupy.Zarejestruj(Mostek, Sesja, Zadania);
-        Komendy.Historia.Zarejestruj(Mostek, Sesja, Zadania);
-        Komendy.KatalogPozycji.Zarejestruj(Mostek, Sesja);
-        Komendy.UstawieniaKomendy.Zarejestruj(Mostek, Sesja, Zadania);
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(options.View)) query.Add("view=" + Uri.EscapeDataString(options.View));
+        if (!string.IsNullOrEmpty(options.Language)) query.Add("lang=" + Uri.EscapeDataString(options.Language));
+        if (!string.IsNullOrEmpty(options.Theme)) query.Add("theme=" + Uri.EscapeDataString(options.Theme));
+        return "https://duble.app/index.html" + (query.Count > 0 ? "?" + string.Join("&", query) : "");
     }
-    public JobRunner Zadania { get; private set; }
 
-    void UiJestGotowe()
+    // ---------------- serving the interface and its data ----------------
+
+    /// <summary>
+    /// The two places where C# still puts words in front of the user: Windows' own file dialogs, and the
+    /// message when WebView2 will not start — which happens before the interface, and its dictionaries, exist.
+    /// </summary>
+    static bool InPolish => (App.Options?.Language ?? App.Settings?.EffectiveLanguage ?? "en") == "pl";
+
+    void Serve(CoreWebView2Environment environment, CoreWebView2WebResourceRequestedEventArgs e)
     {
-        UiGotowe = true;
-        Log("ui.ready");
-        _ = Dispatcher.InvokeAsync(async () =>
+        var uri = e.Request.Uri;
+
+        // a texture is decoded from a game file on the first ask (50-200 ms), so data requests answer off the
+        // UI thread; the interface would otherwise freeze while a comparison screen fills up
+        if (uri.StartsWith("https://duble.data/", StringComparison.OrdinalIgnoreCase))
         {
-            // projekt z argumentow (dwuklik na .duble albo --project) — dopiero teraz, bo UI juz nasluchuje zdarzen
-            if (!string.IsNullOrEmpty(App.Argumenty.Project))
+            var deferral = e.GetDeferral();
+            _ = Task.Run(() =>
             {
-                try
+                WebResource? resource = null;
+                try { resource = Assets?.Resolve(uri); }
+                catch (Exception ex) { Log("resource FAILED " + uri + ": " + ex.Message); }
+                Dispatcher.InvokeAsync(() =>
                 {
-                    var odp = await Mostek.Obsluz(System.Text.Json.JsonSerializer.Serialize(new { id = "start", cmd = "project.open", args = new { sciezka = App.Argumenty.Project } }));
-                    Log("projekt z argumentow: " + odp);
-                }
-                catch (Exception e) { Log("projekt z argumentow BLAD: " + e.Message); }
-            }
-            if (!string.IsNullOrEmpty(App.Argumenty.Exec))
+                    Respond(environment, e, resource);
+                    deferral.Complete();
+                });
+            });
+            return;
+        }
+
+        Respond(environment, e, Assets?.Resolve(uri));
+    }
+
+    void Respond(CoreWebView2Environment environment, CoreWebView2WebResourceRequestedEventArgs e, WebResource? resource)
+    {
+        try
+        {
+            if (resource != null)
+                // CORS: the page on duble.app fetches from duble.data, and without this header the browser
+                // throws the answer away
+                e.Response = environment.CreateWebResourceResponse(resource.Content, 200, "OK",
+                    $"Content-Type: {resource.Mime}\nCache-Control: no-cache\nAccess-Control-Allow-Origin: *");
+            else
             {
-                await Task.Delay(300);
-                var wynik = await web.CoreWebView2.ExecuteScriptAsync(App.Argumenty.Exec);
-                Log("exec -> " + wynik);
+                Log("404 " + e.Request.Uri);
+                e.Response = environment.CreateWebResourceResponse(new MemoryStream(), 404, "Not Found",
+                    "Content-Type: text/plain\nAccess-Control-Allow-Origin: *");
             }
-            if (!string.IsNullOrEmpty(App.Argumenty.Zrzut)) await ZrobZrzutIZamknij(App.Argumenty.Zrzut);
+        }
+        catch (Exception ex) { Log("resource FAILED " + e.Request.Uri + ": " + ex.Message); }
+    }
+
+    void OnWebMessage(Bridge bridge, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        // files dragged from Explorer: the page posts the File objects with postMessageWithAdditionalObjects
+        // and WebView2 hands them over as CoreWebView2File, which is the only way to learn their PATH — an
+        // HTML5 drop does not carry one, and the WebView2 child window does not pass OLE drops to WPF
+        if (e.AdditionalObjects is { Count: > 0 })
+        {
+            var paths = new List<string>();
+            foreach (var item in e.AdditionalObjects)
+                if (item is CoreWebView2File file && !string.IsNullOrEmpty(file.Path)) paths.Add(file.Path);
+            Log("drop " + paths.Count + " files");
+            if (paths.Count > 0) Dropped?.Invoke(paths.ToArray());
+            return;
+        }
+
+        var json = e.WebMessageAsJson;
+        Log("msg " + (json.Length > 300 ? json.Substring(0, 300) + "…" : json));
+        // handlers can be slow (dialogs, disk), so they do not run on the UI thread; the answer goes back
+        // through the dispatcher in the bridge's send callback
+        _ = Task.Run(async () =>
+        {
+            var response = await bridge.Handle(json);
+            await Dispatcher.InvokeAsync(() => web.CoreWebView2?.PostWebMessageAsJson(response));
         });
     }
 
-    public async Task ZrobZrzutIZamknij(string plik)
+    // ---------------- what happens once the interface is up ----------------
+
+    void OnUiReady()
     {
-        await Task.Delay(App.Argumenty?.ZrzutOpoznienie ?? 700);
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(plik)));
-        using (var fs = new FileStream(plik, FileMode.Create, FileAccess.Write))
-            await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, fs);
-        Log("zrzut " + plik);
+        UiReady = true;
+        Log("ui.ready");
+        _ = Dispatcher.InvokeAsync(async () =>
+        {
+            // the project from the command line (a double click on a .duble, or --project) opens only now,
+            // because the interface has to be listening for the events it produces
+            if (!string.IsNullOrEmpty(App.Options.ProjectFile))
+            {
+                try
+                {
+                    var request = JsonSerializer.Serialize(new
+                    {
+                        id = "start",
+                        cmd = "project.open",
+                        args = new { sciezka = App.Options.ProjectFile },
+                    });
+                    Log("project from the command line: " + await Bridge!.Handle(request));
+                }
+                catch (Exception e) { Log("project from the command line FAILED: " + e.Message); }
+            }
+
+            if (!string.IsNullOrEmpty(App.Options.Exec))
+            {
+                await Task.Delay(300);
+                Log("exec -> " + await web.CoreWebView2.ExecuteScriptAsync(App.Options.Exec));
+            }
+
+            if (!string.IsNullOrEmpty(App.Options.ScreenshotFile)) await ScreenshotAndExit(App.Options.ScreenshotFile);
+        });
+    }
+
+    public async Task ScreenshotAndExit(string file)
+    {
+        await Task.Delay(App.Options?.ScreenshotDelayMs ?? 700);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
+        using (var stream = new FileStream(file, FileMode.Create, FileAccess.Write))
+            await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+        Log("screenshot " + file);
         Application.Current.Shutdown(0);
     }
 
-    static string ZnajdzFolderUi()
+    /// <summary>The ui\ folder, searched for upwards from the executable; null means the embedded copy.</summary>
+    static string? FindUiFolder()
     {
-        var d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d != null)
+        var folder = new DirectoryInfo(AppContext.BaseDirectory);
+        while (folder != null)
         {
-            var k = Path.Combine(d.FullName, "ui", "index.html");
-            if (File.Exists(k)) return Path.Combine(d.FullName, "ui");
-            d = d.Parent;
+            if (File.Exists(Path.Combine(folder.FullName, "ui", "index.html"))) return Path.Combine(folder.FullName, "ui");
+            folder = folder.Parent;
         }
-        return null;   // brak folderu -> Zasoby(null) = osadzone
+        return null;
     }
 
-    // ---------------- IOkno ----------------
-    public void Minimalizuj() => WindowState = WindowState.Minimized;
-    public void MaksymalizujAlboPrzywroc() => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-    public void Zamknij() => Close();
-    public void RozpocznijPrzeciaganie() { try { DragMove(); } catch { /* DragMove wymaga wcisnietego przycisku myszy */ } }
-    public bool Zmaksymalizowane => Dispatcher.CheckAccess() ? WindowState == WindowState.Maximized : Dispatcher.Invoke(() => WindowState == WindowState.Maximized);
-    public void Uruchom(Action a) { if (Dispatcher.CheckAccess()) a(); else Dispatcher.Invoke(a); }
+    // ---------------- IHostWindow ----------------
 
-    // ---------------- IDialogi (systemowe okna Windows; zawsze na watku UI) ----------------
-    static string Filtr(string klucz) => klucz switch
-    {
-        "rpf" => "Archiwa RPF (*.rpf)|*.rpf|Wszystkie pliki (*.*)|*.*",
-        "duble" => "Projekty Duble (*.duble)|*.duble|Wszystkie pliki (*.*)|*.*",
-        "png" => "Obrazy PNG (*.png)|*.png",
-        "html" => "Strony HTML (*.html)|*.html",
-        "csv" => "Pliki CSV (*.csv)|*.csv",
-        _ => "Wszystkie pliki (*.*)|*.*",
-    };
+    public void Minimize() => WindowState = WindowState.Minimized;
 
-    public string WybierzFolder(string tytul, string start) => Dispatcher.Invoke(() =>
+    public void MaximizeOrRestore()
+        => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    // IHostWindow.Close is Window.Close itself
+
+    public void StartDrag()
     {
-        var d = new OpenFolderDialog { Title = tytul ?? "Duble", Multiselect = false };
-        if (!string.IsNullOrEmpty(start) && Directory.Exists(start)) d.InitialDirectory = start;
-        return d.ShowDialog(this) == true ? d.FolderName : null;
+        try { DragMove(); }
+        catch { /* DragMove needs the mouse button to be down, and the interface may be late telling us */ }
+    }
+
+    public bool IsMaximized => Dispatcher.CheckAccess()
+        ? WindowState == WindowState.Maximized
+        : Dispatcher.Invoke(() => WindowState == WindowState.Maximized);
+
+    public void Invoke(Action action)
+    {
+        if (Dispatcher.CheckAccess()) action();
+        else Dispatcher.Invoke(action);
+    }
+
+    // ---------------- IFileDialogs (always on the UI thread) ----------------
+
+    static string Filter(string? key)
+    {
+        var all = InPolish ? "Wszystkie pliki (*.*)|*.*" : "All files (*.*)|*.*";
+        return key switch
+        {
+            "rpf" => (InPolish ? "Archiwa RPF (*.rpf)|*.rpf|" : "RPF archives (*.rpf)|*.rpf|") + all,
+            "duble" => (InPolish ? "Projekty Duble (*.duble)|*.duble|" : "Duble projects (*.duble)|*.duble|") + all,
+            "png" => InPolish ? "Obrazy PNG (*.png)|*.png" : "PNG images (*.png)|*.png",
+            "html" => InPolish ? "Strony HTML (*.html)|*.html" : "HTML pages (*.html)|*.html",
+            "csv" => InPolish ? "Pliki CSV (*.csv)|*.csv" : "CSV files (*.csv)|*.csv",
+            _ => all,
+        };
+    }
+
+    public string? PickFolder(string? title, string? startIn) => Dispatcher.Invoke(() =>
+    {
+        var dialog = new OpenFolderDialog { Title = title ?? "Duble", Multiselect = false };
+        if (!string.IsNullOrEmpty(startIn) && Directory.Exists(startIn)) dialog.InitialDirectory = startIn;
+        return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
     });
 
-    public string[] WybierzPliki(string tytul, string filtr, bool wiele, string start) => Dispatcher.Invoke(() =>
+    public string[] PickFiles(string? title, string? filter, bool multiple, string? startIn) => Dispatcher.Invoke(() =>
     {
-        var d = new OpenFileDialog { Title = tytul ?? "Duble", Filter = Filtr(filtr), Multiselect = wiele, CheckFileExists = true };
-        if (!string.IsNullOrEmpty(start) && Directory.Exists(start)) d.InitialDirectory = start;
-        return d.ShowDialog(this) == true ? d.FileNames : Array.Empty<string>();
+        var dialog = new OpenFileDialog
+        {
+            Title = title ?? "Duble", Filter = Filter(filter), Multiselect = multiple, CheckFileExists = true,
+        };
+        if (!string.IsNullOrEmpty(startIn) && Directory.Exists(startIn)) dialog.InitialDirectory = startIn;
+        return dialog.ShowDialog(this) == true ? dialog.FileNames : Array.Empty<string>();
     });
 
-    public string ZapiszPlik(string tytul, string filtr, string domyslnaNazwa, string start) => Dispatcher.Invoke(() =>
+    public string? SaveFile(string? title, string? filter, string? defaultName, string? startIn) => Dispatcher.Invoke(() =>
     {
-        var d = new SaveFileDialog { Title = tytul ?? "Duble", Filter = Filtr(filtr), FileName = domyslnaNazwa ?? "", OverwritePrompt = true };
-        if (!string.IsNullOrEmpty(start) && Directory.Exists(start)) d.InitialDirectory = start;
-        return d.ShowDialog(this) == true ? d.FileName : null;
+        var dialog = new SaveFileDialog
+        {
+            Title = title ?? "Duble", Filter = Filter(filter), FileName = defaultName ?? "", OverwritePrompt = true,
+        };
+        if (!string.IsNullOrEmpty(startIn) && Directory.Exists(startIn)) dialog.InitialDirectory = startIn;
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     });
 
-    // ---------------- drag & drop z Eksploratora (AllowExternalDrop=false w WebView2, wiec zdarzenia trafiaja do WPF) ----------------
-    public event Action<string[]> Upuszczono;
-    void OknoDragOver(object s, DragEventArgs e) { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
-    void OknoDrop(object s, DragEventArgs e)
+    // ---------------- drag and drop from Explorer ----------------
+
+    void OnDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    void OnDrop(object sender, DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
-        var sciezki = (string[])e.Data.GetData(DataFormats.FileDrop);
-        Upuszczono?.Invoke(sciezki);
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths) Dropped?.Invoke(paths);
     }
 }

@@ -18,7 +18,7 @@ public class ProjectTests
     [Fact]
     public void A_saved_project_comes_back_with_its_sources_decisions_and_settings()
     {
-        var tmp = Sciezki.Tymczasowy("project");
+        var tmp = TestPaths.Temp("project");
         try
         {
             var file = Path.Combine(tmp, "Studio.duble");
@@ -77,7 +77,7 @@ public class ProjectTests
     [Fact]
     public void Source_names_are_unique_and_the_same_folder_is_never_added_twice()
     {
-        var tmp = Sciezki.Tymczasowy("project-names");
+        var tmp = TestPaths.Temp("project-names");
         try
         {
             Directory.CreateDirectory(Path.Combine(tmp, "a", "stream"));
@@ -99,7 +99,7 @@ public class ProjectTests
     [Fact]
     public void A_missing_or_unreadable_project_comes_back_as_a_failure_not_an_exception()
     {
-        var tmp = Sciezki.Tymczasowy("project-bad");
+        var tmp = TestPaths.Temp("project-bad");
         try
         {
             var store = new JsonProjectStore();
@@ -131,7 +131,7 @@ public class ProjectTests
     [Fact]
     public void Saving_a_project_leaves_no_temporary_behind_and_a_failed_save_leaves_the_old_file_whole()
     {
-        var tmp = Sciezki.Tymczasowy("project-save");
+        var tmp = TestPaths.Temp("project-save");
         try
         {
             var file = Path.Combine(tmp, "Studio.duble");

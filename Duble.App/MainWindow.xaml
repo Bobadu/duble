@@ -4,7 +4,7 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="Duble" Width="1280" Height="820" MinWidth="960" MinHeight="600" Icon="pack://application:,,,/assets/duble.ico"
         WindowStartupLocation="CenterScreen" Background="#1B1A1F"
-        AllowDrop="True" Drop="OknoDrop" DragOver="OknoDragOver">
+        AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
   <WindowChrome.WindowChrome>
     <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="1" CornerRadius="0" UseAeroCaptionButtons="False" />
   </WindowChrome.WindowChrome>
