@@ -32,7 +32,7 @@ export function Settings() {
       <div className="settings-section">
         <h2>
           {t('settings.project')}
-          {project && <span className="faint"> · {project.nazwa}</span>}
+          {project && <span className="faint"> · {project.name}</span>}
         </h2>
         {project ? <ProjectSettings /> : <NoProject />}
       </div>
@@ -55,7 +55,7 @@ function ProgramSettings() {
           <div className="card-body">
             <div className="label">{t('settings.language')}</div>
             <Segmented
-              value={settings.jezykUstawiony ?? 'system'}
+              value={settings.chosenLanguage ?? 'system'}
               segments={[
                 { value: 'system', label: t('settings.languageSystem') },
                 { value: 'pl', label: 'Polski' },
@@ -70,7 +70,7 @@ function ProgramSettings() {
           <div className="card-body">
             <div className="label">{t('settings.theme')}</div>
             <Segmented
-              value={settings.motyw}
+              value={settings.theme}
               segments={[
                 { value: 'system', label: t('settings.themeSystem') },
                 { value: 'dark', label: t('settings.themeDark') },
@@ -116,11 +116,11 @@ function ProjectSettings() {
 function BinFolder({ state }: { state: ProjectSettingsState }) {
   const t = useTranslate();
   const toast = useToast();
-  const chosen = !!state.kosz;
+  const chosen = !!state.bin;
 
   const set = async (bin: string | null) => {
     try {
-      await bridge.call('project.settings.set', { kosz: bin });
+      await bridge.call('project.settings.set', { bin: bin });
       toast.ok(t('settings.saved'), { duration: 1500 });
     } catch (failure) {
       toast.error(messageOf(failure));
@@ -129,8 +129,8 @@ function BinFolder({ state }: { state: ProjectSettingsState }) {
 
   const pick = async () => {
     try {
-      const picked = await bridge.call('dialogs.pickFolder', state.kosz ? { start: state.kosz } : {});
-      if (picked.sciezka) await set(picked.sciezka);
+      const picked = await bridge.call('dialogs.pickFolder', state.bin ? { start: state.bin } : {});
+      if (picked.path) await set(picked.path);
     } catch (failure) {
       toast.error(messageOf(failure));
     }
@@ -153,7 +153,7 @@ function BinFolder({ state }: { state: ProjectSettingsState }) {
         <label className="radio-row">
           <input type="radio" name="bin" checked={chosen} onChange={() => void pick()} />
           <span>{t('settings.binCustom')}</span>
-          <span className="faint mono">{state.kosz ? shortenPath(state.kosz, 70) : ''}</span>
+          <span className="faint mono">{state.bin ? shortenPath(state.bin, 70) : ''}</span>
           <Button
             small
             icon="folder"
@@ -187,7 +187,7 @@ function Advanced({ state }: { state: ProjectSettingsState }) {
         <button type="button" className="adv-toggle" aria-expanded={open} onClick={toggle}>
           <Icon name="chevron" className={open ? 'rot180' : undefined} />
           <span className="label">{t('settings.advanced')}</span>
-          {state.progiZmienione && <span className="badge ok">{t('settings.thresholdsChanged')}</span>}
+          {state.thresholdsChanged && <span className="badge ok">{t('settings.thresholdsChanged')}</span>}
         </button>
 
         {open && (
@@ -206,13 +206,13 @@ function Cache({ state }: { state: ProjectSettingsState }) {
   const { language, formatNumber } = useI18n();
   const toast = useToast();
 
-  const part = (name: string) => state.cache[name] ?? { pliki: 0, bajty: 0 };
-  const rebuildable = part('tex').pliki + part('mesh').pliki;
+  const part = (name: string) => state.cache[name] ?? { files: 0, bytes: 0 };
+  const rebuildable = part('tex').files + part('mesh').files;
 
   const clear = async () => {
     try {
-      const cleared = await bridge.call('cache.clear', { tex: true, mesh: true });
-      toast.ok(t('settings.cacheCleared', { mb: formatSize(cleared.bajty, language) }));
+      const cleared = await bridge.call('cache.clear', { textures: true, meshes: true });
+      toast.ok(t('settings.cacheCleared', { mb: formatSize(cleared.bytes, language) }));
     } catch (failure) {
       toast.error(messageOf(failure));
     }
@@ -236,12 +236,12 @@ function Cache({ state }: { state: ProjectSettingsState }) {
         <div className="kv cache-kv">
           {rows.map(([labelKey, name]) => (
             <span key={name}>
-              {t(labelKey)} <b>{formatSize(part(name).bajty, language)}</b>{' '}
-              <span className="faint">({formatNumber(part(name).pliki)})</span>
+              {t(labelKey)} <b>{formatSize(part(name).bytes, language)}</b>{' '}
+              <span className="faint">({formatNumber(part(name).files)})</span>
             </span>
           ))}
           <span>
-            {t('settings.cacheTotal')} <b>{formatSize(part('razem').bajty, language)}</b>
+            {t('settings.cacheTotal')} <b>{formatSize(part('total').bytes, language)}</b>
           </span>
         </div>
 
@@ -257,13 +257,13 @@ function Cache({ state }: { state: ProjectSettingsState }) {
             icon="external"
             onClick={() =>
               void bridge
-                .call('shell.openFolder', { sciezka: state.folderCache })
+                .call('shell.openFolder', { path: state.cacheFolder })
                 .catch((failure: unknown) => toast.warn(messageOf(failure)))
             }
           >
             {t('settings.openFolder')}
           </Button>
-          <span className="faint mono">{shortenPath(state.folderCache, 60)}</span>
+          <span className="faint mono">{shortenPath(state.cacheFolder, 60)}</span>
         </div>
       </div>
     </div>

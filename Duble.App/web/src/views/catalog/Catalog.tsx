@@ -54,7 +54,7 @@ export function Catalog() {
   if (!catalog.data) {
     return (
       <>
-        <Head search={{ value: filters.szukaj, onChange: (text) => set('szukaj', text) }} />
+        <Head search={{ value: filters.search, onChange: (text) => set('search', text) }} />
         {catalog.error && errorCodeOf(catalog.error) !== ErrorCode.NoProject && (
           <EmptyState icon="warn" title={t('common.error')} hint={messageOf(catalog.error)} />
         )}
@@ -62,41 +62,41 @@ export function Catalog() {
     );
   }
 
-  const { razem, tekstury, pokazane, filtry, pozycje } = catalog.data;
+  const { total, textures, shown, filters: buckets, garments } = catalog.data;
 
-  const counted = t('catalog.count', { n: formatNumber(razem), t: formatNumber(tekstury) });
-  const summary = pokazane === razem ? counted : `${counted} · ${t('catalog.shown', { n: formatNumber(pokazane), m: formatNumber(razem) })}`;
+  const counted = t('catalog.count', { n: formatNumber(total), t: formatNumber(textures) });
+  const summary = shown === total ? counted : `${counted} · ${t('catalog.shown', { n: formatNumber(shown), m: formatNumber(total) })}`;
 
-  const formats: Segment<string>[] = [{ value: '', label: t('dup.allVerdicts'), count: razem }];
-  if (filtry.formaty.legacy)
-    formats.push({ value: 'legacy', label: t('sources.formatLegacy'), count: filtry.formaty.legacy, icon: <i className="dot legacy" /> });
-  if (filtry.formaty.gen9)
-    formats.push({ value: 'gen9', label: t('sources.formatGen9'), count: filtry.formaty.gen9, icon: <i className="dot gen9" /> });
+  const formats: Segment<string>[] = [{ value: '', label: t('dup.allVerdicts'), count: total }];
+  if (buckets.formats.legacy)
+    formats.push({ value: 'legacy', label: t('sources.formatLegacy'), count: buckets.formats.legacy, icon: <i className="dot legacy" /> });
+  if (buckets.formats.gen9)
+    formats.push({ value: 'gen9', label: t('sources.formatGen9'), count: buckets.formats.gen9, icon: <i className="dot gen9" /> });
 
-  const slots = [...filtry.sloty].sort((a, b) => SLOT_ORDER.indexOf(a.typ) - SLOT_ORDER.indexOf(b.typ));
+  const slots = [...buckets.slots].sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
 
   return (
     <>
-      <Head summary={summary} search={{ value: filters.szukaj, onChange: (text) => set('szukaj', text) }} />
+      <Head summary={summary} search={{ value: filters.search, onChange: (text) => set('search', text) }} />
 
-      <div className="filterbar cat-filtry">
+      <div className="filterbar cat-filters">
         {/* one format is not a choice: with only Legacy or only Enhanced there is nothing to pick between */}
         {formats.length > 2 && (
           <Segmented
             segments={formats}
-            value={filters.formaty[0] ?? ''}
-            onChange={(format) => set('formaty', format ? [format] : [])}
+            value={filters.formats[0] ?? ''}
+            onChange={(format) => set('formats', format ? [format] : [])}
           />
         )}
 
-        {filtry.zrodla.length > 1 && (
+        {buckets.sources.length > 1 && (
           <Select
             label={t('dup.sourcesFilter')}
-            value={filters.zrodla[0] ?? ''}
-            onChange={(source) => set('zrodla', source ? [source] : [])}
+            value={filters.sources[0] ?? ''}
+            onChange={(source) => set('sources', source ? [source] : [])}
             options={[
               { value: '', label: t('dup.sourceAll') },
-              ...filtry.zrodla.map((source) => ({ value: source.id, label: `${source.nazwa} (${source.n})` })),
+              ...buckets.sources.map((source) => ({ value: source.id, label: `${source.name} (${source.n})` })),
             ]}
           />
         )}
@@ -104,17 +104,17 @@ export function Catalog() {
         {slots.length > 1 && (
           <Select
             label={t('dup.slots')}
-            value={filters.sloty[0] ?? ''}
-            onChange={(slot) => set('sloty', slot ? [slot] : [])}
+            value={filters.slots[0] ?? ''}
+            onChange={(slot) => set('slots', slot ? [slot] : [])}
             options={[
               { value: '', label: t('dup.slotAll') },
-              ...slots.map((slot) => ({ value: slot.typ, label: `${t(`slot.${slot.typ}`)} (${slot.n})` })),
+              ...slots.map((slot) => ({ value: slot.slot, label: `${t(`slot.${slot.slot}`)} (${slot.n})` })),
             ]}
           />
         )}
 
-        <Switch on={filters.problemy} label={t('catalog.problems')} onChange={(on) => set('problemy', on)} />
-        <Switch on={filters.wGrupie} label={t('catalog.inGroups')} onChange={(on) => set('wGrupie', on)} />
+        <Switch on={filters.problems} label={t('catalog.problems')} onChange={(on) => set('problems', on)} />
+        <Switch on={filters.inGroup} label={t('catalog.inGroups')} onChange={(on) => set('inGroup', on)} />
 
         <Button
           variant="ghost"
@@ -127,7 +127,7 @@ export function Catalog() {
       </div>
 
       <VirtualGrid
-        items={pozycje}
+        items={garments}
         {...TILE}
         scrollKey="catalog.scroll"
         renderItem={(garment) => (

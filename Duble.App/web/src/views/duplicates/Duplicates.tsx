@@ -65,8 +65,8 @@ export function Duplicates() {
     );
   }
 
-  const { podsumowanie: summary, filtry, grupy } = groups.data;
-  const compared = summary.grup !== undefined;
+  const { summary, filters: buckets, groups: list } = groups.data;
+  const compared = summary.total !== undefined;
 
   return (
     <>
@@ -76,20 +76,20 @@ export function Duplicates() {
         summary={
           compared
             ? t('dup.summary', {
-                grup: formatNumber(summary.grup),
-                duplikat: formatNumber(summary.duplikat),
-                nadzbior: formatNumber(summary.nadzbior),
-                wglad: formatNumber(summary.wglad),
-                przemalowanie: formatNumber(summary.przemalowanie),
+                groups: formatNumber(summary.total),
+                duplicate: formatNumber(summary.duplicate),
+                superset: formatNumber(summary.superset),
+                needsReview: formatNumber(summary.needsReview),
+                retexture: formatNumber(summary.retexture),
               })
             : undefined
         }
         ignored={
           compared ? (
             <IgnoredSwitch
-              on={filters.filters.zignorowane}
-              count={summary.zignorowane}
-              onChange={(on) => filters.set('zignorowane', on)}
+              on={filters.filters.ignored}
+              count={summary.ignored}
+              onChange={(on) => filters.set('ignored', on)}
             />
           ) : undefined
         }
@@ -99,14 +99,14 @@ export function Duplicates() {
         <GroupFilters
           state={filters}
           counts={{
-            all: summary.grup ?? 0,
-            duplicate: summary.duplikat,
-            superset: summary.nadzbior,
-            needsReview: summary.wglad,
-            retexture: summary.przemalowanie,
+            all: summary.total ?? 0,
+            duplicate: summary.duplicate,
+            superset: summary.superset,
+            needsReview: summary.needsReview,
+            retexture: summary.retexture,
           }}
-          slots={filtry.sloty}
-          sources={filtry.zrodla}
+          slots={buckets.slots}
+          sources={buckets.sources}
         />
       )}
 
@@ -118,18 +118,18 @@ export function Duplicates() {
               {t('dup.compareNow')}
             </Button>
           </EmptyState>
-        ) : grupy.length === 0 ? (
-          <NothingFound filtered={filters.any} indexed={project.pozycje > 0} />
+        ) : list.length === 0 ? (
+          <NothingFound filtered={filters.any} indexed={project.garments > 0} />
         ) : (
-          <div className="dup-grupy">
-            {grupy.map((group) => (
+          <div className="dup-groups">
+            {list.map((group) => (
               <GroupCard key={group.id} group={group} onOpen={(id) => navigate('duplicates', id)} />
             ))}
           </div>
         )}
       </div>
 
-      {compared && <DecisionBar plan={summary.doOdrzucenia} busy={busy} onApply={() => setApplying(true)} />}
+      {compared && <DecisionBar plan={summary.toReject} busy={busy} onApply={() => setApplying(true)} />}
 
       {applying && <ApplyDialog onClose={() => setApplying(false)} />}
     </>

@@ -38,7 +38,7 @@ export function TitleBar() {
         <span>{t('app.name')}</span>
         <span className="by">{t('app.by')}</span>
       </div>
-      {project && <div className="project">{project.nazwa}</div>}
+      {project && <div className="project">{project.name}</div>}
       <div className="spacer" />
       <div className="win">
         <button type="button" title={t('win.minimize')} onClick={() => void bridge.call('window.minimize')}>
@@ -89,14 +89,14 @@ export function StatusBar() {
       {project ? (
         <>
           <span>
-            <b>{project.nazwa}</b>
+            <b>{project.name}</b>
           </span>
           <span className="sep" />
-          <span>{t('status.sources', { n: formatNumber(project.zrodla) })}</span>
+          <span>{t('status.sources', { n: formatNumber(project.sources) })}</span>
           <span className="sep" />
-          <span>{t('status.items', { n: formatNumber(project.pozycje) })}</span>
+          <span>{t('status.items', { n: formatNumber(project.garments) })}</span>
           <span className="sep" />
-          <span>{t('status.textures', { n: formatNumber(project.tekstury) })}</span>
+          <span>{t('status.textures', { n: formatNumber(project.textures) })}</span>
         </>
       ) : (
         <span>{t('status.noProject')}</span>
@@ -106,21 +106,21 @@ export function StatusBar() {
         {busy && job ? (
           <>
             <span>
-              {job.stan === 'postep' && job.wszystkie
+              {job.state === 'progress' && job.total
                 ? t('sources.indexingOf', {
-                    etap: job.etap ? t(`stage.${job.etap}`) : '',
-                    zrobione: formatNumber(job.zrobione),
-                    wszystkie: formatNumber(job.wszystkie),
+                    stage: job.stage ? t(`stage.${job.stage}`) : '',
+                    done: formatNumber(job.done),
+                    total: formatNumber(job.total),
                   })
                 : t('status.working')}
             </span>
-            <Progress percent={job.stan === 'postep' ? (job.procent ?? 0) : undefined} />
+            <Progress percent={job.state === 'progress' ? (job.percent ?? 0) : undefined} />
             <button type="button" className="btn ghost sm" onClick={() => void bridge.call('sources.cancel')}>
               {t('sources.cancel')}
             </button>
           </>
         ) : (
-          <span className="stan-ok">{t('status.idle')}</span>
+          <span className="idle">{t('status.idle')}</span>
         )}
       </div>
     </footer>

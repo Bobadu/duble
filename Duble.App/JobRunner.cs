@@ -1,8 +1,8 @@
 // JobRunner.cs — one long job at a time (indexing, comparing, applying…), reported to the interface as "job"
 // events and cancellable from there.
 //
-// event "job": { typ, opis, stan: start|postep|koniec|anulowano|blad, etap, zrobione, wszystkie, procent,
-//                tekst, blad } — the interface's vocabulary, see Bridge.
+// event "job": { kind, description, state: start|progress|done|cancelled|failed, stage, done, total, percent,
+//                text, error } — the interface's vocabulary, see Bridge.
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,13 +12,13 @@ namespace Duble.App;
 /// <summary>The kinds of job, as the interface knows them: it shows progress only for the one it expects.</summary>
 public static class JobKinds
 {
-    public const string Index = "indeks";
-    public const string Compare = "porownaj";
-    public const string Apply = "zastosuj";
-    public const string Undo = "cofnij";
-    public const string Unpack = "rozpakuj";
-    public const string Report = "raport";
-    public const string Calibration = "kalibracja";
+    public const string Index = "index";
+    public const string Compare = "compare";
+    public const string Apply = "apply";
+    public const string Undo = "undo";
+    public const string Unpack = "unpack";
+    public const string Report = "report";
+    public const string Calibration = "calibration";
 }
 
 public sealed class JobRunner
@@ -79,14 +79,14 @@ public sealed class JobRunner
     async Task Execute(string kind, string description, Func<CancellationToken, Action<ProgressReport>, Task> work, CancellationTokenSource reserved)
     {
         var token = reserved.Token;
-        raise("job", new { typ = kind, opis = description, stan = "start" });
+        raise("job", new { kind = kind, description = description, state = "start" });
         try
         {
             await Task.Run(() => work(token, Throttled(kind, description)), token).ConfigureAwait(false);
-            raise("job", new { typ = kind, opis = description, stan = "koniec" });
+            raise("job", new { kind = kind, description = description, state = "done" });
         }
-        catch (OperationCanceledException) { raise("job", new { typ = kind, opis = description, stan = "anulowano" }); }
-        catch (Exception e) { raise("job", new { typ = kind, opis = description, stan = "blad", blad = e.Message }); }
+        catch (OperationCanceledException) { raise("job", new { kind = kind, description = description, state = "cancelled" }); }
+        catch (Exception e) { raise("job", new { kind = kind, description = description, state = "failed", error = e.Message }); }
         finally
         {
             lock (gate)
@@ -118,14 +118,14 @@ public sealed class JobRunner
             }
             raise("job", new
             {
-                typ = kind,
-                opis = description,
-                stan = "postep",
-                etap = report.Stage,
-                zrobione = report.Done,
-                wszystkie = report.Total,
-                procent = report.Total > 0 ? (int)(100L * report.Done / report.Total) : 0,
-                tekst = report.Container,
+                kind = kind,
+                description = description,
+                state = "progress",
+                stage = report.Stage,
+                done = report.Done,
+                total = report.Total,
+                percent = report.Total > 0 ? (int)(100L * report.Done / report.Total) : 0,
+                text = report.Container,
             });
         };
     }

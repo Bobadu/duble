@@ -16,13 +16,13 @@ export function HistoryCard({ entry, onUndo }: { entry: HistoryEntry; onUndo: (g
   const [open, setOpen] = useState(false);
 
   const aside = [
-    entry.wspoldzielone ? t('apply.shared', { n: entry.wspoldzielone }) : '',
-    entry.wArchiwum ? t('apply.inArchive', { n: entry.wArchiwum }) : '',
-    entry.brakujace ? t('apply.missing', { n: entry.brakujace }) : '',
+    entry.shared ? t('apply.shared', { n: entry.shared }) : '',
+    entry.inArchive ? t('apply.inArchive', { n: entry.inArchive }) : '',
+    entry.missing ? t('apply.missing', { n: entry.missing }) : '',
   ].filter(Boolean);
 
   return (
-    <div className={entry.cofnieto ? 'card hist-card undone' : 'card hist-card'}>
+    <div className={entry.undoneAt ? 'card hist-card undone' : 'card hist-card'}>
       <div className="card-body">
         <div className="hist-top">
           <div className="ico-box">
@@ -31,14 +31,14 @@ export function HistoryCard({ entry, onUndo }: { entry: HistoryEntry; onUndo: (g
 
           <div className="info">
             <div className="name">
-              {formatDate(entry.kiedy)} <span className="faint">· {entry.opis ?? ''}</span>{' '}
-              {entry.cofnieto ? (
+              {formatDate(entry.when)} <span className="faint">· {entry.description ?? ''}</span>{' '}
+              {entry.undoneAt ? (
                 <Badge tone="ok">{t('history.undone')}</Badge>
-              ) : entry.czesciowo ? (
+              ) : entry.partlyUndone ? (
                 <Badge tone="unknown">{t('history.partly')}</Badge>
               ) : null}
-              {entry.przerwano && (
-                <span className="badge err" title={entry.blad ?? ''}>
+              {entry.aborted && (
+                <span className="badge err" title={entry.error ?? ''}>
                   {t('history.interrupted')}
                 </span>
               )}
@@ -46,29 +46,29 @@ export function HistoryCard({ entry, onUndo }: { entry: HistoryEntry; onUndo: (g
 
             <div className="meta">
               {t('history.entry', {
-                pozycje: formatNumber(entry.pozycje),
-                pliki: formatNumber(entry.pliki),
-                mb: formatSize(entry.bajty, language),
+                garments: formatNumber(entry.garments),
+                files: formatNumber(entry.files),
+                mb: formatSize(entry.bytes, language),
               })}
               {aside.length > 0 && <span className="faint"> · {aside.join(' · ')}</span>}
             </div>
 
             <div className="meta mono">
-              {entry.kosze.map((bin) => (
-                <div key={bin}>{t('history.to', { kosz: shortenPath(bin, 70) })}</div>
+              {entry.bins.map((bin) => (
+                <div key={bin}>{t('history.to', { bin: shortenPath(bin, 70) })}</div>
               ))}
             </div>
           </div>
 
           <div className="btn-row">
-            {entry.kosze.length > 0 && !entry.cofnieto && (
+            {entry.bins.length > 0 && !entry.undoneAt && (
               <Button
                 variant="ghost"
                 small
                 icon="external"
                 onClick={() =>
                   void bridge
-                    .call('shell.openFolder', { sciezka: entry.kosze[0]! })
+                    .call('shell.openFolder', { path: entry.bins[0]! })
                     .catch((failure: unknown) => toast.warn(messageOf(failure)))
                 }
               >
@@ -81,17 +81,17 @@ export function HistoryCard({ entry, onUndo }: { entry: HistoryEntry; onUndo: (g
               {t('history.details')}
             </Button>
 
-            {entry.moznaCofnac ? (
-              <Button variant="primary" small icon="refresh" onClick={() => onUndo(null, entry.pliki)}>
+            {entry.canUndo ? (
+              <Button variant="primary" small icon="refresh" onClick={() => onUndo(null, entry.files)}>
                 {t('history.undoAll')}
               </Button>
             ) : (
-              !entry.cofnieto && <span className="faint">{t('history.gone')}</span>
+              !entry.undoneAt && <span className="faint">{t('history.gone')}</span>
             )}
           </div>
         </div>
 
-        {open && <Details file={entry.plik} onUndo={onUndo} />}
+        {open && <Details file={entry.file} onUndo={onUndo} />}
       </div>
     </div>
   );
@@ -100,12 +100,12 @@ export function HistoryCard({ entry, onUndo }: { entry: HistoryEntry; onUndo: (g
 /** The garments of one apply, read only when the entry is opened: each log is a file on disk. */
 function Details({ file, onUndo }: { file: string; onUndo: (garmentIds: string[], files: number) => void }) {
   const t = useTranslate();
-  const details = useCommand('history.get', { plik: file }, { reloadOn: ['undo.done'] });
+  const details = useCommand('history.get', { file: file }, { reloadOn: ['undo.done'] });
 
   if (details.error) return <p className="warn-txt">{messageOf(details.error)}</p>;
   if (!details.data) return <p className="faint">{t('common.loading')}</p>;
 
-  const garments = details.data.wpis.lista ?? [];
+  const garments = details.data.entry.list ?? [];
 
   return (
     <div className="hist-details">
@@ -120,25 +120,25 @@ function Details({ file, onUndo }: { file: string; onUndo: (garmentIds: string[]
         </thead>
         <tbody>
           {garments.map((garment) => {
-            const returned = garment.pliki.filter((moved) => moved.cofniety).length;
+            const returned = garment.files.filter((moved) => moved.undone).length;
             return (
-              <tr key={garment.id} className={garment.moznaCofnac ? undefined : 'done'}>
+              <tr key={garment.id} className={garment.canUndo ? undefined : 'done'}>
                 <td>
-                  <span className="nm mono">{garment.nazwa}</span>
+                  <span className="nm mono">{garment.name}</span>
                 </td>
                 <td>
-                  <span title={garment.kosz ?? ''}>{garment.zrodlo}</span>
+                  <span title={garment.bin ?? ''}>{garment.source}</span>
                 </td>
                 <td>
-                  {garment.pliki.length}
+                  {garment.files.length}
                   {returned > 0 && <span className="faint"> ({t('history.returned', { n: returned })})</span>}
                 </td>
                 <td className="act">
-                  {garment.moznaCofnac ? (
-                    <Button variant="ghost" small icon="refresh" onClick={() => onUndo([garment.id], garment.pliki.length)}>
+                  {garment.canUndo ? (
+                    <Button variant="ghost" small icon="refresh" onClick={() => onUndo([garment.id], garment.files.length)}>
                       {t('history.undoOne')}
                     </Button>
-                  ) : returned === garment.pliki.length ? (
+                  ) : returned === garment.files.length ? (
                     <Badge tone="ok">{t('history.undone')}</Badge>
                   ) : (
                     <span className="faint">{t('history.gone')}</span>

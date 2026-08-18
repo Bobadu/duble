@@ -17,31 +17,31 @@ public sealed class GarmentView
     public GarmentView(IQualityScorer scorer) => this.scorer = scorer;
 
     /// <summary>A reason travels as a code and its parameters; the interface writes the sentence from i18n.</summary>
-    public static object? ReasonJson(Reason? reason) => reason == null ? null : new { kod = reason.Code, p = reason.Parameters };
+    public static object? ReasonJson(Reason? reason) => reason == null ? null : new { code = reason.Code, parameters = reason.Parameters };
 
     public static object ResolutionJson(Resolution resolution) => new
     {
-        zwyciezca = resolution.Winner,
-        odrzucone = resolution.Rejected,
-        ignoruj = resolution.Ignored,
-        domyslna = resolution.IsDefault,
-        notatka = resolution.Note,
+        winner = resolution.Winner,
+        rejected = resolution.Rejected,
+        ignored = resolution.Ignored,
+        isDefault = resolution.IsDefault,
+        note = resolution.Note,
     };
 
     public static object? QualityJson(QualityScore? score) => score == null ? null : new
     {
-        razem = score.Total,
-        rozdz = score.Resolution,
-        mipy = score.Mipmaps,
-        warianty = score.Variants,
+        total = score.Total,
+        resolution = score.Resolution,
+        mipmaps = score.Mipmaps,
+        variants = score.Variants,
         format = score.Format,
         lod = score.Lod,
-        rozdzPx = score.ResolutionPx,
-        udzialMipow = score.MipmapShare,
-        liczbaWariantow = score.VariantCount,
-        zlyFormat = score.WrongFormatCount,
-        lody = score.LodLevels,
-        brakTekstur = score.NoTextures,
+        resolutionPx = score.ResolutionPx,
+        mipmapShare = score.MipmapShare,
+        variantCount = score.VariantCount,
+        wrongFormat = score.WrongFormatCount,
+        lodLevels = score.LodLevels,
+        noTextures = score.NoTextures,
     };
 
     /// <summary>A garment whose model sits inside a .rpf: it can be shown, but never moved.</summary>
@@ -72,44 +72,44 @@ public sealed class GarmentView
         var described = new Dictionary<string, object?>
         {
             ["id"] = garment.Id,
-            ["zrodloId"] = garment.SourceId,
-            ["zrodlo"] = sourceName(garment),
-            ["kontener"] = garment.Container,
-            ["typ"] = garment.Slot,
-            ["numer"] = garment.Number,
-            ["sufiks"] = garment.Suffix,
+            ["sourceId"] = garment.SourceId,
+            ["source"] = sourceName(garment),
+            ["container"] = garment.Container,
+            ["slot"] = garment.Slot,
+            ["number"] = garment.Number,
+            ["suffix"] = garment.Suffix,
             ["gen9"] = garment.GameFormat == GameFormat.Enhanced,
-            ["props"] = garment.IsProp,
-            ["punkty"] = score,
-            ["thumb"] = Thumbnail(garment),
-            ["tekstur"] = garment.Textures.Count,
-            ["wierzcholki"] = garment.Geometry?.Vertices ?? 0,
-            ["trojkaty"] = garment.Geometry?.Triangles ?? 0,
-            ["lody"] = garment.Geometry?.LodLevels ?? 0,
-            ["bajty"] = garment.ModelSize + garment.Textures.Sum(texture => texture.Size),
-            ["wArchiwum"] = IsInArchive(garment),
+            ["prop"] = garment.IsProp,
+            ["score"] = score,
+            ["thumbnail"] = Thumbnail(garment),
+            ["textureCount"] = garment.Textures.Count,
+            ["vertices"] = garment.Geometry?.Vertices ?? 0,
+            ["triangles"] = garment.Geometry?.Triangles ?? 0,
+            ["lods"] = garment.Geometry?.LodLevels ?? 0,
+            ["bytes"] = garment.ModelSize + garment.Textures.Sum(texture => texture.Size),
+            ["inArchive"] = IsInArchive(garment),
         };
 
         if (details)
         {
-            described["rozpiska"] = QualityJson(breakdown);
-            described["sciezkaYdd"] = garment.ModelPath;
-            described["bajtyYdd"] = garment.ModelSize;
+            described["quality"] = QualityJson(breakdown);
+            described["modelPath"] = garment.ModelPath;
+            described["modelBytes"] = garment.ModelSize;
             // the colour variant is worked out by Core: the interface used to have its own regular expression
-            // for it, in two files, and both lost the props (p_ears_diff_017_a.ytd has no race letter)
-            described["tekstury"] = garment.Textures.Select(texture => new
+            // for it, in two files, and both lost the prop (p_ears_diff_017_a.ytd has no race letter)
+            described["textures"] = garment.Textures.Select(texture => new
             {
                 sha = texture.Sha256,
-                plik = texture.FileName,
-                nazwa = texture.Name,
-                litera = ClothingFileName.ParseTexture(texture.FileName)?.Letter,
-                w = texture.Width,
-                h = texture.Height,
+                file = texture.FileName,
+                name = texture.Name,
+                variant = ClothingFileName.ParseTexture(texture.FileName)?.Letter,
+                width = texture.Width,
+                height = texture.Height,
                 format = texture.Format,
-                mipy = texture.MipLevels,
-                alfa = texture.AlphaShare,
-                zdekodowana = texture.IsDecoded,
-                bajty = texture.Size,
+                mipmaps = texture.MipLevels,
+                alpha = texture.AlphaShare,
+                decoded = texture.IsDecoded,
+                bytes = texture.Size,
             }).ToList();
         }
 

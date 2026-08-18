@@ -38,8 +38,8 @@ public sealed class ReportCommands : CommandModule
     {
         var project = Project;
         var comparison = RequireComparison();
-        var file = Target(args, "html", SafeFileName(project.Name) + "-raport.html");
-        if (file == null) return new { anulowano = true };
+        var file = Target(args, "html", SafeFileName(project.Name) + "-report.html");
+        if (file == null) return new { cancelled = true };
 
         var options = new ReportOptions
         {
@@ -53,19 +53,19 @@ public sealed class ReportCommands : CommandModule
             await Task.Yield();
             progress(new ProgressReport("report", 0, 0, Path.GetFileName(file)));
             html.Build(Session.Catalog, comparison, file, options);
-            Bridge.Event("report.done", new { plik = file, typ = "html" });
+            Bridge.Event("report.done", new { file = file, kind = "html" });
         });
         if (!started) throw Busy();
 
-        return new { uruchomiono = true, plik = file };
+        return new { started = true, file = file };
     }
 
     object ExportCsv(JsonElement args)
     {
         var project = Project;
         var comparison = RequireComparison();
-        var file = Target(args, "csv", SafeFileName(project.Name) + "-grupy.csv");
-        if (file == null) return new { anulowano = true };
+        var file = Target(args, "csv", SafeFileName(project.Name) + "-groups.csv");
+        if (file == null) return new { cancelled = true };
 
         try
         {
@@ -75,8 +75,8 @@ public sealed class ReportCommands : CommandModule
         }
         catch (Exception e) { throw new BridgeException(BridgeErrors.Io, e.Message); }
 
-        Bridge.Event("report.done", new { plik = file, typ = "csv" });
-        return new { plik = file };
+        Bridge.Event("report.done", new { file = file, kind = "csv" });
+        return new { file = file };
     }
 
     ComparisonResult RequireComparison()
@@ -85,7 +85,7 @@ public sealed class ReportCommands : CommandModule
     /// <summary>Where to write: what the interface asked for, or whatever the Save dialog returns (null = cancelled).</summary>
     string? Target(JsonElement args, string filter, string defaultName)
     {
-        var asked = args.Text("sciezka");
+        var asked = args.Text("path");
         if (!string.IsNullOrWhiteSpace(asked)) return asked;
         return Bridge.Dialogs.SaveFile(null, filter, defaultName, Path.GetDirectoryName(Project.Path));
     }

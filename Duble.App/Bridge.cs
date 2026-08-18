@@ -1,5 +1,5 @@
-// Bridge.cs — the channel between the interface (HTML/JS) and C#: a router for "group.action" commands and
-// the events that travel the other way.
+// Bridge.cs — the channel between the interface (React/TypeScript) and C#: a router for "group.action"
+// commands and the events that travel the other way.
 //
 // The wire contract, which BridgeTests pins down:
 //   request   {id, cmd, args}       response  {id, ok:true, result} | {id, ok:false, error:{code, message}}
@@ -7,10 +7,11 @@
 //
 // A handler may throw BridgeException to choose the error code; anything else becomes "internal".
 //
-// THE FIELD NAMES INSIDE result AND data ARE STILL POLISH. They are the interface's vocabulary, and the
-// interface is rewritten in a later stage; until then every payload names its fields explicitly
-// (`nazwa = source.Name`) instead of using the shorthand `new { source.Name }`, which would rename the field
-// along with the property. That shorthand is exactly how the project name once vanished from the start screen.
+// The field names inside result and data are the interface's vocabulary, written out in one place on each
+// side: here in Duble.App/Commands, and in web/src/bridge/contract.ts. Every payload names its fields
+// explicitly (`name = source.Name`) instead of using the shorthand `new { source.Name }`, which would rename
+// the field along with the property. That shorthand is exactly how the project name once vanished from the
+// start screen.
 using System;
 using System.Collections.Generic;
 using System.Text.Encodings.Web;
@@ -76,6 +77,9 @@ public sealed class Bridge
     public void Register(string command, Func<JsonElement, Task<object>> handler) => handlers[command] = handler;
 
     public void Register(string command, Func<JsonElement, object> handler) => handlers[command] = args => Task.FromResult(handler(args));
+
+    /// <summary>The commands registered so far. ContractTests compares them with the interface's contract.</summary>
+    public IEnumerable<string> Commands => handlers.Keys;
 
     /// <summary>Runs one request and returns the response to post back. Never throws.</summary>
     public async Task<string> Handle(string requestJson)

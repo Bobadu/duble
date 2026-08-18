@@ -33,13 +33,13 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
   const [starting, setStarting] = useState(false);
 
   // without a chosen bin this is a plain preview; choosing one saves it on the project and re-plans
-  const preview = useCommand('apply.preview', bin ? { kosz: bin.folder, ustawKosz: true } : null);
+  const preview = useCommand('apply.preview', bin ? { bin: bin.folder, setBin: true } : null);
   const plan = preview.data;
 
   const chooseBin = async () => {
     try {
-      const picked = await bridge.call('dialogs.pickFolder', plan?.kosz ? { start: plan.kosz } : {});
-      if (picked.sciezka) setBin({ folder: picked.sciezka });
+      const picked = await bridge.call('dialogs.pickFolder', plan?.bin ? { start: plan.bin } : {});
+      if (picked.path) setBin({ folder: picked.path });
     } catch (failure) {
       toast.error(messageOf(failure));
     }
@@ -49,8 +49,8 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
     setStarting(true);
     sessionStorage.setItem(OPEN_AFTER_KEY, openAfter ? '1' : '0');
     try {
-      const started = await bridge.call('apply.run', { kosz: plan?.kosz ?? null, ustawKosz: true });
-      if (!started.uruchomiono) {
+      const started = await bridge.call('apply.run', { bin: plan?.bin ?? null, setBin: true });
+      if (!started.started) {
         toast.warn(t('apply.nothing'));
         setStarting(false);
         return;
@@ -59,7 +59,7 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (failure) {
       toast.error(
-        errorCodeOf(failure) === ErrorCode.Busy ? t('sources.busy') : t('apply.failed', { blad: messageOf(failure) }),
+        errorCodeOf(failure) === ErrorCode.Busy ? t('sources.busy') : t('apply.failed', { error: messageOf(failure) }),
       );
       setStarting(false);
     }
@@ -74,8 +74,8 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
         footer={
           <>
             <Button onClick={onClose}>{t('common.cancel')}</Button>
-            <Button variant="primary" disabled={!plan?.pliki || starting} onClick={apply}>
-              {t('apply.go', { n: formatNumber(plan?.pliki ?? 0) })}
+            <Button variant="primary" disabled={!plan?.files || starting} onClick={apply}>
+              {t('apply.go', { n: formatNumber(plan?.files ?? 0) })}
             </Button>
           </>
         }
@@ -86,9 +86,9 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
               <p className="lead">
                 <Icon name="trash" />{' '}
                 {t('apply.summary', {
-                  pozycje: formatNumber(plan.pozycje),
-                  pliki: formatNumber(plan.pliki),
-                  mb: formatSize(plan.bajty, language),
+                  garments: formatNumber(plan.garments),
+                  files: formatNumber(plan.files),
+                  mb: formatSize(plan.bytes, language),
                 })}
               </p>
               <Notes plan={plan} />
@@ -98,19 +98,19 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
               <div className="apply-label">{t('apply.where')}</div>
 
               <label className="radio-row">
-                <input type="radio" name="apply-bin" checked={!plan.kosz} onChange={() => setBin({ folder: null })} />
+                <input type="radio" name="apply-bin" checked={!plan.bin} onChange={() => setBin({ folder: null })} />
                 <span>{t('apply.besideSource')}</span>
                 <span className="faint mono">
-                  {!plan.kosz && plan.kosze[0]
-                    ? shortenPath(plan.kosze[0].kosz, 70)
+                  {!plan.bin && plan.bins[0]
+                    ? shortenPath(plan.bins[0].bin, 70)
                     : `…\\_rejected\\<${t('dup.sourcesFilter').toLowerCase()}>`}
                 </span>
               </label>
 
               <label className="radio-row">
-                <input type="radio" name="apply-bin" checked={!!plan.kosz} onChange={() => void chooseBin()} />
+                <input type="radio" name="apply-bin" checked={!!plan.bin} onChange={() => void chooseBin()} />
                 <span>{t('apply.customFolder')}</span>
-                <span className="faint mono">{plan.kosz ? shortenPath(plan.kosz, 70) : ''}</span>
+                <span className="faint mono">{plan.bin ? shortenPath(plan.bin, 70) : ''}</span>
                 <Button
                   small
                   icon="folder"
@@ -163,12 +163,12 @@ function Notes({ plan }: { plan: ApplyPlan }) {
   const t = useTranslate();
 
   const notes = [
-    plan.wspoldzielone > 0 && { icon: 'info' as const, text: t('apply.shared', { n: plan.wspoldzielone }) },
-    plan.wArchiwum > 0 && { icon: 'archive' as const, text: t('apply.inArchive', { n: plan.wArchiwum }) },
-    plan.brakujace > 0 && { icon: 'warn' as const, text: t('apply.missing', { n: plan.brakujace }) },
-    plan.brakujaceZrodla.length > 0 && {
+    plan.shared > 0 && { icon: 'info' as const, text: t('apply.shared', { n: plan.shared }) },
+    plan.inArchive > 0 && { icon: 'archive' as const, text: t('apply.inArchive', { n: plan.inArchive }) },
+    plan.missing > 0 && { icon: 'warn' as const, text: t('apply.missing', { n: plan.missing }) },
+    plan.missingSources.length > 0 && {
       icon: 'warn' as const,
-      text: t('apply.missingSources', { lista: plan.brakujaceZrodla.join(', ') }),
+      text: t('apply.missingSources', { list: plan.missingSources.join(', ') }),
       warning: true,
     },
   ].filter((note) => note !== false);
@@ -189,7 +189,7 @@ function Notes({ plan }: { plan: ApplyPlan }) {
 function PlanList({ plan, onShowSources }: { plan: ApplyPlan; onShowSources: () => void }) {
   const t = useTranslate();
   const { language, formatNumber } = useI18n();
-  const garments = plan.lista ?? [];
+  const garments = plan.list ?? [];
 
   return (
     <div className="apply-listwrap">
@@ -201,10 +201,10 @@ function PlanList({ plan, onShowSources }: { plan: ApplyPlan; onShowSources: () 
         {garments.length === 0 && <p className="faint">{t('dup.nothingToReject')}</p>}
 
         {garments.map((garment) => (
-          <div key={garment.id} className={garment.pliki ? 'apply-row' : 'apply-row skip'}>
-            <div className="thumb">
-              {garment.thumb ? (
-                <img src={`https://duble.data/thumb/${garment.thumb}.png`} alt="" loading="lazy" />
+          <div key={garment.id} className={garment.files ? 'apply-row' : 'apply-row skip'}>
+            <div className="thumbnail">
+              {garment.thumbnail ? (
+                <img src={`https://duble.data/thumb/${garment.thumbnail}.png`} alt="" loading="lazy" />
               ) : (
                 <Icon name="cube" />
               )}
@@ -212,42 +212,42 @@ function PlanList({ plan, onShowSources }: { plan: ApplyPlan; onShowSources: () 
 
             <div className="who">
               <span className="nm">
-                {garment.nazwa}
-                <sub>{garment.sufiks ?? ''}</sub>
+                {garment.name}
+                <sub>{garment.suffix ?? ''}</sub>
               </span>
-              <span className="src" title={`${garment.zrodlo} · ${garment.kontener ?? ''}`}>
-                {garment.zrodlo}
-                <span className="faint"> · {garment.kontener ?? ''}</span>
+              <span className="src" title={`${garment.source} · ${garment.container ?? ''}`}>
+                {garment.source}
+                <span className="faint"> · {garment.container ?? ''}</span>
               </span>
             </div>
 
-            <div className="to" title={garment.kosz ?? ''}>
-              {garment.kosz && (
+            <div className="to" title={garment.bin ?? ''}>
+              {garment.bin && (
                 <>
                   <Icon name="chevron" className="rot270" />
-                  <span className="mono">{shortenPath(garment.kosz, 44)}</span>
+                  <span className="mono">{shortenPath(garment.bin, 44)}</span>
                 </>
               )}
             </div>
 
             <div className="cnt">
-              {garment.pliki > 0 && (
+              {garment.files > 0 && (
                 <>
-                  <b>{t('apply.files', { n: garment.pliki })}</b>
-                  <span className="faint">{formatSize(garment.bajty, language)}</span>
+                  <b>{t('apply.files', { n: garment.files })}</b>
+                  <span className="faint">{formatSize(garment.bytes, language)}</span>
                 </>
               )}
-              {garment.wspoldzielone > 0 && (
-                <span className="badge unknown" title={t('apply.shared', { n: garment.wspoldzielone })}>
-                  {garment.wspoldzielone} <Icon name="info" />
+              {garment.shared > 0 && (
+                <span className="badge unknown" title={t('apply.shared', { n: garment.shared })}>
+                  {garment.shared} <Icon name="info" />
                 </span>
               )}
-              {garment.wArchiwum > 0 && (
+              {garment.inArchive > 0 && (
                 <button type="button" className="badge unknown" title={t('apply.tooltipArchive')} onClick={onShowSources}>
                   {t('group.inArchive')}
                 </button>
               )}
-              {garment.brakujace > 0 && <span className="badge err">{t('apply.missing', { n: garment.brakujace })}</span>}
+              {garment.missing > 0 && <span className="badge err">{t('apply.missing', { n: garment.missing })}</span>}
             </div>
           </div>
         ))}

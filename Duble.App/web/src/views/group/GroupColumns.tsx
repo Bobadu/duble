@@ -29,8 +29,8 @@ export function GroupColumns({ group, onDecide }: { group: Group; onDecide: (cha
 
   return (
     <>
-      <div className="group-cols" style={{ '--n': group.czlonkowie.length } as React.CSSProperties}>
-        {group.czlonkowie.map((member) => (
+      <div className="group-cols" style={{ '--n': group.members.length } as React.CSSProperties}>
+        {group.members.map((member) => (
           <MemberColumn
             key={member.id}
             group={group}
@@ -50,8 +50,8 @@ export function GroupColumns({ group, onDecide }: { group: Group; onDecide: (cha
 }
 
 export interface DecisionChange {
-  zwyciezca?: string;
-  odrzucone?: string[];
+  winner?: string;
+  rejected?: string[];
 }
 
 function MemberColumn({
@@ -75,16 +75,16 @@ function MemberColumn({
   const { language, formatNumber } = useI18n();
   const toast = useToast();
 
-  const resolution = group.rozstrzygniecie;
-  const stays = resolution.zwyciezca === member.id;
-  const rejected = !resolution.ignoruj && resolution.odrzucone.includes(member.id);
-  const standing = resolution.ignoruj ? 'neutral' : stays ? 'stays' : rejected ? 'rejected' : 'neutral';
+  const resolution = group.resolution;
+  const stays = resolution.winner === member.id;
+  const rejected = !resolution.ignored && resolution.rejected.includes(member.id);
+  const standing = resolution.ignored ? 'neutral' : stays ? 'stays' : rejected ? 'rejected' : 'neutral';
 
-  const textures = member.tekstury ?? [];
+  const textures = member.textures ?? [];
   const matched = textures.filter((texture) => texture.sha && partners.has(texture.sha)).length;
 
   const openWipe = (texture: Texture) => {
-    if (!texture.zdekodowana || !texture.sha) {
+    if (!texture.decoded || !texture.sha) {
       toast.warn(t('wipe.noPreview'));
       return;
     }
@@ -104,7 +104,7 @@ function MemberColumn({
         <div className="col-title">
           <span className="nm">
             {garmentName(member)}
-            <sub>{member.sufiks ?? ''}</sub>
+            <sub>{member.suffix ?? ''}</sub>
           </span>
           <Badge tone={member.gen9 ? 'gen9' : 'legacy'}>{t(member.gen9 ? 'sources.formatGen9' : 'sources.formatLegacy')}</Badge>
           {standing === 'stays' ? (
@@ -122,13 +122,13 @@ function MemberColumn({
           )}
         </div>
 
-        <div className="col-src" title={`${member.zrodlo} › ${member.kontener ?? ''}`}>
-          {member.zrodlo}
-          <span className="faint"> › {member.kontener ?? ''}</span>
+        <div className="col-src" title={`${member.source} › ${member.container ?? ''}`}>
+          {member.source}
+          <span className="faint"> › {member.container ?? ''}</span>
         </div>
 
         <div className="btn-row col-actions">
-          <Button small icon="check" disabled={resolution.ignoruj || stays} onClick={() => onDecide({ zwyciezca: member.id })}>
+          <Button small icon="check" disabled={resolution.ignored || stays} onClick={() => onDecide({ winner: member.id })}>
             {t('group.keepThis')}
           </Button>
           {!stays &&
@@ -136,8 +136,8 @@ function MemberColumn({
               <Button
                 small
                 icon="ok"
-                disabled={resolution.ignoruj}
-                onClick={() => onDecide({ odrzucone: resolution.odrzucone.filter((id) => id !== member.id) })}
+                disabled={resolution.ignored}
+                onClick={() => onDecide({ rejected: resolution.rejected.filter((id) => id !== member.id) })}
               >
                 {t('group.unreject')}
               </Button>
@@ -146,8 +146,8 @@ function MemberColumn({
                 small
                 variant="danger"
                 icon="trash"
-                disabled={resolution.ignoruj}
-                onClick={() => onDecide({ odrzucone: [...resolution.odrzucone, member.id] })}
+                disabled={resolution.ignored}
+                onClick={() => onDecide({ rejected: [...resolution.rejected, member.id] })}
               >
                 {t('group.reject')}
               </Button>
@@ -161,19 +161,19 @@ function MemberColumn({
 
       <div className="col-facts">
         <div>
-          <span className="faint">{t('group.model')}</span> <b>{formatNumber(member.wierzcholki)}</b> {t('group.verts')} ·{' '}
-          <b>{formatNumber(member.trojkaty)}</b> {t('group.tris')} · {t('group.lods')} <b>{member.lody}</b>
+          <span className="faint">{t('group.model')}</span> <b>{formatNumber(member.vertices)}</b> {t('group.verts')} ·{' '}
+          <b>{formatNumber(member.triangles)}</b> {t('group.tris')} · {t('group.lods')} <b>{member.lods}</b>
         </div>
         <div>
-          <span className="faint">{t('group.size')}</span> <b>{formatSize(member.bajty, language)}</b> ·{' '}
-          {t('dup.textures', { n: member.tekstur })}
+          <span className="faint">{t('group.size')}</span> <b>{formatSize(member.bytes, language)}</b> ·{' '}
+          {t('dup.textures', { n: member.textureCount })}
         </div>
         <div className="col-path">
           <span className="faint">{t('group.path')}</span>{' '}
-          <span className="mono select-text" title={member.sciezkaYdd ?? ''}>
-            {texturePath(member.sciezkaYdd, 10000)}
+          <span className="mono select-text" title={member.modelPath ?? ''}>
+            {texturePath(member.modelPath, 10000)}
           </span>{' '}
-          {member.wArchiwum ? (
+          {member.inArchive ? (
             <a href={routeToHash('sources')} className="badge unknown" title={t('apply.tooltipArchive')}>
               {t('group.inArchive')}
             </a>
@@ -185,7 +185,7 @@ function MemberColumn({
               title={t('group.showInExplorer')}
               onClick={() =>
                 void bridge
-                  .call('shell.showInExplorer', { sciezka: member.sciezkaYdd ?? '' })
+                  .call('shell.showInExplorer', { path: member.modelPath ?? '' })
                   .catch((failure: unknown) => toast.warn(messageOf(failure)))
               }
             />
@@ -203,7 +203,7 @@ function MemberColumn({
           const pairs = texture.sha ? (partners.get(texture.sha) ?? []) : [];
           return (
             <TextureTile
-              key={texture.sha ?? texture.plik}
+              key={texture.sha ?? texture.file}
               texture={texture}
               paired={pairs.length > 0}
               note={t(pairs.length ? 'group.pair' : 'group.single')}
@@ -229,8 +229,8 @@ function partnersOf(group: Group): Partners {
     partners.set(from, known);
   };
 
-  for (const match of group.dopasowania ?? [])
-    for (const [left, right] of match.pary) {
+  for (const match of group.matches ?? [])
+    for (const [left, right] of match.pairs) {
       add(left, right, match.b);
       add(right, left, match.a);
     }
@@ -252,25 +252,25 @@ function wipeSides(
   const matched = new Set((texture.sha ? (partners.get(texture.sha) ?? []) : []).map((pair) => pair.sha));
 
   const sides: (WipeSide & { memberId: string })[] = [];
-  for (const other of group.czlonkowie) {
+  for (const other of group.members) {
     const theirs =
       other.id === member.id
         ? texture
-        : (other.tekstury ?? []).find((each) => each.sha && matched.has(each.sha)) ??
-          (texture.litera ? (other.tekstury ?? []).find((each) => each.litera === texture.litera) : undefined);
+        : (other.textures ?? []).find((each) => each.sha && matched.has(each.sha)) ??
+          (texture.variant ? (other.textures ?? []).find((each) => each.variant === texture.variant) : undefined);
 
-    if (!theirs?.zdekodowana || !theirs.sha) continue;
+    if (!theirs?.decoded || !theirs.sha) continue;
 
     sides.push({
       memberId: other.id,
       sha: theirs.sha,
       name: garmentName(other),
-      variant: theirs.litera ? t('wipe.variant', { x: variantLabel(theirs) }) : '',
-      file: theirs.plik,
-      width: theirs.w,
-      height: theirs.h,
+      variant: theirs.variant ? t('wipe.variant', { x: variantLabel(theirs) }) : '',
+      file: theirs.file,
+      width: theirs.width,
+      height: theirs.height,
       format: theirs.format,
-      mipmaps: theirs.mipy,
+      mipmaps: theirs.mipmaps,
     });
   }
 

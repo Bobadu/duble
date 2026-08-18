@@ -30,7 +30,7 @@ public sealed class GroupCommands : CommandModule
     {
         Bridge.Register("compare.run", _ => StartComparing());
         Bridge.Register("groups.list", List);
-        Bridge.Register("groups.get", args => new { grupa = Describe(Required(args), details: true) });
+        Bridge.Register("groups.get", args => new { group = Describe(Required(args), details: true) });
         Bridge.Register("groups.decide", Decide);
         Bridge.Register("groups.reset", Reset);
     }
@@ -43,43 +43,43 @@ public sealed class GroupCommands : CommandModule
             workflow.CompareAndSave(cancellation, progress);
         });
         if (!started) throw Busy();
-        return new { uruchomiono = true };
+        return new { started = true };
     }
 
     object List(JsonElement args)
     {
         RequireProject();
-        var verdicts = args.Strings("werdykty");
-        var slots = args.Strings("sloty");
-        var sources = args.Strings("zrodla");
-        var search = (args.Text("szukaj") ?? "").Trim().ToLowerInvariant();
-        bool withIgnored = args.Flag("zignorowane");
+        var verdicts = args.Strings("verdicts");
+        var slots = args.Strings("slots");
+        var sources = args.Strings("sources");
+        var search = (args.Text("search") ?? "").Trim().ToLowerInvariant();
+        bool withIgnored = args.Flag("ignored");
 
         var live = groups.All();
         var comparison = Session.Comparison;
 
         var summary = new
         {
-            grup = comparison == null ? (int?)null : live.Count,
-            duplikat = live.Count(entry => entry.Group.Verdict == Verdict.Duplicate),
-            nadzbior = live.Count(entry => entry.Group.Verdict == Verdict.Superset),
-            wglad = live.Count(entry => entry.Group.Verdict == Verdict.NeedsReview),
-            przemalowanie = live.Count(entry => entry.Group.Verdict == Verdict.Retexture),
-            zignorowane = live.Count(entry => entry.Resolution.Ignored),
-            porownano = comparison?.Built,
-            doOdrzucenia = PlanView.Describe(Session, Session.Plan(LiveGroups.RejectedIds(live)), withList: false),
+            total = comparison == null ? (int?)null : live.Count,
+            duplicate = live.Count(entry => entry.Group.Verdict == Verdict.Duplicate),
+            superset = live.Count(entry => entry.Group.Verdict == Verdict.Superset),
+            needsReview = live.Count(entry => entry.Group.Verdict == Verdict.NeedsReview),
+            retexture = live.Count(entry => entry.Group.Verdict == Verdict.Retexture),
+            ignored = live.Count(entry => entry.Resolution.Ignored),
+            compared = comparison?.Built,
+            toReject = PlanView.Describe(Session, Session.Plan(LiveGroups.RejectedIds(live)), withList: false),
         };
 
         var slotFilter = live.SelectMany(entry => entry.Members.Select(garment => garment.Slot))
             .GroupBy(slot => slot)
-            .Select(group => new { typ = group.Key, n = group.Count() })
-            .OrderBy(entry => entry.typ)
+            .Select(group => new { slot = group.Key, n = group.Count() })
+            .OrderBy(entry => entry.slot)
             .ToList();
 
         var sourceFilter = live.SelectMany(entry => entry.Members.Select(garment => garment.SourceId ?? ""))
             .GroupBy(id => id)
-            .Select(group => new { id = group.Key, nazwa = SourceNameById(group.Key), n = group.Count() })
-            .OrderBy(entry => entry.nazwa)
+            .Select(group => new { id = group.Key, name = SourceNameById(group.Key), n = group.Count() })
+            .OrderBy(entry => entry.name)
             .ToList();
 
         var matching = live.Where(entry =>
@@ -91,7 +91,7 @@ public sealed class GroupCommands : CommandModule
             .Select(entry => Describe(entry, details: false))
             .ToList();
 
-        return new { podsumowanie = summary, filtry = new { sloty = slotFilter, zrodla = sourceFilter }, grupy = matching };
+        return new { summary = summary, filters = new { slots = slotFilter, sources = sourceFilter }, groups = matching };
     }
 
     object Decide(JsonElement args)
@@ -110,8 +110,8 @@ public sealed class GroupCommands : CommandModule
             project.Decisions[id] = decision;
         }
 
-        var winner = args.Text("zwyciezca");
-        bool rejectedGiven = args.HasArray("odrzucone");
+        var winner = args.Text("winner");
+        bool rejectedGiven = args.HasArray("rejected");
         if (winner != null && members.Contains(winner))
         {
             decision.Winner = winner;
@@ -119,17 +119,17 @@ public sealed class GroupCommands : CommandModule
             if (!rejectedGiven) decision.Rejected = members.Where(member => member != winner).ToList();
         }
         if (rejectedGiven)
-            decision.Rejected = args.Strings("odrzucone")
+            decision.Rejected = args.Strings("rejected")
                 .Where(member => members.Contains(member) && member != decision.Winner)
                 .Distinct()
                 .ToList();
 
-        if (args.OptionalFlag("ignoruj") is { } ignored) decision.Ignored = ignored;
-        if (args.Text("notatka") is { } note) decision.Note = note.Length == 0 ? null : note;
+        if (args.OptionalFlag("ignored") is { } ignored) decision.Ignored = ignored;
+        if (args.Text("note") is { } note) decision.Note = note.Length == 0 ? null : note;
 
         Session.SaveProject();
         Changed(id);
-        return new { rozstrzygniecie = GarmentView.ResolutionJson(groups.Resolve(live.Group)) };
+        return new { resolution = GarmentView.ResolutionJson(groups.Resolve(live.Group)) };
     }
 
     object Reset(JsonElement args)
@@ -138,7 +138,7 @@ public sealed class GroupCommands : CommandModule
         Project.Decisions.Remove(live.Group.Id);
         Session.SaveProject();
         Changed(live.Group.Id);
-        return new { rozstrzygniecie = GarmentView.ResolutionJson(groups.Resolve(live.Group)) };
+        return new { resolution = GarmentView.ResolutionJson(groups.Resolve(live.Group)) };
     }
 
     void Changed(string id)
@@ -161,27 +161,27 @@ public sealed class GroupCommands : CommandModule
         var described = new Dictionary<string, object?>
         {
             ["id"] = group.Id,
-            ["werdykt"] = group.Verdict.ToKey(),
-            ["powod"] = GarmentView.ReasonJson(group.Pairs.FirstOrDefault()?.Reason ?? group.Reason),
-            ["zwyciezca"] = group.Winner,
-            ["rozstrzygniecie"] = GarmentView.ResolutionJson(resolution),
-            ["czlonkowie"] = members.Select(member => garments.Describe(member, group, details, SourceName)).ToList(),
+            ["verdict"] = group.Verdict.ToKey(),
+            ["reason"] = GarmentView.ReasonJson(group.Pairs.FirstOrDefault()?.Reason ?? group.Reason),
+            ["winner"] = group.Winner,
+            ["resolution"] = GarmentView.ResolutionJson(resolution),
+            ["members"] = members.Select(member => garments.Describe(member, group, details, SourceName)).ToList(),
         };
 
         if (details)
         {
-            described["pary"] = group.Pairs.Select(pair => new
+            described["pairs"] = group.Pairs.Select(pair => new
             {
                 a = pair.A,
                 b = pair.B,
-                werdykt = pair.Verdict.ToKey(),
-                powod = GarmentView.ReasonJson(pair.Reason),
-                distGeo = pair.GeometryDistance,
-                pokrycieA = pair.CoverageA,
-                pokrycieB = pair.CoverageB,
-                wspolnychTekstur = pair.SharedTextures,
+                verdict = pair.Verdict.ToKey(),
+                reason = GarmentView.ReasonJson(pair.Reason),
+                geometryDistance = pair.GeometryDistance,
+                coverageA = pair.CoverageA,
+                coverageB = pair.CoverageB,
+                sharedTextures = pair.SharedTextures,
             }).ToList();
-            described["dopasowania"] = MatchedTextures(members);
+            described["matches"] = MatchedTextures(members);
         }
 
         return described;
@@ -211,7 +211,7 @@ public sealed class GroupCommands : CommandModule
                         pairs.Add(new[] { left.Sha256, right.Sha256 });
                         break;
                     }
-                matches.Add(new { a = members[i].Id, b = members[j].Id, pary = pairs });
+                matches.Add(new { a = members[i].Id, b = members[j].Id, pairs = pairs });
             }
 
         return matches;

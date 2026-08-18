@@ -25,21 +25,21 @@ public class SourceCommandTests
         app.NewProject("T");
         var dlc = JsonSerializer.Serialize(TestPaths.Dlc("studio_body"));
 
-        var added = await app.Call("sources.add", $"{{\"sciezki\":[{dlc}]}}");
-        Assert.Equal(1, added.GetProperty("dodane").GetArrayLength());
+        var added = await app.Call("sources.add", $"{{\"paths\":[{dlc}]}}");
+        Assert.Equal(1, added.GetProperty("added").GetArrayLength());
 
-        var sources = (await app.Call("sources.list")).GetProperty("zrodla");
+        var sources = (await app.Call("sources.list")).GetProperty("sources");
         var id = sources[0].GetProperty("id").GetString();
-        Assert.Equal("rpf", sources[0].GetProperty("typ").GetString());
-        Assert.Equal(0, sources[0].GetProperty("pozycje").GetInt32());
-        Assert.True(sources[0].GetProperty("istnieje").GetBoolean());
-        Assert.EndsWith(Path.Combine("_rejected", "studio_body"), sources[0].GetProperty("kosz").GetString());
+        Assert.Equal("rpf", sources[0].GetProperty("kind").GetString());
+        Assert.Equal(0, sources[0].GetProperty("garments").GetInt32());
+        Assert.True(sources[0].GetProperty("exists").GetBoolean());
+        Assert.EndsWith(Path.Combine("_rejected", "studio_body"), sources[0].GetProperty("bin").GetString());
 
         await app.Call("sources.index", $"{{\"ids\":[\"{id}\"]}}");
         await app.WaitFor("compare.done");
 
-        sources = (await app.Call("sources.list")).GetProperty("zrodla");
-        Assert.Equal(10, sources[0].GetProperty("pozycje").GetInt32());   // studio_body holds ten garments
+        sources = (await app.Call("sources.list")).GetProperty("sources");
+        Assert.Equal(10, sources[0].GetProperty("garments").GetInt32());   // studio_body holds ten garments
         Assert.Equal("gen9", sources[0].GetProperty("format").GetString());
         Assert.True(sources[0].GetProperty("perSlot").GetProperty("uppr").GetInt32() >= 1);
         Assert.True(File.Exists(app.Session.Project.CatalogFile));
@@ -48,11 +48,11 @@ public class SourceCommandTests
         Assert.All(app.Session.Catalog.Garments, garment => Assert.Equal(id, garment.SourceId));
 
         // the same source a second time, and one that is not there, are both skipped
-        var again = await app.Call("sources.add", $"{{\"sciezki\":[{dlc},\"C:\\\\no\\\\such\"]}}");
-        Assert.Equal(0, again.GetProperty("dodane").GetArrayLength());
-        Assert.Equal(2, again.GetProperty("pominiete").GetArrayLength());
+        var again = await app.Call("sources.add", $"{{\"paths\":[{dlc},\"C:\\\\no\\\\such\"]}}");
+        Assert.Equal(0, again.GetProperty("added").GetArrayLength());
+        Assert.Equal(2, again.GetProperty("skipped").GetArrayLength());
 
-        await app.Call("sources.toggle", $"{{\"id\":\"{id}\",\"wlaczone\":false}}");
+        await app.Call("sources.toggle", $"{{\"id\":\"{id}\",\"enabled\":false}}");
         Assert.False(app.Session.Project.Sources[0].Enabled);
 
         await app.Call("sources.remove", $"{{\"id\":\"{id}\"}}");
@@ -73,16 +73,16 @@ public class SourceCommandTests
         Assert.Equal("studio_body", SourceCommands.CopyFolderName(source));
 
         var folder = JsonSerializer.Serialize(Path.Combine(app.Temp, "copies"));
-        var started = await app.Call("sources.unpack", $"{{\"id\":\"{source.Id}\",\"folder\":{folder},\"dodajZrodlo\":true}}");
+        var started = await app.Call("sources.unpack", $"{{\"id\":\"{source.Id}\",\"folder\":{folder},\"addAsSource\":true}}");
         Assert.Equal(Path.Combine(app.Temp, "copies", "studio_body"), started.GetProperty("folder").GetString());
 
         await app.WaitFor("unpack.done");
         var done = app.EventData("unpack.done");
-        Assert.True(done.GetProperty("pliki").GetInt32() >= 20, done.ToString());
-        Assert.True(done.GetProperty("archiwa").GetInt32() >= 2);
-        Assert.Equal(0, done.GetProperty("bledy").GetArrayLength());
+        Assert.True(done.GetProperty("files").GetInt32() >= 20, done.ToString());
+        Assert.True(done.GetProperty("inArchives").GetInt32() >= 2);
+        Assert.Equal(0, done.GetProperty("errors").GetArrayLength());
 
-        var copyId = done.GetProperty("dodano").GetString();
+        var copyId = done.GetProperty("added").GetString();
         Assert.NotNull(copyId);
         Assert.Equal(2, app.Session.Project.Sources.Count);
         Assert.False(source.Enabled);                                          // the original is switched off

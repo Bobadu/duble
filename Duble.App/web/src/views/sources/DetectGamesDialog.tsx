@@ -9,9 +9,9 @@ import { useTranslate } from '../../i18n';
 export function DetectGamesDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (paths: string[]) => void }) {
   const t = useTranslate();
   const detected = useCommand('sources.detectGames', null);
-  const games = detected.data?.gry ?? [];
+  const games = detected.data?.games ?? [];
 
-  const suggested = games.flatMap((game) => game.propozycje.map((folder) => folder.sciezka));
+  const suggested = games.flatMap((game) => game.folders.map((folder) => folder.path));
   const [unticked, setUnticked] = useState<ReadonlySet<string>>(new Set());
   const chosen = suggested.filter((path) => !unticked.has(path));
 
@@ -54,20 +54,20 @@ export function DetectGamesDialog({ onClose, onAdd }: { onClose: () => void; onA
         <p className="lead">{t('sources.detectNone')}</p>
       ) : (
         games.map((game) => (
-          <div key={game.sciezka} className="section detected-game">
+          <div key={game.path} className="section detected-game">
             <div className="section-head">
-              <h3>{t(game.gra === 'enhanced' ? 'sources.detectEnhanced' : 'sources.detectLegacy')}</h3>
-              <span className="count mono">{game.sciezka}</span>
+              <h3>{t(game.edition === 'enhanced' ? 'sources.detectEnhanced' : 'sources.detectLegacy')}</h3>
+              <span className="count mono">{game.path}</span>
             </div>
 
-            {game.propozycje.length === 0 ? (
+            {game.folders.length === 0 ? (
               <p className="faint">{t('sources.detectNoFolders')}</p>
             ) : (
-              game.propozycje.map((folder) => (
-                <label key={folder.sciezka} className="chip detected-folder">
-                  <input type="checkbox" checked={!unticked.has(folder.sciezka)} onChange={() => toggle(folder.sciezka)} />
-                  <span>{folder.nazwa}</span>
-                  <span className="n mono">{folder.sciezka}</span>
+              game.folders.map((folder) => (
+                <label key={folder.path} className="chip detected-folder">
+                  <input type="checkbox" checked={!unticked.has(folder.path)} onChange={() => toggle(folder.path)} />
+                  <span>{folder.name}</span>
+                  <span className="n mono">{folder.path}</span>
                 </label>
               ))
             )}

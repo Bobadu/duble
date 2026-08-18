@@ -31,34 +31,34 @@ public sealed class AppCommands : ICommandModule
 
     object Info() => new
     {
-        nazwa = "Duble",
+        name = "Duble",
         by = "Bobadu",
-        wersja = Version(),
+        version = Version(),
         dev = bridge.Dev,
-        strona = ProjectSite,
-        repo = Repository,
-        licencja = Licence,
-        sciezki = new
+        website = ProjectSite,
+        repository = Repository,
+        licence = Licence,
+        paths = new
         {
-            ustawienia = bridge.SettingsFile ?? Settings.FilePath,
-            webview2 = Settings.WebView2Folder,
-            projekty = Settings.ProjectsFolder,
-            exe = Process.GetCurrentProcess().MainModule?.FileName,
+            settings = bridge.SettingsFile ?? Settings.FilePath,
+            webView2 = Settings.WebView2Folder,
+            projects = Settings.ProjectsFolder,
+            executable = Process.GetCurrentProcess().MainModule?.FileName,
         },
     };
 
     object CurrentSettings() => new
     {
-        jezyk = bridge.Settings.EffectiveLanguage,
-        jezykUstawiony = bridge.Settings.Language,
-        motyw = bridge.Settings.Theme,
-        ostatnie = bridge.Settings.Recent,
+        language = bridge.Settings.EffectiveLanguage,
+        chosenLanguage = bridge.Settings.Language,
+        theme = bridge.Settings.Theme,
+        recent = bridge.Settings.Recent,
     };
 
     object Change(System.Text.Json.JsonElement args)
     {
-        var language = args.Text("jezyk");
-        var theme = args.Text("motyw");
+        var language = args.Text("language");
+        var theme = args.Text("theme");
 
         // "" and "system" both mean "follow Windows", which is what null stands for in the file
         if (language != null) bridge.Settings.Language = language is "" or "system" ? null : language;

@@ -1,4 +1,4 @@
-// types/webview2.d.ts — the part of WebView2 the interface uses.
+// types/webView2.d.ts — the part of WebView2 the interface uses.
 //
 // window.chrome.webview only exists inside the application. It is optional here on purpose: opening the built
 // page in a plain browser has to fail with a clear "not running inside Duble" rather than a TypeError.

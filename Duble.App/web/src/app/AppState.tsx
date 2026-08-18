@@ -57,13 +57,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         bridge.call('settings.get').catch(() => fallbackSettings),
         bridge.call('app.info').catch(() => fallbackInfo),
       ]);
-      const state = await bridge.call('window.state').catch(() => ({ maks: false }));
-      const opened = await bridge.call('project.get').catch(() => ({ projekt: undefined }));
+      const state = await bridge.call('window.state').catch(() => ({ maximized: false }));
+      const opened = await bridge.call('project.get').catch(() => ({ project: undefined }));
 
       if (cancelled) return;
-      applyTheme((overrides.get('theme') as Theme | null) ?? settings.motyw);
-      setWindowMaximized(state.maks);
-      setProject(opened.projekt);
+      applyTheme((overrides.get('theme') as Theme | null) ?? settings.theme);
+      setWindowMaximized(state.maximized);
+      setProject(opened.project);
       setLoaded({ info, settings });
     })();
 
@@ -72,27 +72,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [overrides]);
 
-  useBridgeEvent('project.opened', (data) => setProject(data.projekt));
-  useBridgeEvent('project.changed', (data) => setProject(data.projekt));
+  useBridgeEvent('project.opened', (data) => setProject(data.project));
+  useBridgeEvent('project.changed', (data) => setProject(data.project));
   useBridgeEvent('project.closed', () => setProject(undefined));
   useBridgeEvent('job', setJob);
-  useBridgeEvent('window.state', (data) => setWindowMaximized(data.maks));
+  useBridgeEvent('window.state', (data) => setWindowMaximized(data.maximized));
 
   const setLanguage = useCallback(async (language: Language | 'system') => {
-    const settings = await bridge.call('settings.set', { jezyk: language });
+    const settings = await bridge.call('settings.set', { language: language });
     setLoaded((previous) => (previous ? { ...previous, settings } : previous));
   }, []);
 
   const setTheme = useCallback(async (theme: Theme) => {
     applyTheme(theme);
-    const settings = await bridge.call('settings.set', { motyw: theme });
+    const settings = await bridge.call('settings.set', { theme: theme });
     setLoaded((previous) => (previous ? { ...previous, settings } : previous));
   }, []);
 
   const language: Language = isLanguage(overrides.get('lang'))
     ? (overrides.get('lang') as Language)
-    : isLanguage(loaded?.settings.jezyk ?? null)
-      ? (loaded!.settings.jezyk as Language)
+    : isLanguage(loaded?.settings.language ?? null)
+      ? (loaded!.settings.language as Language)
       : 'pl';
 
   const value = useMemo<AppState | null>(
@@ -102,7 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         settings: loaded.settings,
         project,
         job,
-        busy: job?.stan === 'start' || job?.stan === 'postep',
+        busy: job?.state === 'start' || job?.state === 'progress',
         windowMaximized,
         setLanguage,
         setTheme,
@@ -153,14 +153,14 @@ function useDeveloperHandle(dev: boolean): void {
 }
 
 const fallbackInfo: AppInfo = {
-  nazwa: 'Duble',
+  name: 'Duble',
   by: 'Bobadu',
-  wersja: '?',
+  version: '?',
   dev: true,
-  strona: '',
-  repo: '',
-  licencja: 'MIT',
-  sciezki: { ustawienia: '', webview2: '', projekty: '' },
+  website: '',
+  repository: '',
+  licence: 'MIT',
+  paths: { settings: '', webView2: '', projects: '' },
 };
 
-const fallbackSettings: AppSettings = { jezyk: 'pl', motyw: 'dark', ostatnie: [] };
+const fallbackSettings: AppSettings = { language: 'pl', theme: 'dark', recent: [] };

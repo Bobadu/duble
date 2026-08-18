@@ -64,7 +64,10 @@ public sealed class TestApp : IDisposable
     {
         var response = await Respond(command, args);
         Assert.True(response.GetProperty("ok").GetBoolean(), response.ToString());
-        return response.GetProperty("result");
+
+        var result = response.GetProperty("result");
+        Contract.CheckFields(command, result);
+        return result;
     }
 
     /// <summary>A command that is expected to fail; returns its `error` (code and message).</summary>
@@ -88,7 +91,10 @@ public sealed class TestApp : IDisposable
     {
         var message = Sent.LastOrDefault(m => m.Contains($"\"event\":\"{name}\""))
             ?? throw new InvalidOperationException("no event " + name + " was sent");
-        return JsonDocument.Parse(message).RootElement.GetProperty("data");
+
+        var data = JsonDocument.Parse(message).RootElement.GetProperty("data");
+        Contract.CheckFields("event " + name, data);
+        return data;
     }
 
     /// <summary>

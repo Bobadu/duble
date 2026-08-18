@@ -31,7 +31,7 @@ export function About() {
   const open = (url: string) =>
     void bridge.call('shell.openUrl', { url }).catch((failure: unknown) => toast.warn(messageOf(failure)));
 
-  const paths = info.sciezki;
+  const paths = info.paths;
 
   return (
     <div className="about">
@@ -44,25 +44,25 @@ export function About() {
                 {t('app.name')} <span className="by">{t('app.by')}</span>
               </h1>
               <div className="about-chips">
-                <span className="pill">{t('app.version', { v: info.wersja })}</span>
+                <span className="pill">{t('app.version', { v: info.version })}</span>
                 {info.dev && <span className="pill">dev</span>}
-                {info.licencja && <span className="pill">{info.licencja}</span>}
+                {info.licence && <span className="pill">{info.licence}</span>}
               </div>
               <p className="about-tag">{t('about.tagline')}</p>
               <p className="about-compat">{t('about.compat')}</p>
 
               <div className="btn-row about-actions">
-                {info.strona && (
-                  <Button variant="primary" icon="external" title={info.strona} onClick={() => open(info.strona)}>
+                {info.website && (
+                  <Button variant="primary" icon="external" title={info.website} onClick={() => open(info.website)}>
                     {t('about.website')}
                   </Button>
                 )}
-                {info.repo && (
+                {info.repository && (
                   <>
-                    <Button icon="external" title={info.repo} onClick={() => open(info.repo)}>
+                    <Button icon="external" title={info.repository} onClick={() => open(info.repository)}>
                       {t('about.repo')}
                     </Button>
-                    <Button icon="warn" title={`${info.repo}/issues`} onClick={() => open(`${info.repo}/issues`)}>
+                    <Button icon="warn" title={`${info.repository}/issues`} onClick={() => open(`${info.repository}/issues`)}>
                       {t('about.issues')}
                     </Button>
                   </>
@@ -92,20 +92,20 @@ export function About() {
         </div>
       </div>
 
-      {(paths.projekty || paths.ustawienia) && (
+      {(paths.projects || paths.settings) && (
         <div className="section about-sec">
           <div className="section-head">
             <h2>{t('about.files')}</h2>
           </div>
           <ul className="about-list">
-            {paths.projekty && <PathRow label={t('about.pathProjects')} path={paths.projekty} />}
-            {paths.ustawienia && <PathRow label={t('about.pathSettings')} path={paths.ustawienia} />}
+            {paths.projects && <PathRow label={t('about.pathProjects')} path={paths.projects} />}
+            {paths.settings && <PathRow label={t('about.pathSettings')} path={paths.settings} />}
           </ul>
         </div>
       )}
 
-      {(paths.exe || paths.webview2) && (
-        <TechnicalPaths exe={paths.exe} webView2={paths.webview2} />
+      {(paths.executable || paths.webView2) && (
+        <TechnicalPaths executable={paths.executable} webView2={paths.webView2} />
       )}
 
       <div className="section about-sec">
@@ -125,10 +125,10 @@ export function About() {
 
       <div className="about-foot">
         <span>
-          {t('app.name')} {info.wersja}
+          {t('app.name')} {info.version}
         </span>
         <span>{t('about.copyright')}</span>
-        {info.licencja && <span>{t('about.appLicense', { lic: info.licencja })}</span>}
+        {info.licence && <span>{t('about.appLicense', { lic: info.licence })}</span>}
       </div>
     </div>
   );
@@ -150,7 +150,7 @@ function PathRow({ label, path }: { label: string; path: string }) {
         title={t('about.open')}
         aria-label={t('about.open')}
         onClick={() =>
-          void bridge.call('shell.showInExplorer', { sciezka: path }).catch((failure: unknown) => toast.warn(messageOf(failure)))
+          void bridge.call('shell.showInExplorer', { path: path }).catch((failure: unknown) => toast.warn(messageOf(failure)))
         }
       />
     </li>
@@ -158,7 +158,7 @@ function PathRow({ label, path }: { label: string; path: string }) {
 }
 
 /** Where the executable and WebView2 keep themselves — folded away, because most people never need it. */
-function TechnicalPaths({ exe, webView2 }: { exe?: string; webView2?: string }) {
+function TechnicalPaths({ executable, webView2 }: { executable?: string; webView2?: string }) {
   const t = useTranslate();
   const [open, setOpen] = useState(() => sessionStorage.getItem('about.technical') === '1');
 
@@ -177,7 +177,7 @@ function TechnicalPaths({ exe, webView2 }: { exe?: string; webView2?: string }) 
       {open && (
         <div className="adv-body">
           <ul className="about-list">
-            {exe && <PathRow label={t('about.pathExe')} path={exe} />}
+            {executable && <PathRow label={t('about.pathExe')} path={executable} />}
             {webView2 && <PathRow label={t('about.pathWebView')} path={webView2} />}
           </ul>
         </div>

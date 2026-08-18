@@ -33,7 +33,7 @@ public sealed class WebResources
                 embedded[name.Substring(3).Replace('\\', '/')] = name;
     }
 
-    /// <summary>(category, key, query without '?') -> bytes, or null. Categories: thumb, tex, mesh. The
+    /// <summary>(category, key, query without '?') -> bytes, or null. Categories: thumbnail, tex, mesh. The
     /// session sets this; without it duble.data serves nothing but dictionaries.</summary>
     public Func<string, string, string?, Stream?>? Data { get; set; }
 

@@ -35,14 +35,14 @@ export function SourceCard({
   }[format];
 
   const kind =
-    { folder: t('sources.typeFolder'), rpf: t('sources.typeRpf'), fivem: t('sources.typeFivem') }[source.typ] ?? source.typ;
+    { folder: t('sources.typeFolder'), rpf: t('sources.typeRpf'), fivem: t('sources.typeFivem') }[source.kind] ?? source.kind;
 
   // the busiest slots first: this is a glance at what the pack holds, not a full listing
   const slots = Object.entries(source.perSlot).sort(([, a], [, b]) => b - a);
   const shown = slots.slice(0, SLOTS_SHOWN);
   const rest = slots.slice(SLOTS_SHOWN);
 
-  const className = ['card', 'src-card', source.wlaczone ? '' : 'disabled', source.istnieje ? '' : 'missing']
+  const className = ['card', 'src-card', source.enabled ? '' : 'disabled', source.exists ? '' : 'missing']
     .filter(Boolean)
     .join(' ');
 
@@ -51,14 +51,14 @@ export function SourceCard({
       <div className="card-body">
         <div className="top">
           <div className="ico-box">
-            <Icon name={TYPE_ICONS[source.typ] ?? 'folder'} />
+            <Icon name={TYPE_ICONS[source.kind] ?? 'folder'} />
           </div>
           <div className="info">
-            <div className="name" title={source.nazwa}>
-              {source.nazwa}
+            <div className="name" title={source.name}>
+              {source.name}
             </div>
-            <div className="path mono" title={source.sciezka}>
-              {shortenPath(source.sciezka, 32)}
+            <div className="path mono" title={source.path}>
+              {shortenPath(source.path, 32)}
             </div>
           </div>
           <MenuButton items={actions} title={t('common.more')} />
@@ -72,28 +72,28 @@ export function SourceCard({
             </span>
           )}
           <span className="pill">{kind}</span>
-          {source.typ === 'rpf' && (
+          {source.kind === 'rpf' && (
             <span className="pill" title={t('sources.archiveOnly')}>
               {t('sources.readOnly')}
             </span>
           )}
         </div>
 
-        {!source.istnieje && (
+        {!source.exists && (
           <div className="missing-text">
             <Icon name="warn" /> {t('sources.missing')}
           </div>
         )}
 
         <div className="stats">
-          <b>{formatNumber(source.pozycje)}</b> {t('sources.items')}
+          <b>{formatNumber(source.garments)}</b> {t('sources.items')}
           <i>·</i>
-          <b>{formatNumber(source.tekstury)}</b> {t('sources.textures')}
-          {source.typ !== 'rpf' && source.archiwa > 0 && (
+          <b>{formatNumber(source.textures)}</b> {t('sources.textures')}
+          {source.kind !== 'rpf' && source.inArchives > 0 && (
             <>
               <i>·</i>
               <span className="faint" title={t('sources.hasArchives')}>
-                {formatNumber(source.archiwa)} {t('sources.inArchives')}
+                {formatNumber(source.inArchives)} {t('sources.inArchives')}
               </span>
             </>
           )}
@@ -119,26 +119,26 @@ export function SourceCard({
         {job && (
           <div className="indexing">
             <span>
-              {job.stan === 'postep' && job.wszystkie
+              {job.state === 'progress' && job.total
                 ? t('sources.indexingOf', {
-                    etap: job.etap ? t(`stage.${job.etap}`) : '',
-                    zrobione: formatNumber(job.zrobione),
-                    wszystkie: formatNumber(job.wszystkie),
+                    stage: job.stage ? t(`stage.${job.stage}`) : '',
+                    done: formatNumber(job.done),
+                    total: formatNumber(job.total),
                   })
                 : t('sources.indexing')}
             </span>
-            <Progress percent={job.stan === 'postep' && job.wszystkie ? (job.procent ?? 0) : undefined} />
+            <Progress percent={job.state === 'progress' && job.total ? (job.percent ?? 0) : undefined} />
           </div>
         )}
 
         <div className="foot">
           <span
             className="when"
-            title={source.zaindeksowano ? t('sources.indexed', { d: formatDate(source.zaindeksowano) }) : t('sources.never')}
+            title={source.indexedAt ? t('sources.indexed', { d: formatDate(source.indexedAt) }) : t('sources.never')}
           >
-            {source.zaindeksowano ? (
+            {source.indexedAt ? (
               <>
-                <Icon name="history" /> {formatDate(source.zaindeksowano)}
+                <Icon name="history" /> {formatDate(source.indexedAt)}
               </>
             ) : (
               t('sources.never')
@@ -146,9 +146,9 @@ export function SourceCard({
           </span>
           <span className="grow" />
           <Switch
-            on={source.wlaczone}
-            label={t(source.wlaczone ? 'sources.enabled' : 'sources.disabled')}
-            title={t(source.wlaczone ? 'sources.enabled' : 'sources.disabled')}
+            on={source.enabled}
+            label={t(source.enabled ? 'sources.enabled' : 'sources.disabled')}
+            title={t(source.enabled ? 'sources.enabled' : 'sources.disabled')}
             onChange={onToggle}
           />
         </div>

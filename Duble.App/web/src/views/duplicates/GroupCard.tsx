@@ -6,21 +6,21 @@ import { useTranslate, type Translate } from '../../i18n';
 
 /** A reason travels as a code with parameters; the sentence is written here, in the reader's language. */
 export function reasonText(t: Translate, reason: Reason | undefined): string {
-  return reason ? t(`reason.${reason.kod}`, reason.p) : '';
+  return reason ? t(`reason.${reason.code}`, reason.parameters) : '';
 }
 
 /** How a garment is named on screen: slot and number, the way the game names the file. */
-export function garmentName(garment: Pick<Garment, 'typ' | 'numer'>): string {
-  return `${garment.typ}_${String(garment.numer).padStart(3, '0')}`;
+export function garmentName(garment: Pick<Garment, 'slot' | 'number'>): string {
+  return `${garment.slot}_${String(garment.number).padStart(3, '0')}`;
 }
 
 export function GroupCard({ group, onOpen }: { group: Group; onOpen: (id: string) => void }) {
   const t = useTranslate();
-  const resolution = group.rozstrzygniecie;
+  const resolution = group.resolution;
 
   return (
     <div
-      className={`card dup-card clickable${resolution.ignoruj ? ' ignored' : ''}`}
+      className={`card dup-card clickable${resolution.ignored ? ' ignored' : ''}`}
       tabIndex={0}
       role="button"
       onClick={() => onOpen(group.id)}
@@ -32,13 +32,13 @@ export function GroupCard({ group, onOpen }: { group: Group; onOpen: (id: string
       }}
     >
       <div className="dup-card-head">
-        <VerdictBadge verdict={group.werdykt} />
-        <span className="dup-powod">{reasonText(t, group.powod)}</span>
+        <VerdictBadge verdict={group.verdict} />
+        <span className="dup-reason">{reasonText(t, group.reason)}</span>
         <span className="dup-meta">
-          {resolution.ignoruj && <Badge tone="unknown">{t('dup.ignored')}</Badge>}
-          {!resolution.domyslna && !resolution.ignoruj && <Badge tone="ok">{t('dup.custom')}</Badge>}
-          {resolution.notatka && (
-            <span className="faint" title={resolution.notatka}>
+          {resolution.ignored && <Badge tone="unknown">{t('dup.ignored')}</Badge>}
+          {!resolution.isDefault && !resolution.ignored && <Badge tone="ok">{t('dup.custom')}</Badge>}
+          {resolution.note && (
+            <span className="faint" title={resolution.note}>
               <Icon name="file" />
             </span>
           )}
@@ -46,7 +46,7 @@ export function GroupCard({ group, onOpen }: { group: Group; onOpen: (id: string
       </div>
 
       <div className="dup-members">
-        {group.czlonkowie.map((member, index) => (
+        {group.members.map((member, index) => (
           <Member key={member.id} member={member} resolution={resolution} separator={index > 0} />
         ))}
       </div>
@@ -57,16 +57,16 @@ export function GroupCard({ group, onOpen }: { group: Group; onOpen: (id: string
 function Member({ member, resolution, separator }: { member: Garment; resolution: Resolution; separator: boolean }) {
   const t = useTranslate();
 
-  const stays = resolution.zwyciezca === member.id && !resolution.ignoruj;
-  const rejected = !resolution.ignoruj && resolution.odrzucone.includes(member.id);
+  const stays = resolution.winner === member.id && !resolution.ignored;
+  const rejected = !resolution.ignored && resolution.rejected.includes(member.id);
 
   return (
     <>
       {separator && <div className="dup-eq">=</div>}
       <div className={`dup-member${stays ? ' stays' : ''}${rejected ? ' rejected' : ''}`}>
-        <div className="thumb">
-          {member.thumb ? (
-            <img src={`https://duble.data/thumb/${member.thumb}.png`} alt="" loading="lazy" />
+        <div className="thumbnail">
+          {member.thumbnail ? (
+            <img src={`https://duble.data/thumb/${member.thumbnail}.png`} alt="" loading="lazy" />
           ) : (
             <Icon name="cube" />
           )}
@@ -80,13 +80,13 @@ function Member({ member, resolution, separator }: { member: Garment; resolution
         <div className="dup-member-info">
           <div className="nm">
             {garmentName(member)}
-            <sub>{member.sufiks ?? ''}</sub>
+            <sub>{member.suffix ?? ''}</sub>
           </div>
-          <div className="src" title={member.zrodlo}>
-            {member.zrodlo}
+          <div className="src" title={member.source}>
+            {member.source}
           </div>
           <div className="pts">
-            <b>{Math.round(member.punkty)}</b> {t('dup.points')} ·{' '}
+            <b>{Math.round(member.score)}</b> {t('dup.points')} ·{' '}
             <Badge tone={member.gen9 ? 'gen9' : 'legacy'}>
               {t(member.gen9 ? 'sources.formatGen9' : 'sources.formatLegacy')}
             </Badge>

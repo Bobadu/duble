@@ -20,7 +20,7 @@ export function TextureTile({
   onHover?: (over: boolean) => void;
 }) {
 
-  const problems = [texture.mipy <= 1 && '!mip', texture.format === 'BC1' && texture.alfa > 0.02 && '!BC1α'].filter(Boolean);
+  const problems = [texture.mipmaps <= 1 && '!mip', texture.format === 'BC1' && texture.alpha > 0.02 && '!BC1α'].filter(Boolean);
 
   const classes = ['tex', paired ? 'has-pair' : '', highlighted ? 'para-hover' : ''].filter(Boolean).join(' ');
 
@@ -34,7 +34,7 @@ export function TextureTile({
       onMouseLeave={() => onHover?.(false)}
     >
       <div className="tex-img">
-        {texture.zdekodowana && texture.sha ? (
+        {texture.decoded && texture.sha ? (
           <img src={`https://duble.data/thumb/${texture.sha}.png`} alt="" loading="lazy" />
         ) : (
           <span className="tex-nopreview">{texture.format ?? '?'}</span>
@@ -45,7 +45,7 @@ export function TextureTile({
       <div className="tex-cap">
         <span className="tex-name">{variantLabel(texture)}</span>
         <span className="tex-meta">
-          {texture.w}×{texture.h} {texture.format ?? ''}
+          {texture.width}×{texture.height} {texture.format ?? ''}
           {problems.length > 0 && <span className="warn-txt"> {problems.join(' ')}</span>}
         </span>
       </div>

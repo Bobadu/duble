@@ -35,8 +35,8 @@ export function Sources() {
   });
 
   const announce = (added: AddedSources) => {
-    if (added.dodane.length) toast.ok(t('sources.added', { n: added.dodane.length }));
-    if (added.pominiete.length) toast.warn(t('sources.skipped', { n: added.pominiete.length }));
+    if (added.added.length) toast.ok(t('sources.added', { n: added.added.length }));
+    if (added.skipped.length) toast.warn(t('sources.skipped', { n: added.skipped.length }));
   };
 
   const add = async (call: Promise<AddedSources>) => {
@@ -47,10 +47,10 @@ export function Sources() {
     }
   };
 
-  const index = async (args: { ids?: string[]; wymus?: boolean } = {}) => {
+  const index = async (args: { ids?: string[]; force?: boolean } = {}) => {
     try {
       const started = await bridge.call('sources.index', args);
-      if (!started.uruchomiono) toast.warn(t('sources.empty'));
+      if (!started.started) toast.warn(t('sources.empty'));
     } catch (failure) {
       toast.warn(errorCodeOf(failure) === ErrorCode.Busy ? t('sources.busy') : messageOf(failure));
     }
@@ -62,25 +62,25 @@ export function Sources() {
     const dropped = sessionStorage.getItem(DROPPED_KEY);
     if (!dropped || !project) return;
     sessionStorage.removeItem(DROPPED_KEY);
-    void add(bridge.call('sources.add', { sciezki: JSON.parse(dropped) as string[] }));
+    void add(bridge.call('sources.add', { paths: JSON.parse(dropped) as string[] }));
   }, [project]);
 
   useBridgeEvent('files.dropped', (data) => {
-    void add(bridge.call('sources.add', { sciezki: data.sciezki }));
+    void add(bridge.call('sources.add', { paths: data.paths }));
   });
 
   // how indexing ended, said once
   useBridgeEvent('job', (finished) => {
-    if (finished.typ !== 'indeks') return;
-    if (finished.stan === 'koniec')
+    if (finished.kind !== 'index') return;
+    if (finished.state === 'done')
       toast.ok(
         t('sources.done', {
-          pozycje: formatNumber(project?.pozycje ?? 0),
-          tekstury: formatNumber(project?.tekstury ?? 0),
+          garments: formatNumber(project?.garments ?? 0),
+          textures: formatNumber(project?.textures ?? 0),
         }),
       );
-    if (finished.stan === 'anulowano') toast.warn(t('sources.cancelled'));
-    if (finished.stan === 'blad') toast.error(t('sources.failed', { blad: finished.blad ?? '' }), { duration: 8000 });
+    if (finished.state === 'cancelled') toast.warn(t('sources.cancelled'));
+    if (finished.state === 'failed') toast.error(t('sources.failed', { error: finished.error ?? '' }), { duration: 8000 });
   });
 
   if (!project) {
@@ -96,25 +96,25 @@ export function Sources() {
     );
   }
 
-  const list = sources.data?.zrodla ?? [];
-  const running = job?.typ === 'indeks' && (job.stan === 'start' || job.stan === 'postep') ? job : undefined;
+  const list = sources.data?.sources ?? [];
+  const running = job?.kind === 'index' && (job.state === 'start' || job.state === 'progress') ? job : undefined;
 
   const actionsFor = (source: Source): MenuItem[] => [
     {
-      label: source.zaindeksowano ? t('sources.reindex') : t('sources.index'),
+      label: source.indexedAt ? t('sources.reindex') : t('sources.index'),
       icon: 'play',
       run: () => void index({ ids: [source.id] }),
     },
-    { label: t('sources.forceAll'), icon: 'refresh', run: () => void index({ ids: [source.id], wymus: true }) },
+    { label: t('sources.forceAll'), icon: 'refresh', run: () => void index({ ids: [source.id], force: true }) },
     {
       label: t('sources.openFolder'),
       icon: 'external',
       run: () =>
         void bridge
-          .call('shell.showInExplorer', { sciezka: source.sciezka })
+          .call('shell.showInExplorer', { path: source.path })
           .catch((failure: unknown) => toast.warn(messageOf(failure))),
     },
-    ...(source.typ === 'rpf' || source.archiwa > 0
+    ...(source.kind === 'rpf' || source.inArchives > 0
       ? [{ label: t('unpack.menu'), icon: 'archive' as const, run: () => setUnpacking(source) }]
       : []),
     {
@@ -125,7 +125,7 @@ export function Sources() {
         void (async () => {
           const sure = await confirm({
             title: t('sources.remove'),
-            text: t('sources.confirmRemove', { nazwa: source.nazwa }),
+            text: t('sources.confirmRemove', { name: source.name }),
             confirmLabel: t('common.remove'),
             danger: true,
           });
@@ -159,7 +159,7 @@ export function Sources() {
           title={t('common.more')}
           items={[
             { label: t('sources.indexChanged'), icon: 'play', run: () => void index() },
-            { label: t('sources.forceAll'), icon: 'refresh', run: () => void index({ wymus: true }) },
+            { label: t('sources.forceAll'), icon: 'refresh', run: () => void index({ force: true }) },
           ]}
         />
       </Head>
@@ -177,11 +177,11 @@ export function Sources() {
               <SourceCard
                 key={source.id}
                 source={source}
-                job={running?.tekst === source.nazwa ? running : undefined}
+                job={running?.text === source.name ? running : undefined}
                 actions={actionsFor(source)}
                 onToggle={(enabled) => {
                   bridge
-                    .call('sources.toggle', { id: source.id, wlaczone: enabled })
+                    .call('sources.toggle', { id: source.id, enabled: enabled })
                     .catch((failure: unknown) => toast.error(messageOf(failure)));
                 }}
               />
@@ -196,7 +196,7 @@ export function Sources() {
       {detecting && (
         <DetectGamesDialog
           onClose={() => setDetecting(false)}
-          onAdd={(paths) => void add(bridge.call('sources.add', { sciezki: paths }))}
+          onAdd={(paths) => void add(bridge.call('sources.add', { paths: paths }))}
         />
       )}
       {unpacking && <UnpackDialog source={unpacking} onClose={() => setUnpacking(null)} />}

@@ -338,11 +338,12 @@ around became `LiveGroups`.
 
 Two things this document expected did not happen, and deliberately:
 
-- **The bridge vocabulary stays Polish for now.** The keys inside `result` and `data` are the *interface's*
-  names, and the interface is stage 3. Renaming them here would mean editing every JS file in the same breath,
-  which is precisely the change that made the project name vanish from the start screen once already. Instead
-  every payload now names its fields explicitly — `nazwa = source.Name`, never the shorthand `new {
-  source.Name }` — so stage 3 changes one side of a written-out mapping rather than hunting for implicit ones.
+- **The bridge vocabulary stayed Polish through this stage.** The keys inside `result` and `data` are the
+  *interface's* names, and the interface was stage 3. Renaming them here would have meant editing every JS
+  file in the same breath, which is precisely the change that made the project name vanish from the start
+  screen once already. Instead every payload names its fields explicitly — `nazwa = source.Name`, never the
+  shorthand `new { source.Name }` — so the rename, when it came in stage 3b below, changed one side of a
+  written-out mapping rather than hunting for implicit ones.
 - **Settings written by 1.0.0 are migrated.** `settings.json` is small but not disposable: without it an update
   would silently reset the language, the theme and the recent projects. The file is read under both sets of
   names and rewritten under the new ones. (The project file needs no such thing: its keys were already English
@@ -366,9 +367,26 @@ use site — the failure mode that removed the project name from the start scree
 test to catch. It found one on its first day: the calibration charts had been reading `od`, `do` and `kubelki`
 while the engine sent `from`, `to` and `buckets`, so every chart in 1.0.0 drew nothing.
 
-The bridge vocabulary is still the Polish one, now declared in that single file. Renaming it is a mechanical
-pass over the contract and the matching payloads in `Duble.App/Commands`, with the compiler pointing at every
-use on both sides; it is deliberately a step of its own rather than part of a rewrite.
+**Stage 3b — the bridge vocabulary.** *Done.* The keys inside `result` and `data` are English on both sides
+now: `contract.ts` and the payloads in `Duble.App/Commands` were renamed together, one mechanical pass with
+the TypeScript build pointing at every use on one side and the command tests at the other.
+
+The pass is worth recording because of what it left behind. Renaming two hand-written lists to match each
+other is exactly the change that goes wrong quietly, and it did: seven fields ended up renamed on one side
+only — `params` against `p` in a reason, `width` and `height` against `w` and `h` in a texture, `lodLevels`
+against `lods` in a quality breakdown, `ignored` against `ignore` in a resolution, `verdict` against `group`
+in the catalog grid, `geometryDistance` against `distGeo` in a pair — plus a job that ended in state `error`
+while the interface waited for `failed`, which is the toast announcing a failed apply never appearing. Nothing
+failed while they sat there: the C# tests asserted the C# names, the TypeScript build checked the TypeScript
+ones, and neither side has ever seen the other. They were found by reading the two files against each other.
+
+So the pass ends with `Duble.Tests/Contract.cs`, which does that reading from now on. It parses `contract.ts`
+as text and holds C# to it: the commands the application registers and the events it raises must be exactly
+those the contract declares, and every field of every response and event a test sees has to be one the
+contract names. `TestApp.Call` runs the last check on every command any test calls, so the ordinary command
+tests double as a check that the interface could read what they assert. It immediately turned up two more:
+`suspicious` and `closeRandom`, lists the engine had been sending with every calibration that the contract
+never mentioned.
 
 i18n is now split the way the writing is: the interface bundles its own dictionary, typed from `pl.json`, and
 reads the engine's over the bridge.

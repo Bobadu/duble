@@ -5,12 +5,8 @@
 // project name once vanished from the start screen because a C# property was renamed and no one on this side
 // could notice. Now a rename here fails the build at every use site.
 //
-// Two things to keep in mind while reading:
-//
-//  * The field names are the ones C# sends, and they are still Polish. Renaming them is one mechanical pass
-//    over this file and the matching payloads in Duble.App/Commands, with the compiler pointing at every use.
-//  * C# leaves nulls out of the JSON entirely (DefaultIgnoreCondition.WhenWritingNull), so an optional value
-//    is `field?: T` — absent — and never `T | null`.
+// C# leaves nulls out of the JSON entirely (DefaultIgnoreCondition.WhenWritingNull), so an optional value is
+// `field?: T` — absent — and never `T | null`.
 
 // ---------------------------------------------------------------- domain
 
@@ -19,147 +15,149 @@ export type Verdict = 'duplicate' | 'superset' | 'needsReview' | 'retexture';
 
 /** A reason for a verdict: a code and the numbers to put in the sentence, translated on this side. */
 export interface Reason {
-  kod: string;
-  p?: Record<string, string | number>;
+  code: string;
+  parameters?: Record<string, string | number>;
 }
 
 export interface ProjectSummary {
-  nazwa: string;
-  sciezka: string;
-  zrodla: number;
-  pozycje: number;
-  tekstury: number;
-  duplikaty?: number;
-  porownano?: string;
+  name: string;
+  path: string;
+  sources: number;
+  garments: number;
+  textures: number;
+  duplicates?: number;
+  compared?: string;
 }
 
 export interface RecentProject {
-  sciezka: string;
-  nazwa: string;
-  ostatnio: string;
-  istnieje: boolean;
+  path: string;
+  name: string;
+  lastOpened: string;
+  exists: boolean;
 }
 
 export interface Source {
   id: string;
-  nazwa: string;
-  sciezka: string;
-  typ: 'folder' | 'rpf' | string;
+  name: string;
+  path: string;
+  kind: 'folder' | 'rpf' | 'fivem' | string;
   format?: 'legacy' | 'gen9' | 'mixed';
-  wlaczone: boolean;
-  zaindeksowano?: string;
-  istnieje: boolean;
-  pozycje: number;
-  tekstury: number;
+  enabled: boolean;
+  indexedAt?: string;
+  exists: boolean;
+  garments: number;
+  textures: number;
   perSlot: Record<string, number>;
   bc7: number;
-  archiwa: number;
-  kosz?: string;
+  /** Garments whose model sits inside a .rpf and so cannot be moved. */
+  inArchives: number;
+  bin?: string;
 }
 
-/** The quality breakdown of one garment, out of 100 with the parts that made it. */
+/** The quality score of one garment, out of 100, with the parts that made it. */
 export interface QualityScore {
-  razem: number;
-  rozdz: number;
-  mipy: number;
-  warianty: number;
+  total: number;
+  resolution: number;
+  mipmaps: number;
+  variants: number;
   format: number;
   lod: number;
-  rozdzPx: number;
-  udzialMipow: number;
-  liczbaWariantow: number;
-  zlyFormat: number;
-  lody: number;
-  brakTekstur: boolean;
+  resolutionPx: number;
+  mipmapShare: number;
+  variantCount: number;
+  wrongFormat: number;
+  lodLevels: number;
+  noTextures: boolean;
 }
 
 export interface Texture {
   sha?: string;
-  plik: string;
-  nazwa?: string;
+  file: string;
+  name?: string;
   /** The colour variant: a, b, c… Worked out by the engine, not by a regular expression over the file name. */
-  litera?: string;
-  w: number;
-  h: number;
+  variant?: string;
+  width: number;
+  height: number;
   format?: string;
-  mipy: number;
-  alfa: number;
-  zdekodowana: boolean;
-  bajty: number;
+  mipmaps: number;
+  alpha: number;
+  decoded: boolean;
+  bytes: number;
 }
 
-/** A garment, as every screen that lists one reads it. `tekstury` and `rozpiska` only come with the details. */
+/** A garment, as every screen that lists one reads it. `textures` and `quality` only come with the details. */
 export interface Garment {
   id: string;
-  zrodloId?: string;
-  zrodlo: string;
-  kontener?: string;
-  typ: string;
-  numer: number;
-  sufiks?: string;
+  sourceId?: string;
+  source: string;
+  container?: string;
+  /** The R* component code: jbib / hair / feet…, or p_head for a prop. */
+  slot: string;
+  number: number;
+  suffix?: string;
   gen9: boolean;
-  props: boolean;
-  punkty: number;
-  thumb?: string;
-  tekstur: number;
-  wierzcholki: number;
-  trojkaty: number;
-  lody: number;
-  bajty: number;
-  wArchiwum: boolean;
-  rozpiska?: QualityScore;
-  sciezkaYdd?: string;
-  bajtyYdd?: number;
-  tekstury?: Texture[];
+  prop: boolean;
+  score: number;
+  thumbnail?: string;
+  textureCount: number;
+  vertices: number;
+  triangles: number;
+  lods: number;
+  bytes: number;
+  inArchive: boolean;
+  quality?: QualityScore;
+  modelPath?: string;
+  modelBytes?: number;
+  textures?: Texture[];
 }
 
 /** Who stays and who goes in a group: the engine's rule with the user's decision on top of it. */
 export interface Resolution {
-  zwyciezca?: string;
-  odrzucone: string[];
-  ignoruj: boolean;
-  domyslna: boolean;
-  notatka?: string;
+  winner?: string;
+  rejected: string[];
+  ignored: boolean;
+  isDefault: boolean;
+  note?: string;
 }
 
 export interface GarmentPair {
   a: string;
   b: string;
-  werdykt: Verdict;
-  powod?: Reason;
-  distGeo: number;
-  pokrycieA: number;
-  pokrycieB: number;
-  wspolnychTekstur: number;
+  verdict: Verdict;
+  reason?: Reason;
+  geometryDistance: number;
+  coverageA: number;
+  coverageB: number;
+  sharedTextures: number;
 }
 
 /** Which texture of A matches which of B, for the comparison screen to draw a line between them. */
 export interface TextureMatch {
   a: string;
   b: string;
-  pary: [string | null, string | null][];
+  pairs: [string | null, string | null][];
 }
 
 export interface Group {
   id: string;
-  werdykt: Verdict;
-  powod?: Reason;
-  zwyciezca?: string;
-  rozstrzygniecie: Resolution;
-  czlonkowie: Garment[];
-  pary?: GarmentPair[];
-  dopasowania?: TextureMatch[];
+  verdict: Verdict;
+  reason?: Reason;
+  winner?: string;
+  resolution: Resolution;
+  members: Garment[];
+  pairs?: GarmentPair[];
+  matches?: TextureMatch[];
 }
 
 /** A bucket of a filter: the value, its label where it needs one, and how many fall into it. */
 export interface SlotFilter {
-  typ: string;
+  slot: string;
   n: number;
 }
 
 export interface SourceFilter {
   id: string;
-  nazwa: string;
+  name: string;
   n: number;
 }
 
@@ -169,77 +167,77 @@ export interface SourceFilter {
  */
 export interface CatalogGarment {
   id: string;
-  zrodloId?: string;
-  zrodlo: string;
-  kontener?: string;
-  typ: string;
-  numer: number;
-  sufiks?: string;
+  sourceId?: string;
+  source: string;
+  container?: string;
+  slot: string;
+  number: number;
+  suffix?: string;
   gen9: boolean;
-  props: boolean;
-  thumb?: string;
-  tekstur: number;
-  bajty: number;
-  wArchiwum: boolean;
-  bezMipow: boolean;
-  bc1Alfa: boolean;
+  prop: boolean;
+  thumbnail?: string;
+  textureCount: number;
+  bytes: number;
+  inArchive: boolean;
+  noMipmaps: boolean;
+  bc1WithAlpha: boolean;
   bc7: boolean;
   /** The sharpest verdict of the live groups this garment is in, or absent when it is in none. */
-  grupa?: Verdict;
+  verdict?: Verdict;
 }
 
 /** Where a garment stands in one of the groups it belongs to, as the badge on its card reads it. */
-export type GarmentStanding = 'ignoruj' | 'zostaje' | 'odrzucona' | 'neutral';
+export type GarmentStanding = 'ignored' | 'stays' | 'rejected' | 'neutral';
 
 export interface GarmentGroupRef {
   id: string;
-  werdykt: Verdict;
-  ignoruj: boolean;
-  powod?: Reason;
-  inni: { id: string; nazwa: string; sufiks?: string; zrodlo: string }[];
-  stan: GarmentStanding;
+  verdict: Verdict;
+  ignored: boolean;
+  reason?: Reason;
+  others: { id: string; name: string; suffix?: string; source: string }[];
+  standing: GarmentStanding;
 }
 
 export interface PlannedGarment {
   id: string;
-  nazwa: string;
-  sufiks?: string;
-  zrodlo: string;
-  zrodloId: string;
-  kontener?: string;
-  kosz?: string;
-  thumb?: string;
-  pliki: number;
-  bajty: number;
-  wspoldzielone: number;
-  wArchiwum: number;
-  brakujace: number;
+  name: string;
+  suffix?: string;
+  source: string;
+  sourceId: string;
+  container?: string;
+  bin?: string;
+  thumbnail?: string;
+  files: number;
+  bytes: number;
+  shared: number;
+  inArchive: number;
+  missing: number;
 }
 
-/** What applying the decisions would do: the totals, and with `lista` every garment it would move. */
+/** What applying the decisions would do: the totals, and with `list` every garment it would move. */
 export interface ApplyPlan {
-  pozycje: number;
-  pliki: number;
-  bajty: number;
-  wArchiwum: number;
-  wspoldzielone: number;
-  brakujace: number;
-  brakujaceZrodla: string[];
-  kosz?: string;
-  kosze: { kosz: string; pliki: number; bajty: number }[];
-  lista?: PlannedGarment[];
+  garments: number;
+  files: number;
+  bytes: number;
+  inArchive: number;
+  shared: number;
+  missing: number;
+  missingSources: string[];
+  bin?: string;
+  bins: { bin: string; files: number; bytes: number }[];
+  list?: PlannedGarment[];
 }
 
 export interface GroupsSummary {
   /** Absent until something has been compared — which is not the same as "compared, found nothing". */
-  grup?: number;
-  duplikat: number;
-  nadzbior: number;
-  wglad: number;
-  przemalowanie: number;
-  zignorowane: number;
-  porownano?: string;
-  doOdrzucenia: ApplyPlan;
+  total?: number;
+  duplicate: number;
+  superset: number;
+  needsReview: number;
+  retexture: number;
+  ignored: number;
+  compared?: string;
+  toReject: ApplyPlan;
 }
 
 export interface Thresholds {
@@ -256,21 +254,22 @@ export interface Thresholds {
 }
 
 export interface CacheSize {
-  pliki: number;
-  bajty: number;
+  files: number;
+  bytes: number;
 }
 
 export interface ProjectSettingsState {
-  kosz?: string;
-  progi: Thresholds;
-  progiDomyslne: Thresholds;
-  progiZmienione: boolean;
+  bin?: string;
+  thresholds: Thresholds;
+  defaultThresholds: Thresholds;
+  thresholdsChanged: boolean;
+  /** By part of the cache: thumbnails, textures, meshes, history, and total. */
   cache: Record<string, CacheSize>;
-  folderCache: string;
-  zrodla: number;
-  pozycje: number;
+  cacheFolder: string;
+  sources: number;
+  garments: number;
   /** true = a fresh comparison started, false = the runner was busy, absent = it was not needed. */
-  porownanie?: boolean;
+  comparing?: boolean;
 }
 
 /**
@@ -315,89 +314,108 @@ export interface CalibrationReport {
   /** The thresholds in force while it ran, so the charts can mark them. */
   usedThresholds?: Thresholds;
   proposal?: Thresholds;
+
+  /** Pairs worth a person's eye. The screen shows how many there are; the lists are for the report. */
+  suspicious: SuspiciousPair[];
+  closeRandom: CloseRandomPair[];
+}
+
+/** Two garments whose shape histograms nearly agree although their meshes do not. */
+export interface SuspiciousPair {
+  d: number;
+  bbox: number;
+  a: string;
+  b: string;
+  triA: number;
+  triB: number;
+}
+
+/** Two textures from different garments that landed closer together than random pairs should. */
+export interface CloseRandomPair {
+  pHash: number;
+  color: number;
+  a: string;
+  b: string;
 }
 
 export interface MovedFile {
-  z: string;
-  do: string;
-  bajty: number;
-  cofniety: boolean;
-  jest: boolean;
+  from: string;
+  to: string;
+  bytes: number;
+  undone: boolean;
+  /** Whether the file is where the log says it was moved to, checked as the entry is read. */
+  exists: boolean;
 }
 
 export interface HistoryEntry {
-  plik: string;
-  nazwa: string;
-  kiedy?: string;
-  opis?: string;
-  pozycje: number;
-  pliki: number;
-  bajty: number;
-  kosze: string[];
-  wspoldzielone: number;
-  wArchiwum: number;
-  brakujace: number;
-  cofnieto?: string;
-  czesciowo: boolean;
-  moznaCofnac: boolean;
-  przerwano: boolean;
-  blad?: string;
-  lista?: {
+  file: string;
+  name: string;
+  when?: string;
+  description?: string;
+  garments: number;
+  files: number;
+  bytes: number;
+  bins: string[];
+  shared: number;
+  inArchive: number;
+  missing: number;
+  undoneAt?: string;
+  partlyUndone: boolean;
+  canUndo: boolean;
+  aborted: boolean;
+  error?: string;
+  list?: {
     id: string;
-    nazwa: string;
-    zrodlo: string;
-    zrodloId: string;
-    kosz?: string;
-    pliki: MovedFile[];
-    moznaCofnac: boolean;
+    name: string;
+    source: string;
+    sourceId: string;
+    bin?: string;
+    files: MovedFile[];
+    canUndo: boolean;
   }[];
 }
 
 /** A log that will not parse. It is still listed: the files it describes are sitting in a bin folder. */
 export interface DamagedHistoryEntry {
-  plik: string;
-  nazwa: string;
-  blad: string;
-  uszkodzony: true;
+  file: string;
+  name: string;
+  error: string;
+  damaged: true;
 }
 
 export interface DetectedGame {
-  gra: 'enhanced' | 'legacy';
-  sciezka: string;
-  propozycje: { nazwa: string; sciezka: string; typ: string }[];
+  edition: 'enhanced' | 'legacy';
+  path: string;
+  folders: { name: string; path: string; kind: string }[];
 }
 
 export interface AppInfo {
-  nazwa: string;
+  name: string;
   by: string;
-  wersja: string;
+  version: string;
   dev: boolean;
-  strona: string;
-  repo: string;
-  licencja: string;
-  sciezki: { ustawienia: string; webview2: string; projekty: string; exe?: string };
+  website: string;
+  repository: string;
+  licence: string;
+  paths: { settings: string; webView2: string; projects: string; executable?: string };
 }
 
 export interface AppSettings {
-  jezyk: string;
-  jezykUstawiony?: string;
-  motyw: 'system' | 'dark' | 'light';
-  /**
-   * Careful: these are the C# RecentProject objects serialised as they are, so their fields are the English
-   * camelCase ones — unlike project.recent, which maps them to the interface's names by hand. Writing both
-   * down is how the difference stops being a surprise.
-   */
-  ostatnie: { path: string; name: string; lastOpened: string }[];
+  language: string;
+  /** The language actually chosen, absent when following Windows. */
+  chosenLanguage?: string;
+  theme: 'system' | 'dark' | 'light';
+  recent: RecentProject[];
 }
 
 export interface AddedSources {
-  dodane: Source[];
-  pominiete: string[];
+  added: Source[];
+  skipped: string[];
 }
 
 /** Started, or not started because the one background job at a time was taken. */
 export interface Started {
-  uruchomiono: boolean;
+  started: boolean;
 }
 
 // ---------------------------------------------------------------- commands
@@ -409,81 +427,81 @@ export interface Commands {
   'app.info': { args: null; result: AppInfo };
   'ui.ready': { args: null; result: unknown };
   'settings.get': { args: null; result: AppSettings };
-  'settings.set': { args: { jezyk?: string; motyw?: string }; result: AppSettings };
+  'settings.set': { args: { language?: string; theme?: string }; result: AppSettings };
 
   'window.minimize': { args: null; result: unknown };
-  'window.maximize': { args: null; result: { maks: boolean } };
+  'window.maximize': { args: null; result: { maximized: boolean } };
   'window.close': { args: null; result: unknown };
-  'window.state': { args: null; result: { maks: boolean } };
+  'window.state': { args: null; result: { maximized: boolean } };
   'window.dragStart': { args: null; result: unknown };
 
-  'shell.openFolder': { args: { sciezka: string }; result: unknown };
-  'shell.showInExplorer': { args: { sciezka: string }; result: unknown };
+  'shell.openFolder': { args: { path: string }; result: unknown };
+  'shell.showInExplorer': { args: { path: string }; result: unknown };
   'shell.openUrl': { args: { url: string }; result: unknown };
 
-  'dialogs.pickFolder': { args: { tytul?: string; start?: string }; result: { sciezka?: string } };
-  'dialogs.pickFiles': { args: { tytul?: string; filtr?: string; wiele?: boolean; start?: string }; result: { sciezki: string[] } };
-  'dialogs.saveFile': { args: { tytul?: string; filtr?: string; nazwa?: string; start?: string }; result: { sciezka?: string } };
+  'dialogs.pickFolder': { args: { title?: string; start?: string }; result: { path?: string } };
+  'dialogs.pickFiles': { args: { title?: string; filter?: string; multiple?: boolean; start?: string }; result: { paths: string[] } };
+  'dialogs.saveFile': { args: { title?: string; filter?: string; name?: string; start?: string }; result: { path?: string } };
 
-  'project.recent': { args: null; result: { ostatnie: RecentProject[]; folderDomyslny: string } };
-  'project.get': { args: null; result: { projekt?: ProjectSummary } };
-  'project.new': { args: { nazwa: string; folder?: string }; result: { projekt?: ProjectSummary } };
-  'project.open': { args: { sciezka: string }; result: { projekt?: ProjectSummary } };
-  'project.pickOpen': { args: null; result: { projekt?: ProjectSummary } };
-  'project.pickFolder': { args: null; result: { sciezka?: string } };
+  'project.recent': { args: null; result: { recent: RecentProject[]; defaultFolder: string } };
+  'project.get': { args: null; result: { project?: ProjectSummary } };
+  'project.new': { args: { name: string; folder?: string }; result: { project?: ProjectSummary } };
+  'project.open': { args: { path: string }; result: { project?: ProjectSummary } };
+  'project.pickOpen': { args: null; result: { project?: ProjectSummary } };
+  'project.pickFolder': { args: null; result: { path?: string } };
   'project.save': { args: null; result: unknown };
   'project.close': { args: null; result: unknown };
-  'project.forget': { args: { sciezka: string }; result: unknown };
+  'project.forget': { args: { path: string }; result: unknown };
 
-  'sources.list': { args: null; result: { zrodla: Source[] } };
-  'sources.add': { args: { sciezki: string[] }; result: AddedSources };
+  'sources.list': { args: null; result: { sources: Source[] } };
+  'sources.add': { args: { paths: string[] }; result: AddedSources };
   'sources.pickFolder': { args: null; result: AddedSources };
   'sources.pickRpf': { args: null; result: AddedSources };
   'sources.remove': { args: { id: string }; result: unknown };
-  'sources.toggle': { args: { id: string; wlaczone?: boolean }; result: { wlaczone: boolean } };
+  'sources.toggle': { args: { id: string; enabled?: boolean }; result: { enabled: boolean } };
   'sources.cancel': { args: null; result: unknown };
-  'sources.detectGames': { args: null; result: { gry: DetectedGame[] } };
-  'sources.index': { args: { ids?: string[]; wymus?: boolean }; result: Started & { zrodla?: string[] } };
-  'sources.unpack': { args: { id: string; folder: string; dodajZrodlo?: boolean }; result: Started & { folder: string } };
+  'sources.detectGames': { args: null; result: { games: DetectedGame[] } };
+  'sources.index': { args: { ids?: string[]; force?: boolean }; result: Started & { sources?: string[] } };
+  'sources.unpack': { args: { id: string; folder: string; addAsSource?: boolean }; result: Started & { folder: string } };
 
   'compare.run': { args: null; result: Started };
   'groups.list': {
-    args: { werdykty?: Verdict[]; sloty?: string[]; zrodla?: string[]; szukaj?: string; zignorowane?: boolean };
-    result: { podsumowanie: GroupsSummary; filtry: { sloty: SlotFilter[]; zrodla: SourceFilter[] }; grupy: Group[] };
+    args: { verdicts?: Verdict[]; slots?: string[]; sources?: string[]; search?: string; ignored?: boolean };
+    result: { summary: GroupsSummary; filters: { slots: SlotFilter[]; sources: SourceFilter[] }; groups: Group[] };
   };
-  'groups.get': { args: { id: string }; result: { grupa: Group } };
+  'groups.get': { args: { id: string }; result: { group: Group } };
   'groups.decide': {
-    args: { id: string; zwyciezca?: string; odrzucone?: string[]; ignoruj?: boolean; notatka?: string };
-    result: { rozstrzygniecie: Resolution };
+    args: { id: string; winner?: string; rejected?: string[]; ignored?: boolean; note?: string };
+    result: { resolution: Resolution };
   };
-  'groups.reset': { args: { id: string }; result: { rozstrzygniecie: Resolution } };
+  'groups.reset': { args: { id: string }; result: { resolution: Resolution } };
 
   'catalog.list': {
-    args: { zrodla?: string[]; sloty?: string[]; formaty?: string[]; problemy?: boolean; wGrupie?: boolean; szukaj?: string };
+    args: { sources?: string[]; slots?: string[]; formats?: string[]; problems?: boolean; inGroup?: boolean; search?: string };
     result: {
-      razem: number;
-      tekstury: number;
-      pokazane: number;
-      filtry: { sloty: SlotFilter[]; zrodla: SourceFilter[]; formaty: { legacy: number; gen9: number } };
-      pozycje: CatalogGarment[];
+      total: number;
+      textures: number;
+      shown: number;
+      filters: { slots: SlotFilter[]; sources: SourceFilter[]; formats: { legacy: number; gen9: number } };
+      garments: CatalogGarment[];
     };
   };
-  'catalog.item': { args: { id: string }; result: { pozycja: Garment & { zrodloSciezka?: string }; grupy: GarmentGroupRef[] } };
+  'catalog.item': { args: { id: string }; result: { garment: Garment & { sourcePath?: string }; groups: GarmentGroupRef[] } };
 
-  'apply.preview': { args: { kosz?: string | null; ustawKosz?: boolean } | null; result: ApplyPlan };
-  'apply.run': { args: { kosz?: string | null; ustawKosz?: boolean } | null; result: Started & { plan: ApplyPlan } };
+  'apply.preview': { args: { bin?: string | null; setBin?: boolean } | null; result: ApplyPlan };
+  'apply.run': { args: { bin?: string | null; setBin?: boolean } | null; result: Started & { plan: ApplyPlan } };
 
-  'history.list': { args: null; result: { wpisy: (HistoryEntry | DamagedHistoryEntry)[] } };
-  'history.get': { args: { plik: string }; result: { wpis: HistoryEntry } };
-  'history.undo': { args: { plik: string; pozycje?: string[] }; result: Started & { wrocilo?: number; pominieto?: number } };
+  'history.list': { args: null; result: { entries: (HistoryEntry | DamagedHistoryEntry)[] } };
+  'history.get': { args: { file: string }; result: { entry: HistoryEntry } };
+  'history.undo': { args: { file: string; garments?: string[] }; result: Started & { restored?: number; skipped?: number } };
 
-  'report.exportHtml': { args: { sciezka?: string }; result: (Started & { plik: string }) | { anulowano: true } };
-  'report.exportCsv': { args: { sciezka?: string }; result: { plik: string } | { anulowano: true } };
+  'report.exportHtml': { args: { path?: string }; result: (Started & { file: string }) | { cancelled: true } };
+  'report.exportCsv': { args: { path?: string }; result: { file: string } | { cancelled: true } };
 
   'project.settings.get': { args: null; result: ProjectSettingsState };
-  'project.settings.set': { args: { kosz?: string | null; progi?: Partial<Thresholds> }; result: ProjectSettingsState };
-  'project.settings.resetProgi': { args: null; result: ProjectSettingsState };
-  'cache.clear': { args: { tex?: boolean; mesh?: boolean }; result: { usunieto: number; bajty: number; cache: Record<string, CacheSize> } };
+  'project.settings.set': { args: { bin?: string | null; thresholds?: Partial<Thresholds> }; result: ProjectSettingsState };
+  'project.settings.resetThresholds': { args: null; result: ProjectSettingsState };
+  'cache.clear': { args: { textures?: boolean; meshes?: boolean }; result: { deleted: number; bytes: number; cache: Record<string, CacheSize> } };
   'calibrate.run': { args: null; result: Started };
 }
 
@@ -493,49 +511,55 @@ export type CommandResult<K extends CommandName> = Commands[K]['result'];
 
 // ---------------------------------------------------------------- events
 
-/** A long job, reported while it runs. The interface only shows the one it is waiting for, hence `typ`. */
+/** The kinds of long job; a screen shows progress only for the one it is waiting for. */
+export type JobKind = 'index' | 'compare' | 'apply' | 'undo' | 'unpack' | 'report' | 'calibration';
+
+export type JobState = 'start' | 'progress' | 'done' | 'cancelled' | 'failed';
+
+/** A long job, reported while it runs. */
 export interface JobEvent {
-  typ: 'indeks' | 'porownaj' | 'zastosuj' | 'cofnij' | 'rozpakuj' | 'raport' | 'kalibracja';
-  opis: string;
-  stan: 'start' | 'postep' | 'koniec' | 'anulowano' | 'blad';
-  etap?: string;
-  zrobione?: number;
-  wszystkie?: number;
-  procent?: number;
-  tekst?: string;
-  blad?: string;
+  kind: JobKind;
+  description: string;
+  state: JobState;
+  /** Which part of the work: models, textures, compare… The interface looks up `stage.<key>`. */
+  stage?: string;
+  done?: number;
+  total?: number;
+  percent?: number;
+  /** What is being worked on right now — the name of a source, usually. */
+  text?: string;
+  error?: string;
 }
 
 /** Everything the host pushes without being asked. */
 export interface Events {
   job: JobEvent;
-  'project.opened': { projekt?: ProjectSummary };
+  'project.opened': { project?: ProjectSummary };
   'project.closed': Record<string, never>;
-  'project.changed': { projekt?: ProjectSummary };
+  'project.changed': { project?: ProjectSummary };
   'groups.changed': { id: string };
   'sources.changed': { id?: string };
-  'compare.done': { podsumowanie?: ProjectSummary };
+  'compare.done': { summary?: ProjectSummary };
   'apply.done': {
-    plik: string;
-    przeniesione: number;
-    pozycje: number;
-    bajty: number;
-    wspoldzielone: number;
-    wArchiwum: number;
-    brakujace: number;
-    kosze: string[];
-    przerwano: boolean;
-    blad?: string;
+    file: string;
+    moved: number;
+    garments: number;
+    bytes: number;
+    shared: number;
+    inArchive: number;
+    missing: number;
+    bins: string[];
+    aborted: boolean;
+    error?: string;
   };
-  'undo.done': { plik: string; wrocilo: number; pominieto: number; cofnieto?: string };
-  'history.changed': { plik: string };
-  'unpack.done': { id: string; folder: string; pliki: number; archiwa: number; bajty: number; bledy: string[]; dodano?: string };
-  'report.done': { plik: string; typ: 'html' | 'csv' };
-  'calibrate.done': { wynik: CalibrationReport };
-  'settings.changed': { zrodlo: 'project' | 'cache' };
-  'window.state': { maks: boolean };
-  'files.dropped': { sciezki: string[] };
-  nav: { widok: string };
+  'undo.done': { file: string; restored: number; skipped: number; undoneAt?: string };
+  'history.changed': { file: string };
+  'unpack.done': { id: string; folder: string; files: number; archives: number; bytes: number; errors: string[]; added?: string };
+  'report.done': { file: string; kind: 'html' | 'csv' };
+  'calibrate.done': { report: CalibrationReport };
+  'settings.changed': { source: 'project' | 'cache' };
+  'window.state': { maximized: boolean };
+  'files.dropped': { paths: string[] };
 }
 
 export type EventName = keyof Events;

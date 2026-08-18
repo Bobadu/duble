@@ -39,7 +39,7 @@ public class SessionAssetsTests
         session.Compare(default, null);
         Assert.NotNull(session.Comparison);
         Assert.True(File.Exists(session.Project.ComparisonFile));
-        Assert.Contains("\"duplikaty\":", JsonSerializer.Serialize(session.Summary(), Bridge.Json));
+        Assert.Contains("\"duplicates\":", JsonSerializer.Serialize(session.Summary(), Bridge.Json));
         session.Save();
 
         // a texture: decoded from the game file on the first ask, from the cache afterwards

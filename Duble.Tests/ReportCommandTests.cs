@@ -19,7 +19,7 @@ public class ReportCommandTests
         SampleData.SevenGarmentsInThreeSources(app.Session, app.Temp);
 
         // nothing has been compared yet
-        var tooEarly = await app.Failing("report.exportCsv", "{\"sciezka\":\"x\"}");
+        var tooEarly = await app.Failing("report.exportCsv", "{\"path\":\"x\"}");
         Assert.Equal(BridgeErrors.NotFound, tooEarly.GetProperty("code").GetString());
 
         app.Session.Compare(default, null);
@@ -27,10 +27,10 @@ public class ReportCommandTests
 
         // one decision to carry into both files: the group of three is not a duplicate
         var boots = app.Groups.All().First(live => live.Group.Members.Count == 3).Group;
-        await app.Call("groups.decide", $"{{\"id\":\"{boots.Id}\",\"ignoruj\":true,\"notatka\":\"other boots\"}}");
+        await app.Call("groups.decide", $"{{\"id\":\"{boots.Id}\",\"ignored\":true,\"note\":\"other boots\"}}");
 
         var csvFile = Path.Combine(app.Temp, "out", "groups.csv");
-        await app.Call("report.exportCsv", $"{{\"sciezka\":{JsonSerializer.Serialize(csvFile)}}}");
+        await app.Call("report.exportCsv", $"{{\"path\":{JsonSerializer.Serialize(csvFile)}}}");
 
         Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, File.ReadAllBytes(csvFile).Take(3).ToArray());   // BOM, for Excel
         var csv = File.ReadAllText(csvFile);                                                            // which ReadAllText drops
@@ -39,8 +39,8 @@ public class ReportCommandTests
         Assert.True(app.Saw("report.done"));
 
         var htmlFile = Path.Combine(app.Temp, "out", "report.html");
-        var started = await app.Call("report.exportHtml", $"{{\"sciezka\":{JsonSerializer.Serialize(htmlFile)}}}");
-        Assert.True(started.GetProperty("uruchomiono").GetBoolean());
+        var started = await app.Call("report.exportHtml", $"{{\"path\":{JsonSerializer.Serialize(htmlFile)}}}");
+        Assert.True(started.GetProperty("started").GetBoolean());
         await app.WaitFor("report.done");
 
         var html = File.ReadAllText(htmlFile);
@@ -62,6 +62,6 @@ public class ReportCommandTests
 
         var answer = await app.Call("report.exportCsv", "{}");
 
-        Assert.True(answer.GetProperty("anulowano").GetBoolean());
+        Assert.True(answer.GetProperty("cancelled").GetBoolean());
     }
 }

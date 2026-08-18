@@ -6,7 +6,7 @@ export type CatalogFilters = Required<NonNullable<CommandArgs<'catalog.list'>>>;
 
 const STORAGE_KEY = 'catalog.filters';
 
-const NONE: CatalogFilters = { zrodla: [], sloty: [], formaty: [], problemy: false, wGrupie: false, szukaj: '' };
+const NONE: CatalogFilters = { sources: [], slots: [], formats: [], problems: false, inGroup: false, search: '' };
 
 function read(): CatalogFilters {
   try {
@@ -41,12 +41,12 @@ export function useCatalogFilters(): CatalogFiltersState {
   const clear = useCallback(() => store(NONE), [store]);
 
   const any =
-    filters.zrodla.length > 0 ||
-    filters.sloty.length > 0 ||
-    filters.formaty.length > 0 ||
-    filters.problemy ||
-    filters.wGrupie ||
-    filters.szukaj !== '';
+    filters.sources.length > 0 ||
+    filters.slots.length > 0 ||
+    filters.formats.length > 0 ||
+    filters.problems ||
+    filters.inGroup ||
+    filters.search !== '';
 
   return { filters, set, clear, any };
 }

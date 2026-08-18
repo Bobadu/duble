@@ -17,12 +17,12 @@ export function Start() {
   const [creating, setCreating] = useState(false);
 
   const recent = useCommand('project.recent', null, { reloadOn: ['project.opened', 'project.closed'] });
-  const projects = recent.data?.ostatnie ?? [];
+  const projects = recent.data?.recent ?? [];
 
   const open = async () => {
     try {
       const answer = await bridge.call('project.pickOpen');
-      if (answer.projekt) navigate('sources');
+      if (answer.project) navigate('sources');
     } catch (failure) {
       toast.error(messageOf(failure));
     }
@@ -64,7 +64,7 @@ export function Start() {
         ) : (
           <div className="grid-cards">
             {projects.map((project) => (
-              <ProjectCard key={project.sciezka} project={project} onForgotten={recent.reload} />
+              <ProjectCard key={project.path} project={project} onForgotten={recent.reload} />
             ))}
           </div>
         )}
@@ -81,9 +81,9 @@ function ProjectCard({ project, onForgotten }: { project: RecentProject; onForgo
   const toast = useToast();
 
   const open = async () => {
-    if (!project.istnieje) return;
+    if (!project.exists) return;
     try {
-      await bridge.call('project.open', { sciezka: project.sciezka });
+      await bridge.call('project.open', { path: project.path });
       navigate('sources');
     } catch (failure) {
       toast.error(messageOf(failure));
@@ -92,7 +92,7 @@ function ProjectCard({ project, onForgotten }: { project: RecentProject; onForgo
 
   return (
     <div
-      className={project.istnieje ? 'card proj-card clickable' : 'card proj-card clickable missing'}
+      className={project.exists ? 'card proj-card clickable' : 'card proj-card clickable missing'}
       tabIndex={0}
       role="button"
       onClick={open}
@@ -102,17 +102,17 @@ function ProjectCard({ project, onForgotten }: { project: RecentProject; onForgo
     >
       <div className="card-body">
         <div className="ico-box">
-          <Icon name={project.istnieje ? 'file' : 'warn'} />
+          <Icon name={project.exists ? 'file' : 'warn'} />
         </div>
 
         <div className="info">
-          <div className="name">{project.nazwa}</div>
-          <div className="path mono" title={project.sciezka}>
-            {shortenPath(folderOf(project.sciezka), 34)}
+          <div className="name">{project.name}</div>
+          <div className="path mono" title={project.path}>
+            {shortenPath(folderOf(project.path), 34)}
           </div>
           <div className="meta">
             <Icon name="history" />{' '}
-            {project.istnieje ? t('start.lastOpened', { d: formatDate(project.ostatnio) }) : t('start.missing')}
+            {project.exists ? t('start.lastOpened', { d: formatDate(project.lastOpened) }) : t('start.missing')}
           </div>
         </div>
 
@@ -123,14 +123,14 @@ function ProjectCard({ project, onForgotten }: { project: RecentProject; onForgo
               {
                 label: t('sources.openFolder'),
                 icon: 'external',
-                run: () => void bridge.call('shell.showInExplorer', { sciezka: project.sciezka }).catch(() => undefined),
+                run: () => void bridge.call('shell.showInExplorer', { path: project.path }).catch(() => undefined),
               },
               {
                 label: t('start.remove'),
                 icon: 'trash',
                 danger: true,
                 run: () => {
-                  void bridge.call('project.forget', { sciezka: project.sciezka }).then(onForgotten);
+                  void bridge.call('project.forget', { path: project.path }).then(onForgotten);
                 },
               },
             ]}
