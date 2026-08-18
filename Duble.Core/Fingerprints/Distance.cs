@@ -39,15 +39,30 @@ public static class Distance
         return s;
     }
 
-    /// <summary>Srednia roznica sygnatur koloru w kanale (0..255).</summary>
+    /// <summary>
+    /// Mean per-channel difference between two colour signatures, 0..255. Like the others, anything it cannot
+    /// compare — a missing signature, a mismatched length, or base64 a hand-edited catalog has broken — comes
+    /// back as the largest possible distance rather than as an exception.
+    /// </summary>
     public static double Color(string? a, string? b)
     {
         if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return double.MaxValue;
-        var x = Convert.FromBase64String(a);
-        var y = Convert.FromBase64String(b);
-        if (x.Length != y.Length) return double.MaxValue;
-        double s = 0;
-        for (int i = 0; i < x.Length; i++) s += Math.Abs(x[i] - y[i]);
-        return s / x.Length;
+
+        Span<byte> x = stackalloc byte[SignatureBytes];
+        Span<byte> y = stackalloc byte[SignatureBytes];
+        if (!Convert.TryFromBase64String(a, x, out int lengthA)) return double.MaxValue;
+        if (!Convert.TryFromBase64String(b, y, out int lengthB)) return double.MaxValue;
+        if (lengthA != lengthB || lengthA == 0) return double.MaxValue;
+
+        double sum = 0;
+        for (int i = 0; i < lengthA; i++) sum += Math.Abs(x[i] - y[i]);
+        return sum / lengthA;
     }
+
+    /// <summary>
+    /// Room for a colour signature: an 8x8 RGB grid is 192 bytes. Decoding into a buffer of this size on the
+    /// stack keeps the comparison free of allocations — it runs this over every candidate pair of textures, and
+    /// the calibrator runs it 400 000 times.
+    /// </summary>
+    const int SignatureBytes = 256;
 }

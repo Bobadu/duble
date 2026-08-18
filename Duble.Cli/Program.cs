@@ -355,14 +355,15 @@ switch (cmd)
             // Sluzy do sprawdzenia, czy kolejnosc kanalow (DDSIO oddaje BGRA) jest dobra —
             // przy pomylce skora wychodzi niebieska, a tego na liczbach nie widac.
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble podglad <plik.ytd> [--out plik.png]"); return 2; }
+            const int bok = 256;
             byte[] rgb = null;
             var odcisk = odciskiTekstur.Compute(File.ReadAllBytes(argv[0]),
-                new ThumbnailRequest(256, (px, w, h) => rgb = Thumbnail.FromPixels(px, w, h, 256)));
+                (px, w, h) => rgb = Thumbnail.FromPixels(px, w, h, bok));
             if (odcisk.IsFailure) { Console.Error.WriteLine("[blad] " + odcisk.Error); return 1; }
             var odc = odcisk.Value;
             if (rgb == null) { Console.Error.WriteLine("[blad] nie udalo sie zdekodowac (BC7?)"); return 1; }
             var png = wyjscie ?? Path.ChangeExtension(argv[0], ".png");
-            File.WriteAllBytes(png, PngWriter.Rgb(rgb, 256, 256));
+            File.WriteAllBytes(png, PngWriter.Rgb(rgb, bok, bok));
             Log($"{odc.Name}  {odc.Width}x{odc.Height} {odc.Format} mipy={odc.MipLevels} alfa={odc.AlphaShare:P1}");
             Log($"PNG: {png}");
             return 0;

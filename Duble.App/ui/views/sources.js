@@ -100,8 +100,8 @@ async function odswiez() {
 
 function karta(s, wToku, ctx) {
   const { t, icon, bridge } = ctx;
-  const fmtKlasa = { gen9: 'gen9', legacy: 'legacy', mieszany: 'mixed' }[s.format] || 'unknown';
-  const fmtTekst = { gen9: t('sources.formatGen9'), legacy: t('sources.formatLegacy'), mieszany: t('sources.formatMixed') }[s.format] || t('sources.formatUnknown');
+  const fmtKlasa = { gen9: 'gen9', legacy: 'legacy', mixed: 'mixed' }[s.format] || 'unknown';
+  const fmtTekst = { gen9: t('sources.formatGen9'), legacy: t('sources.formatLegacy'), mixed: t('sources.formatMixed') }[s.format] || t('sources.formatUnknown');
   const typTekst = { folder: t('sources.typeFolder'), rpf: t('sources.typeRpf'), fivem: t('sources.typeFivem') }[s.typ] || s.typ;
   const sloty = Object.entries(s.perSlot || {}).sort((a, b) => SLOTY_KOLEJNOSC.indexOf(a[0]) - SLOTY_KOLEJNOSC.indexOf(b[0]));
   const pokaz = sloty.slice(0, 8); const reszta = sloty.length - pokaz.length;

@@ -8,11 +8,6 @@ using Duble.Core.Results;
 
 namespace Duble.Core.Fingerprints;
 
-/// <summary>What the caller wants doing with the decoded pixels besides fingerprinting them.</summary>
-/// <param name="Side">Side of the thumbnail in pixels.</param>
-/// <param name="OnPixels">Called with the decoded BGRA pixels, so a thumbnail can be written without decoding twice.</param>
-public sealed record ThumbnailRequest(int Side, Action<byte[], int, int> OnPixels);
-
 /// <summary>Turns a texture file into its fingerprint: perceptual hash, colour signature, alpha share.</summary>
 public interface ITextureFingerprinter
 {
@@ -20,8 +15,12 @@ public interface ITextureFingerprinter
     /// The fingerprint of the first texture in a .ytd. A file that cannot be read at all comes back as
     /// texture.undecodable; a texture whose pixels will not decode gives a fingerprint with IsDecoded false,
     /// which the comparison knows how to treat.
+    ///
+    /// <paramref name="onPixels" /> is handed the decoded BGRA pixels with their width and height, so a caller
+    /// that also wants a thumbnail gets one without decoding the same texture a second time. It is not called
+    /// for a texture that would not decode.
     /// </summary>
-    Result<TextureInfo> Compute(byte[] textureBytes, ThumbnailRequest? thumbnail = null);
+    Result<TextureInfo> Compute(byte[] textureBytes, Action<byte[], int, int>? onPixels = null);
 }
 
 /// <inheritdoc />
@@ -29,7 +28,7 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
 {
     public TextureFingerprinter(CodeWalkerRuntime runtime) => _ = runtime;
 
-    public Result<TextureInfo> Compute(byte[] textureBytes, ThumbnailRequest? thumbnail = null)
+    public Result<TextureInfo> Compute(byte[] textureBytes, Action<byte[], int, int>? onPixels = null)
     {
         Texture? texture;
         try
@@ -46,9 +45,7 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
         if (texture == null)
             return Result<TextureInfo>.Fail(ErrorCodes.TextureUndecodable, "no texture in the dictionary");
 
-        var info = new TextureInfo();
-        Fill(texture, info, thumbnail?.Side ?? 128, thumbnail?.OnPixels);
-        return Result<TextureInfo>.Ok(info);
+        return Result<TextureInfo>.Ok(Describe(texture, onPixels));
     }
 
     /// <summary>Side of the greyscale image the DCT runs on.</summary>
@@ -90,20 +87,23 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
     }
 
     /// <summary>
-    /// Decodes the texture and fills in the fingerprint: perceptual hash, colour signature, alpha share.
-    /// Returns the RGB pixels of a thumbnail, or null when the texture would not decode.
+    /// Decodes the texture and describes it: perceptual hash, colour signature, alpha share. A texture whose
+    /// pixels will not decode still gets its size, format and mip count — only IsDecoded stays false.
     /// </summary>
-    static byte[]? Fill(Texture texture, TextureInfo info, int thumbnailSide, Action<byte[], int, int>? onPixels)
+    static TextureInfo Describe(Texture texture, Action<byte[], int, int>? onPixels)
     {
-        info.Name = texture.Name;
-        info.Width = texture.Width;
-        info.Height = texture.Height;
-        info.MipLevels = texture.Levels;
-        info.Format = FormatName(texture);
-        info.IsDecoded = false;
+        var info = new TextureInfo
+        {
+            Name = texture.Name,
+            Width = texture.Width,
+            Height = texture.Height,
+            MipLevels = texture.Levels,
+            Format = FormatName(texture),
+            IsDecoded = false,
+        };
 
         var pixels = DecodePixels(texture, out int width, out int height);
-        if (pixels == null) return null;
+        if (pixels == null) return info;
 
         // hand the decoded pixels straight on — indexing writes its thumbnail from these rather than decoding
         // the same texture a second time
@@ -162,7 +162,7 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
         info.AlphaShare = total > 0 ? (float)transparent / total : 0f;
 
         info.IsDecoded = true;
-        return ScaleToRgb(pixels, width, height, thumbnailSide, thumbnailSide);
+        return info;
     }
 
     /// <summary>
@@ -204,7 +204,7 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
     }
 
     /// <summary>Box-averaging from BGRA down to RGB.</summary>
-    internal static byte[] ScaleToRgb(byte[] pixels, int width, int height, int targetWidth, int targetHeight)
+    static byte[] ScaleToRgb(byte[] pixels, int width, int height, int targetWidth, int targetHeight)
     {
         var output = new byte[targetWidth * targetHeight * 3];
 
