@@ -1,5 +1,4 @@
-// The report's only script: filter by verdict, search by name, flip the theme. Inlined into every
-// report, so it must stay dependency-free.
+// The report's only script: filter by verdict, search by name, flip the theme. No dependencies.
 
 const filterButtons = document.querySelectorAll('[data-filter]');
 const search = document.getElementById('search');

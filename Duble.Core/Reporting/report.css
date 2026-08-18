@@ -1,5 +1,4 @@
-/* The report's stylesheet, inlined into every report so the file works anywhere with no network.
-   It lives here rather than inside a C# string so it stays readable and editable as CSS. */
+/* Duble's report stylesheet, inlined so this file works anywhere, with no network. */
 
 :root {
   --bg:#f6f3ee; --card:#fffdfa; --text:#1b1712; --muted:#7a6f61;
