@@ -154,3 +154,5 @@ records what changed when, and [SECURITY.md](SECURITY.md) explains how to report
 ## License
 
 [MIT](LICENSE) © 2026 Bobadu
+
+The components Duble builds on keep their own licences — see [third-party notices](THIRD-PARTY-NOTICES.md).
