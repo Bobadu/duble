@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Duble.Core\Duble.Core.csproj" />
     <ProjectReference Include="..\Duble.App\Duble.App.csproj" />
+    <ProjectReference Include="..\Duble.Cli\Duble.Cli.csproj" />
   </ItemGroup>
 
 </Project>

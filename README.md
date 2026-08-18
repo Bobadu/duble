@@ -135,11 +135,24 @@ dotnet test Duble.Tests -c Release
 dotnet publish Duble.App -p:PublishProfile=win-x64   # -> publish\Duble.exe
 ```
 
+The same work is available from a terminal. `duble help` lists the commands and `duble help <command>` says
+what one accepts; the catalog is persistent, so every pack you index is compared against everything indexed
+before it.
+
+```powershell
+dotnet run --project Duble.Cli -- index C:\packs\civil01 C:\packs\civil02
+dotnet run --project Duble.Cli -- compare
+dotnet run --project Duble.Cli -- report --lang en
+```
+
+Working files go to a `duble` folder in the current directory, or wherever `DUBLE_HOME` points. To get `duble`
+itself as a command: `dotnet pack Duble.Cli` then `dotnet tool install --global --add-source ...`.
+
 | Project | Contents |
 |---|---|
 | `Duble.Core` | Engine: indexing, fingerprints, comparison, decisions, apply and undo, report, unpacking |
 | `Duble.App` | WPF and WebView2 shell; the interface lives in `Duble.App/ui` (HTML, CSS, JS, three.js) |
-| `Duble.Cli` | Command line: `duble indeks / porownaj / raport / zastosuj / cofnij / kalibruj` |
+| `Duble.Cli` | Command line: `duble index / compare / report / apply / undo / calibrate`, and tools for one file |
 | `Duble.Tests` | xunit tests; the ones that need real packs skip themselves when the data is absent |
 
 Pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the house rules, [CHANGELOG.md](CHANGELOG.md)

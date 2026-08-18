@@ -2,10 +2,18 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyName>duble</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      NOT "duble": the desktop application builds Duble.dll, and on Windows that is the same file name, so the
+      two could never sit in one folder — which is what a test project referencing both has to do. The command
+      is still called `duble`: that is the tool name below, and what `dotnet tool install` puts on the PATH.
+    -->
+    <AssemblyName>Duble.Cli</AssemblyName>
     <RootNamespace>Duble.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>duble</ToolCommandName>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
