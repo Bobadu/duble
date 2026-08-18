@@ -273,6 +273,50 @@ export interface ProjectSettingsState {
   porownanie?: boolean;
 }
 
+/**
+ * How a set of measured values is spread: percentiles plus a histogram over `from`..`to`. The last bucket
+ * collects everything above the range, so nothing falls off the chart silently.
+ */
+export interface Distribution {
+  n: number;
+  min: number;
+  p01: number;
+  p05: number;
+  p50: number;
+  p95: number;
+  max: number;
+  from: number;
+  to: number;
+  buckets: number[];
+}
+
+/** What calibration measured on this catalog, and what it suggests the thresholds should be. */
+export interface CalibrationReport {
+  when: string;
+  garments: number;
+  garmentsWithGeometry: number;
+  textures: number;
+  decodedTextures: number;
+
+  geoSameFile?: Distribution;
+  geoSameHash?: Distribution;
+  geoNearestForeign?: Distribution;
+  geoPairsAcrossPacks: number;
+  geoSuspicious: number;
+
+  hashIdentical?: Distribution;
+  colorIdentical?: Distribution;
+  hashVariants?: Distribution;
+  colorVariants?: Distribution;
+  variance?: Distribution;
+  hashRandom?: Distribution;
+  colorRandom?: Distribution;
+
+  /** The thresholds in force while it ran, so the charts can mark them. */
+  usedThresholds?: Thresholds;
+  proposal?: Thresholds;
+}
+
 export interface MovedFile {
   z: string;
   do: string;
@@ -487,7 +531,7 @@ export interface Events {
   'history.changed': { plik: string };
   'unpack.done': { id: string; folder: string; pliki: number; archiwa: number; bajty: number; bledy: string[]; dodano?: string };
   'report.done': { plik: string; typ: 'html' | 'csv' };
-  'calibrate.done': { wynik: unknown };
+  'calibrate.done': { wynik: CalibrationReport };
   'settings.changed': { zrodlo: 'project' | 'cache' };
   'window.state': { maks: boolean };
   'files.dropped': { sciezki: string[] };

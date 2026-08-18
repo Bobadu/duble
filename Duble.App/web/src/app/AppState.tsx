@@ -20,7 +20,8 @@ interface AppState {
   /** Whether that job is still going. */
   busy: boolean;
   windowMaximized: boolean;
-  setLanguage: (language: Language) => Promise<void>;
+  /** "system" clears the choice and follows Windows, which is what C# stores as no language at all. */
+  setLanguage: (language: Language | 'system') => Promise<void>;
   setTheme: (theme: Theme) => Promise<void>;
 }
 
@@ -77,7 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useBridgeEvent('job', setJob);
   useBridgeEvent('window.state', (data) => setWindowMaximized(data.maks));
 
-  const setLanguage = useCallback(async (language: Language) => {
+  const setLanguage = useCallback(async (language: Language | 'system') => {
     const settings = await bridge.call('settings.set', { jezyk: language });
     setLoaded((previous) => (previous ? { ...previous, settings } : previous));
   }, []);

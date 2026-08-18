@@ -8,9 +8,11 @@ import { useJobNotifications } from './app/useJobNotifications';
 import { bridge, messageOf } from './bridge/bridge';
 import { useBridgeEvent } from './bridge/hooks';
 import { useToast } from './components/Toast';
+import { About } from './views/About';
 import { Catalog } from './views/catalog/Catalog';
 import { Duplicates } from './views/duplicates/Duplicates';
 import { History } from './views/history/History';
+import { Settings } from './views/settings/Settings';
 import { Sources } from './views/sources/Sources';
 import { NotPortedYet } from './views/NotPortedYet';
 import { Start } from './views/start/Start';
@@ -56,6 +58,10 @@ function Screen({ view, param }: { view: ViewName; param?: string }) {
       return param ? <NotPortedYet view="group" /> : <Duplicates />;
     case 'history':
       return <History />;
+    case 'settings':
+      return <Settings />;
+    case 'about':
+      return <About />;
     default:
       return <NotPortedYet view={view} />;
   }
