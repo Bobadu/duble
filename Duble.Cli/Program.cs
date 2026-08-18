@@ -148,7 +148,7 @@ switch (cmd)
             // waniliowe vs Killstore). Format (legacy/gen9) z naglowka RSC7; tryb gen9 czyta oba (Format.cs).
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble obj <plik.ydd> [--out plik.obj]"); return 2; }
             var bajty = File.ReadAllBytes(argv[0]);
-            YddFile ydd = null; string fmt = Rsc7Header.Gen9(bajty, ".ydd") is bool g9 ? GameFormats.FromHeader(g9).ToLabel() : "?";
+            YddFile ydd = null; string fmt = Rsc7Header.IsEnhanced(bajty, ".ydd") is bool g9 ? GameFormats.FromHeader(g9).ToLabel() : "?";
             try
             {
                 var y = new YddFile();

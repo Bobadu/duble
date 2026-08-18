@@ -22,7 +22,7 @@ public sealed class Sesja
     public Sesja(ICatalogStore katalogi, IProjectStore projekty, IResolutionService rozstrzygniecia,
                  IGarmentIndexer indeksator, IArchiveCache archiwa, IComparisonStore porownania,
                  IDuplicateFinder szukaczDupli, IApplyPlanner planista, IApplyExecutor wykonawca,
-                 IUndoStore cofki, IHtmlReportBuilder raporty, ICsvExporter csv, ICalibrator kalibrator, IClock zegar)
+                 IUndoStore cofki, IHtmlReportBuilder raporty, ICsvExporter csv, ICalibrator kalibrator, IArchiveExtractor rozpakowywacz, IClock zegar)
     {
         this.katalogi = katalogi;
         this.projekty = projekty;
@@ -35,6 +35,7 @@ public sealed class Sesja
         Wykonawca = wykonawca;
         Raporty = raporty;
         Kalibrator = kalibrator;
+        Rozpakowywacz = rozpakowywacz;
         Csv = csv;
         Indeksator = indeksator;
         Archiwa = archiwa;
@@ -45,6 +46,9 @@ public sealed class Sesja
 
     /// <summary>Ponowny odczyt zaindeksowanych plikow (miniatury, podglady) — trzyma otwarte archiwa.</summary>
     public IArchiveCache Archiwa { get; }
+
+    /// <summary>Rozpakowanie zrodla z archiwow do zwyklego folderu.</summary>
+    public IArchiveExtractor Rozpakowywacz { get; }
 
     /// <summary>Kalibracja progow na katalogu uzytkownika.</summary>
     public ICalibrator Kalibrator { get; }

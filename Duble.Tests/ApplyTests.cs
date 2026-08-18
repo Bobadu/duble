@@ -66,7 +66,7 @@ public class ApplyTests
             Assert.Equal(1, brak.MissingCount); Assert.Equal(1, brak.MoveCount);          // ydd brak, tekstura jest
             Assert.Equal(4, plan.Files); Assert.Equal(1, plan.SharedCount); Assert.Equal(1, plan.InArchiveCount); Assert.Equal(1, plan.MissingCount);
             var kosze = plan.BinTotals().ToList();
-            Assert.Single(kosze); Assert.Equal(kosz, kosze[0].kosz); Assert.Equal(4, kosze[0].pliki);
+            Assert.Single(kosze); Assert.Equal(kosz, kosze[0].BinFolder); Assert.Equal(4, kosze[0].Files);
             // brak zrodla -> wszystko Brak, zrodlo w BrakujaceZrodla
             var plan2 = Planner.Plan(kat, new[] { "z1|k.rpf|jbib|7|u" }, p => null);
             Assert.Equal(2, plan2.Garments[0].MissingCount); Assert.Equal(new[] { "z1" }, plan2.MissingSources);

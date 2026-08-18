@@ -43,7 +43,7 @@ public sealed class ArchiveSourceReader : ISourceReader
                     ChangeStamp: entry.GetFileSize() + "|" + archiveInfo.Length + "|" + archiveInfo.LastWriteTimeUtc.Ticks,
                     // ExtractFile hands back the resource without its RSC7 header — Rsc7Header puts it back, so that
                     // LoadResourceFile reads it exactly as it would a file on disk
-                    Read: () => Rsc7Header.Owin(entry, owner.ExtractFile(entry))));
+                    Read: () => Rsc7Header.Wrap(entry, owner.ExtractFile(entry))!));
             }
 
             foreach (var child in file.Children ?? new List<RpfFile>()) Walk(child);

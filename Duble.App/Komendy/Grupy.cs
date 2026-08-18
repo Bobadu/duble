@@ -51,7 +51,7 @@ public static class Grupy
             ["wArchiwum"] = plan.InArchiveCount, ["wspoldzielone"] = plan.SharedCount, ["brakujace"] = plan.MissingCount,
             ["brakujaceZrodla"] = plan.MissingSources,
             ["kosz"] = s.Project.Settings?.BinFolder,
-            ["kosze"] = plan.BinTotals().Select(k => new { kosz = k.kosz, pliki = k.pliki, bajty = k.bajty }).ToList(),
+            ["kosze"] = plan.BinTotals().Select(k => new { kosz = k.BinFolder, pliki = k.Files, bajty = k.Bytes }).ToList(),
         };
         if (lista)
             o["lista"] = plan.Garments.Select(p => new

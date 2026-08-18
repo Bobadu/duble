@@ -158,7 +158,7 @@ public static class Zrodla
             bool ok = jr.SprobujUruchom("rozpakuj", z.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                var w = RpfArchiveExtractor.SourceName(z.Path, cel, postep, ct);
+                var w = s.Rozpakowywacz.ExtractSource(z.Path, cel, new Progress<ProgressReport>(postep), ct);
                 string dodano = null;
                 if (dodaj && w.Files > 0)
                 {
@@ -170,7 +170,7 @@ public static class Zrodla
                     Indeksuj(s, m, new[] { nowe }, false, ct, postep);
                     PorownajIZapisz(s, m, ct, postep);
                 }
-                m.Zdarzenie("unpack.done", new { id, folder = cel, pliki = w.Files, archiwa = w.Archiwa, bajty = w.Bytes, bledy = w.Bledy.Take(20).ToList(), dodano });
+                m.Zdarzenie("unpack.done", new { id, folder = cel, pliki = w.Files, archiwa = w.Archives, bajty = w.Bytes, bledy = w.Errors.Take(20).ToList(), dodano });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
             return new { uruchomiono = true, folder = cel };

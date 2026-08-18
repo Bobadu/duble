@@ -55,6 +55,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<FolderSourceReader>();
         services.AddSingleton<ISourceReaderFactory, SourceReaderFactory>();
         services.AddSingleton<IArchiveCache, RpfArchiveCache>();
+        services.AddSingleton<IArchiveExtractor, RpfArchiveExtractor>();
 
         services.AddSingleton<IGeometryFingerprinter, GeometryFingerprinter>();
         services.AddSingleton<ITextureFingerprinter, TextureFingerprinter>();
