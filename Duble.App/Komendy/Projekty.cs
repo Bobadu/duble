@@ -19,9 +19,18 @@ public static class Projekty
             m.Zdarzenie("project.opened", new { projekt = s.Podsumowanie() });
         }
 
+        // Pola nazywamy tu WPROST, a nie skrotem `new { o.Sciezka, ... }`: ksztalt tego, co dostaje UI, to
+        // umowa z JS-em i nie moze sie zmieniac razem z nazwami wlasciwosci w C#. Wlasnie po takim
+        // przemianowaniu (Nazwa -> Name) karta ostatniego projektu przestala pokazywac nazwe.
         m.Rejestruj("project.recent", _ => new
         {
-            ostatnie = m.Ustawienia.Ostatnie.Select(o => new { o.Sciezka, o.Name, o.Ostatnio, istnieje = File.Exists(o.Sciezka) }).ToList(),
+            ostatnie = m.Ustawienia.Ostatnie.Select(o => new
+            {
+                sciezka = o.Sciezka,
+                nazwa = o.Name,
+                ostatnio = o.Ostatnio,
+                istnieje = File.Exists(o.Sciezka),
+            }).ToList(),
             folderDomyslny = Ustawienia.FolderProjektow,
         });
         m.Rejestruj("project.get", _ => new { projekt = s.Podsumowanie() });
