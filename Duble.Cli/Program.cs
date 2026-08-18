@@ -393,7 +393,7 @@ switch (cmd)
             var wynik = porownania.Load(sciezkaDubli);
             if (wynik.Groups.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");
-            raporty.Build(katalog, wynik, plik, Log, jezyk);
+            raporty.Build(katalog, wynik, plik, new ReportOptions { Language = jezyk, Log = Log });
             Log($"raport: {plik}");
             return 0;
         }

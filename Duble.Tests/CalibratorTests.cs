@@ -10,7 +10,7 @@ namespace Duble.Tests;
 /// thresholds, and cancellation.</summary>
 public class CalibratorTests
 {
-    static readonly ICalibrator Kalibrator = new Calibrator();
+    static readonly ICalibrator Kalibrator = new Calibrator(new SystemClock());
 
     [Fact]
     public void Rozklad_liczy_percentyle_i_histogram()
@@ -20,7 +20,7 @@ public class CalibratorTests
         Assert.Equal(new[] { 1, 1, 1, 1, 2 }, r.Buckets);   // 5.0 laduje w ostatnim kubelku (ponad zakres)
         Assert.Equal(6, r.Buckets.Sum());
         var pusty = Distribution.Of(Array.Empty<double>(), 0, 1, 4);
-        Assert.Equal(0, pusty.N); Assert.Equal(4, pusty.Buckets.Length); Assert.Equal("brak danych", pusty.Text());
+        Assert.Equal(0, pusty.N); Assert.Equal(4, pusty.Buckets.Length); Assert.Equal("no data", pusty.Text());
         Assert.Contains("n=6", r.Text("F1"));
     }
 

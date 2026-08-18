@@ -89,7 +89,7 @@ public class GlbWriterTests
         Assert.Equal(0x89, png[0]); Assert.Equal(6, png[25]);   // bajt typu koloru w IHDR
     }
 
-    [Fact, Trait("Kategoria", "Wolny")]
+    [Fact, Trait("Speed", "Slow")]
     public void Glb_z_prawdziwego_modelu_studio_body()
     {
         if (!Sciezki.JestGra) { wyj.WriteLine("POMINIETY: brak studio_body\\dlc.rpf"); return; }

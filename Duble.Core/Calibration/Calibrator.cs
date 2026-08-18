@@ -23,6 +23,7 @@ using System.Threading;
 using Duble.Core.Comparison;
 using Duble.Core.Fingerprints;
 using Duble.Core.Model;
+using Duble.Core.Time;
 
 namespace Duble.Core.Calibration;
 
@@ -69,13 +70,17 @@ public sealed class Distribution
         return result;
     }
 
+    /// <summary>The percentiles as one line, for the command line and for logs.</summary>
     public string Text(string format = "F4")
-        => N == 0 ? "brak danych"
-         : $"n={N,-7} min={Min.ToString(format, CultureInfo.InvariantCulture)} p01={P01.ToString(format, CultureInfo.InvariantCulture)} "
-         + $"p05={P05.ToString(format, CultureInfo.InvariantCulture)} p50={P50.ToString(format, CultureInfo.InvariantCulture)} "
-         + $"p95={P95.ToString(format, CultureInfo.InvariantCulture)} max={Max.ToString(format, CultureInfo.InvariantCulture)}";
+    {
+        if (N == 0) return "no data";
+        string Value(double x) => x.ToString(format, CultureInfo.InvariantCulture);
+        return $"n={N,-7} min={Value(Min)} p01={Value(P01)} p05={Value(P05)} "
+             + $"p50={Value(P50)} p95={Value(P95)} max={Value(Max)}";
+    }
 }
 
+/// <summary>Everything one calibration measured, plus the thresholds those measurements support.</summary>
 public sealed class CalibrationReport
 {
     public string When { get; set; } = "";
@@ -84,16 +89,25 @@ public sealed class CalibrationReport
     public int Textures { get; set; }
     public int DecodedTextures { get; set; }
 
-    // geometria (odleglosc histogramow 0..)
+    // ---- geometry: L1 distance between shape histograms, 0 and up ----
+
     public Distribution? GeoSameFile { get; set; }
     public Distribution? GeoSameHash { get; set; }
     public Distribution? GeoNearestForeign { get; set; }
+
+    /// <summary>Pairs with the same mesh that came from different packs — the duplicates worth finding.</summary>
     public int GeoPairsAcrossPacks { get; set; }
+
     public int GeoSuspicious { get; set; }
-    /// <summary>Najblizsze pary o roznym meshu (d &lt; 0,05): do obejrzenia — duplikaty, ktorych hash nie zlapal, albo kolizje histogramu.</summary>
+
+    /// <summary>
+    /// The closest pairs whose meshes are NOT the same (d &lt; 0.05), for a person to look at: either duplicates
+    /// the position hash missed, or histogram collisions that show the threshold is too generous.
+    /// </summary>
     public List<SuspiciousPair> Suspicious { get; set; } = new();
 
-    // tekstury: PHash (hamming 0..256) i kolor (0..)
+    // ---- textures: perceptual hash (Hamming, 0..256) and colour (0 and up) ----
+
     public Distribution? HashIdentical { get; set; }
     public Distribution? ColorIdentical { get; set; }
     public Distribution? HashVariants { get; set; }
@@ -105,12 +119,33 @@ public sealed class CalibrationReport
 
     /// <summary>The thresholds in force while this calibration ran, so the charts can mark them.</summary>
     public Thresholds? UsedThresholds { get; set; }
-    /// <summary>Proposal: GeometryIdentical, GeometrySimilar (4x), TextureHashDistance, TextureColorDistance — reszta jak Thresholds.</summary>
+
+    /// <summary>
+    /// What the measurements suggest: GeometryIdentical, GeometrySimilar, TextureHashDistance and
+    /// TextureColorDistance. Everything else is copied from the thresholds that were in force.
+    /// </summary>
     public Thresholds? Proposal { get; set; }
 }
 
-public sealed class SuspiciousPair { public double D { get; set; } public double Bbox { get; set; } public string A { get; set; } = ""; public string B { get; set; } = ""; public int TriA { get; set; } public int TriB { get; set; } }
-public sealed class CloseRandomPair { public int PHash { get; set; } public double Color { get; set; } public string A { get; set; } = ""; public string B { get; set; } = ""; }
+/// <summary>Two garments whose shape histograms nearly agree although their meshes do not.</summary>
+public sealed class SuspiciousPair
+{
+    public double D { get; set; }
+    public double Bbox { get; set; }
+    public string A { get; set; } = "";
+    public string B { get; set; } = "";
+    public int TriA { get; set; }
+    public int TriB { get; set; }
+}
+
+/// <summary>Two textures from different garments that landed closer together than random pairs should.</summary>
+public sealed class CloseRandomPair
+{
+    public int PHash { get; set; }
+    public double Color { get; set; }
+    public string A { get; set; } = "";
+    public string B { get; set; } = "";
+}
 
 /// <summary>Measures the distances the thresholds judge, over the user's own catalog.</summary>
 public interface ICalibrator
@@ -125,120 +160,228 @@ public interface ICalibrator
 /// <inheritdoc />
 public sealed class Calibrator : ICalibrator
 {
-    public const double GeoZakres = 0.5; public const int GeoKubelki = 25;
-    public const double PHashZakres = 128; public const int PHashKubelki = 32;
-    public const double KolorZakres = 40; public const int KolorKubelki = 20;
-    public const double WariancjaZakres = 80; public const int WariancjaKubelki = 20;
+    // ranges and bucket counts of the histograms, chosen so the interesting part of each fills the chart
+    const double GeoRange = 0.5;
+    const int GeoBuckets = 25;
+    const double HashRange = 128;
+    const int HashBuckets = 32;
+    const double ColorRange = 40;
+    const int ColorBuckets = 20;
+    const double VarianceRange = 80;
+    const int VarianceBuckets = 20;
 
-    public CalibrationReport Run(Catalog katalog, Thresholds? progi = null, CancellationToken ct = default)
+    /// <summary>How many random texture pairs to draw. A fixed seed keeps two runs comparable.</summary>
+    const int RandomPairs = 400_000;
+    const int RandomSeed = 12345;
+
+    /// <summary>Below this, two different meshes are close enough that a person should look at the pair.</summary>
+    const double SuspiciousGeometryDistance = 0.05;
+
+    /// <summary>Below this, a random texture pair is close enough to be worth listing.</summary>
+    const int CloseRandomHashDistance = 24;
+
+    readonly IClock clock;
+
+    public Calibrator(IClock clock) => this.clock = clock;
+
+    public CalibrationReport Run(Catalog catalog, Thresholds? thresholds = null, CancellationToken ct = default)
     {
-        progi ??= Thresholds.Default;
-        var w = new CalibrationReport { When = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), UsedThresholds = progi.Clone(), Garments = katalog.Garments.Count };
-        var poz = katalog.Garments.Where(p => p.Geometry?.ShapeHistogram != null && p.Geometry!.Vertices > 0).ToList();
-        w.GarmentsWithGeometry = poz.Count;
-
-        // ================= GEOMETRIA =================
-        var pozytywySha = new List<double>();
-        var pozytywyHash = new List<double>();
-        var najblizszyObcy = new List<double>();
-        var podejrzane = new List<(double d, Garment a, Garment b)>();
-        for (int i = 0; i < poz.Count; i++)
+        thresholds ??= Thresholds.Default;
+        var report = new CalibrationReport
         {
-            if ((i & 15) == 0) ct.ThrowIfCancellationRequested();
-            double min = double.MaxValue;
-            for (int j = 0; j < poz.Count; j++)
-            {
-                if (i == j) continue;
-                var a = poz[i]; var b = poz[j];
-                double d = Distance.ShapeHistogram(a.Geometry!.ShapeHistogram, b.Geometry!.ShapeHistogram);
-                bool tenSamMesh = a.Geometry!.PositionHash != null && a.Geometry!.PositionHash == b.Geometry!.PositionHash;
-                if (j > i)
-                {
-                    if (a.ModelSha256 == b.ModelSha256) pozytywySha.Add(d);
-                    else if (tenSamMesh) pozytywyHash.Add(d);
-                    if (tenSamMesh && a.PackName != b.PackName) w.GeoPairsAcrossPacks++;
-                    if (!tenSamMesh && d < 0.05) podejrzane.Add((d, a, b));
-                }
-                if (!tenSamMesh && d < min) min = d;
-            }
-            if (min < double.MaxValue) najblizszyObcy.Add(min);
-        }
-        w.GeoSameFile = Distribution.Of(pozytywySha, 0, GeoZakres, GeoKubelki);
-        w.GeoSameHash = Distribution.Of(pozytywyHash, 0, GeoZakres, GeoKubelki);
-        w.GeoNearestForeign = Distribution.Of(najblizszyObcy, 0, GeoZakres, GeoKubelki);
-        w.GeoSuspicious = podejrzane.Count;
-        w.Suspicious = podejrzane.OrderBy(x => x.d).Take(25)
-            .Select(x => new SuspiciousPair { D = x.d, Bbox = Distance.BoundingBox(x.a.Geometry!.BoundingBox, x.b.Geometry!.BoundingBox), A = x.a.Label + x.a.Suffix, B = x.b.Label + x.b.Suffix, TriA = x.a.Geometry!.Triangles, TriB = x.b.Geometry!.Triangles }).ToList();
+            When = clock.Stamp(),
+            UsedThresholds = thresholds.Clone(),
+            Garments = catalog.Garments.Count,
+        };
 
-        // ================= TEKSTURY =================
-        ct.ThrowIfCancellationRequested();
-        var wszystkie = katalog.Garments.SelectMany(p => p.Textures.Where(t => t.IsDecoded).Select(t => (poz: p, tex: t))).ToList();
-        w.Textures = katalog.Garments.Sum(p => p.Textures.Count);
-        w.DecodedTextures = wszystkie.Count;
+        var garments = catalog.Garments
+            .Where(garment => garment.Geometry?.ShapeHistogram != null && garment.Geometry.Vertices > 0)
+            .ToList();
+        report.GarmentsWithGeometry = garments.Count;
 
-        // pozytywy: ten sam SHA
-        var phSha = new List<double>(); var kolSha = new List<double>();
-        foreach (var g in wszystkie.GroupBy(x => x.tex.Sha256).Where(g => g.Count() > 1))
-        {
-            var l = g.ToList();
-            for (int i = 0; i < l.Count; i++)
-                for (int j = i + 1; j < l.Count; j++)
-                {
-                    phSha.Add(Distance.Hamming(l[i].tex.PerceptualHash, l[j].tex.PerceptualHash));
-                    kolSha.Add(Distance.Color(l[i].tex.ColorSignature, l[j].tex.ColorSignature));
-                }
-        }
-        // trudne negatywy: warianty koloru tego samego ciucha
-        var phWar = new List<double>(); var kolWar = new List<double>();
-        foreach (var p in katalog.Garments)
-        {
-            var l = p.Textures.Where(t => t.IsDecoded).ToList();
-            for (int i = 0; i < l.Count; i++)
-                for (int j = i + 1; j < l.Count; j++)
-                {
-                    if (l[i].Sha256 == l[j].Sha256) continue;
-                    phWar.Add(Distance.Hamming(l[i].PerceptualHash, l[j].PerceptualHash));
-                    kolWar.Add(Distance.Color(l[i].ColorSignature, l[j].ColorSignature));
-                }
-        }
-        ct.ThrowIfCancellationRequested();
-        // negatywy losowe (400k prob, ziarno stale -> powtarzalne)
-        var rnd = new Random(12345);
-        var phLos = new List<double>(); var kolLos = new List<double>();
-        var bliskie = new List<CloseRandomPair>();
-        for (int k = 0; k < 400_000 && wszystkie.Count > 1; k++)
-        {
-            if ((k & 4095) == 0) ct.ThrowIfCancellationRequested();
-            var a = wszystkie[rnd.Next(wszystkie.Count)];
-            var b = wszystkie[rnd.Next(wszystkie.Count)];
-            if (ReferenceEquals(a.poz, b.poz) || a.tex.Sha256 == b.tex.Sha256) continue;
-            int ph = Distance.Hamming(a.tex.PerceptualHash, b.tex.PerceptualHash);
-            double kol = Distance.Color(a.tex.ColorSignature, b.tex.ColorSignature);
-            phLos.Add(ph); kolLos.Add(kol);
-            if (ph <= 24) bliskie.Add(new CloseRandomPair { PHash = ph, Color = kol, A = $"{a.poz.Label}/{a.tex.FileName}", B = $"{b.poz.Label}/{b.tex.FileName}" });
-        }
-        w.HashIdentical = Distribution.Of(phSha, 0, PHashZakres, PHashKubelki);
-        w.ColorIdentical = Distribution.Of(kolSha, 0, KolorZakres, KolorKubelki);
-        w.HashVariants = Distribution.Of(phWar, 0, PHashZakres, PHashKubelki);
-        w.ColorVariants = Distribution.Of(kolWar, 0, KolorZakres, KolorKubelki);
-        w.Variance = Distribution.Of(wszystkie.Select(x => (double)x.tex.Variance), 0, WariancjaZakres, WariancjaKubelki);
-        w.HashRandom = Distribution.Of(phLos, 0, PHashZakres, PHashKubelki);
-        w.ColorRandom = Distribution.Of(kolLos, 0, KolorZakres, KolorKubelki);
-        w.CloseRandom = bliskie.OrderBy(v => v.PHash).ThenBy(v => v.Color).Take(20).ToList();
+        var nearestForeign = MeasureGeometry(garments, report, ct);
+        var (variantHashes, variantColours) = MeasureTextures(catalog, report, ct);
 
-        // ================= PROPOZYCJA =================
-        var prop = progi.Clone();
-        double progGeo = najblizszyObcy.Count > 0
-            ? najblizszyObcy.OrderBy(x => x).ElementAt(Math.Max(0, (int)(0.001 * najblizszyObcy.Count))) / 3.0
-            : progi.GeometryIdentical;
-        // przyciete do zakresow Thresholds.Sprawdz (na sztucznych/dziwnych katalogach propozycja moglaby wyjsc poza)
-        prop.GeometryIdentical = Math.Min(1, Math.Round(progGeo, 4));
-        prop.GeometrySimilar = Math.Min(1, Math.Round(progGeo * 4, 4));
-        prop.TextureHashDistance = phWar.Count > 0 ? (int)Math.Min(256, Math.Max(4, phWar.OrderBy(x => x).First() / 2)) : progi.TextureHashDistance;
-        prop.TextureColorDistance = kolWar.Count > 0 ? Math.Min(100, Math.Round(kolWar.OrderBy(x => x).First() / 2, 2)) : progi.TextureColorDistance;
-        w.Proposal = prop;
-        return w;
+        report.Proposal = Propose(thresholds, nearestForeign, variantHashes, variantColours);
+        return report;
     }
 
-    /// <summary>Wydruk dla CLI (`duble kalibruj`).</summary>
+    // ===================== geometry =====================
+
+    /// <summary>
+    /// Fills in the geometry distributions and returns, for each garment, the distance to the nearest mesh that
+    /// is not its own — the number a threshold has to stay below.
+    /// </summary>
+    static List<double> MeasureGeometry(List<Garment> garments, CalibrationReport report, CancellationToken ct)
+    {
+        var sameFile = new List<double>();
+        var sameHash = new List<double>();
+        var nearestForeign = new List<double>();
+        var suspicious = new List<(double Distance, Garment A, Garment B)>();
+
+        for (int i = 0; i < garments.Count; i++)
+        {
+            if ((i & 15) == 0) ct.ThrowIfCancellationRequested();
+
+            double nearest = double.MaxValue;
+            for (int j = 0; j < garments.Count; j++)
+            {
+                if (i == j) continue;
+                var a = garments[i];
+                var b = garments[j];
+                double distance = Distance.ShapeHistogram(a.Geometry!.ShapeHistogram, b.Geometry!.ShapeHistogram);
+                bool sameMesh = a.Geometry.PositionHash != null && a.Geometry.PositionHash == b.Geometry.PositionHash;
+
+                if (j > i)
+                {
+                    if (a.ModelSha256 == b.ModelSha256) sameFile.Add(distance);
+                    else if (sameMesh) sameHash.Add(distance);
+
+                    if (sameMesh && a.PackName != b.PackName) report.GeoPairsAcrossPacks++;
+                    if (!sameMesh && distance < SuspiciousGeometryDistance) suspicious.Add((distance, a, b));
+                }
+
+                if (!sameMesh && distance < nearest) nearest = distance;
+            }
+
+            if (nearest < double.MaxValue) nearestForeign.Add(nearest);
+        }
+
+        report.GeoSameFile = Distribution.Of(sameFile, 0, GeoRange, GeoBuckets);
+        report.GeoSameHash = Distribution.Of(sameHash, 0, GeoRange, GeoBuckets);
+        report.GeoNearestForeign = Distribution.Of(nearestForeign, 0, GeoRange, GeoBuckets);
+        report.GeoSuspicious = suspicious.Count;
+        report.Suspicious = suspicious
+            .OrderBy(pair => pair.Distance)
+            .Take(25)
+            .Select(pair => new SuspiciousPair
+            {
+                D = pair.Distance,
+                Bbox = Distance.BoundingBox(pair.A.Geometry!.BoundingBox, pair.B.Geometry!.BoundingBox),
+                A = pair.A.Label + pair.A.Suffix,
+                B = pair.B.Label + pair.B.Suffix,
+                TriA = pair.A.Geometry!.Triangles,
+                TriB = pair.B.Geometry!.Triangles,
+            })
+            .ToList();
+
+        return nearestForeign;
+    }
+
+    // ===================== textures =====================
+
+    /// <summary>
+    /// Fills in the texture distributions and returns the hard negatives: the hash and colour distances between
+    /// colour variants of one garment, which is what the texture thresholds have to stay below.
+    /// </summary>
+    static (List<double> Hashes, List<double> Colours) MeasureTextures(
+        Catalog catalog, CalibrationReport report, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var decoded = catalog.Garments
+            .SelectMany(garment => garment.Textures.Where(t => t.IsDecoded).Select(t => (Garment: garment, Texture: t)))
+            .ToList();
+        report.Textures = catalog.Garments.Sum(garment => garment.Textures.Count);
+        report.DecodedTextures = decoded.Count;
+
+        // positives: the same file under two names, so both distances must be 0
+        var identicalHashes = new List<double>();
+        var identicalColours = new List<double>();
+        foreach (var group in decoded.GroupBy(x => x.Texture.Sha256).Where(g => g.Count() > 1))
+        {
+            var members = group.ToList();
+            for (int i = 0; i < members.Count; i++)
+                for (int j = i + 1; j < members.Count; j++)
+                {
+                    identicalHashes.Add(Distance.Hamming(members[i].Texture.PerceptualHash, members[j].Texture.PerceptualHash));
+                    identicalColours.Add(Distance.Color(members[i].Texture.ColorSignature, members[j].Texture.ColorSignature));
+                }
+        }
+
+        // hard negatives: colour variants of one garment, which look the same in greyscale
+        var variantHashes = new List<double>();
+        var variantColours = new List<double>();
+        foreach (var garment in catalog.Garments)
+        {
+            var textures = garment.Textures.Where(t => t.IsDecoded).ToList();
+            for (int i = 0; i < textures.Count; i++)
+                for (int j = i + 1; j < textures.Count; j++)
+                {
+                    if (textures[i].Sha256 == textures[j].Sha256) continue;
+                    variantHashes.Add(Distance.Hamming(textures[i].PerceptualHash, textures[j].PerceptualHash));
+                    variantColours.Add(Distance.Color(textures[i].ColorSignature, textures[j].ColorSignature));
+                }
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        // negatives: random pairs from different garments
+        var random = new Random(RandomSeed);
+        var randomHashes = new List<double>();
+        var randomColours = new List<double>();
+        var close = new List<CloseRandomPair>();
+        for (int k = 0; k < RandomPairs && decoded.Count > 1; k++)
+        {
+            if ((k & 4095) == 0) ct.ThrowIfCancellationRequested();
+
+            var a = decoded[random.Next(decoded.Count)];
+            var b = decoded[random.Next(decoded.Count)];
+            if (ReferenceEquals(a.Garment, b.Garment) || a.Texture.Sha256 == b.Texture.Sha256) continue;
+
+            int hash = Distance.Hamming(a.Texture.PerceptualHash, b.Texture.PerceptualHash);
+            double colour = Distance.Color(a.Texture.ColorSignature, b.Texture.ColorSignature);
+            randomHashes.Add(hash);
+            randomColours.Add(colour);
+
+            if (hash <= CloseRandomHashDistance)
+                close.Add(new CloseRandomPair
+                {
+                    PHash = hash,
+                    Color = colour,
+                    A = $"{a.Garment.Label}/{a.Texture.FileName}",
+                    B = $"{b.Garment.Label}/{b.Texture.FileName}",
+                });
+        }
+
+        report.HashIdentical = Distribution.Of(identicalHashes, 0, HashRange, HashBuckets);
+        report.ColorIdentical = Distribution.Of(identicalColours, 0, ColorRange, ColorBuckets);
+        report.HashVariants = Distribution.Of(variantHashes, 0, HashRange, HashBuckets);
+        report.ColorVariants = Distribution.Of(variantColours, 0, ColorRange, ColorBuckets);
+        report.Variance = Distribution.Of(decoded.Select(x => (double)x.Texture.Variance), 0, VarianceRange, VarianceBuckets);
+        report.HashRandom = Distribution.Of(randomHashes, 0, HashRange, HashBuckets);
+        report.ColorRandom = Distribution.Of(randomColours, 0, ColorRange, ColorBuckets);
+        report.CloseRandom = close.OrderBy(pair => pair.PHash).ThenBy(pair => pair.Color).Take(20).ToList();
+
+        return (variantHashes, variantColours);
+    }
+
+    // ===================== the proposal =====================
+
+    /// <summary>
+    /// Each threshold goes a safe distance below the nearest thing it must NOT catch: geometry a third of the
+    /// way to the 0.1th percentile of foreign meshes, the texture thresholds halfway to the closest pair of
+    /// colour variants. The results are clamped to the ranges Thresholds accepts, because a small or unusual
+    /// catalog can otherwise propose a value outside them.
+    /// </summary>
+    static Thresholds Propose(Thresholds current, List<double> nearestForeign,
+                              List<double> variantHashes, List<double> variantColours)
+    {
+        var proposal = current.Clone();
+
+        double geometry = nearestForeign.Count > 0
+            ? nearestForeign.OrderBy(x => x).ElementAt(Math.Max(0, (int)(0.001 * nearestForeign.Count))) / 3.0
+            : current.GeometryIdentical;
+
+        proposal.GeometryIdentical = Math.Min(1, Math.Round(geometry, 4));
+        proposal.GeometrySimilar = Math.Min(1, Math.Round(geometry * 4, 4));
+        proposal.TextureHashDistance = variantHashes.Count > 0
+            ? (int)Math.Min(256, Math.Max(4, variantHashes.Min() / 2))
+            : current.TextureHashDistance;
+        proposal.TextureColorDistance = variantColours.Count > 0
+            ? Math.Min(100, Math.Round(variantColours.Min() / 2, 2))
+            : current.TextureColorDistance;
+
+        return proposal;
+    }
 }

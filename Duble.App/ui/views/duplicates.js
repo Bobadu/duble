@@ -22,7 +22,7 @@ function wczytajFiltry() {
 }
 function zapiszFiltry() { sessionStorage.setItem(KLUCZ_FILTROW, JSON.stringify(filtry)); }
 
-export function powodTekst(t, powod) { return powod?.kod ? t('powod.' + powod.kod, powod.p || {}) : ''; }
+export function powodTekst(t, powod) { return powod?.kod ? t('reason.' + powod.kod, powod.p || {}) : ''; }
 export function nazwaPozycji(c) { return `${c.typ}_${String(c.numer).padStart(3, '0')}`; }
 
 export async function render(root, ctx) {

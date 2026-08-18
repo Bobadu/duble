@@ -116,7 +116,8 @@ public static class Historia
             {
                 await Task.Yield();
                 postep(new ProgressReport("report", 0, 0, Path.GetFileName(plik)));
-                s.Raporty.Build(s.Catalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
+                s.Raporty.Build(s.Catalog, s.Wynik, plik,
+                    new ReportOptions { Language = jezyk, Title = tytul, Resolve = rozstrzygnij });
                 m.Zdarzenie("report.done", new { plik, typ = "html" });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");

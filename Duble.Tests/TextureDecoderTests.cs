@@ -19,7 +19,7 @@ public class TextureDecoderTests
     public TextureDecoderTests(ITestOutputHelper wyj) { this.wyj = wyj; }
 
     /// <summary>Szuka w paczce Legacy pierwszego .ytd w BC7 (jest ich ~5 %) i dekoduje.</summary>
-    [Fact, Trait("Kategoria", "Wolny")]
+    [Fact, Trait("Speed", "Slow")]
     public void Bc7_dekoduje_sie_do_pikseli()
     {
         if (!Sciezki.SaLegacy4) { wyj.WriteLine("POMINIETY: brak downloads"); return; }
@@ -66,7 +66,7 @@ public class TextureDecoderTests
     }
 
     /// <summary>To samo dla gen9 (uklad FullData w Enhanced) — pierwsza tekstura BC7 z naszego studio_wardrobe.</summary>
-    [Fact, Trait("Kategoria", "Wolny")]
+    [Fact, Trait("Speed", "Slow")]
     public void Bc7_gen9_dekoduje_sie_do_pikseli()
     {
         var dlc = Sciezki.Dlc("studio_wardrobe");

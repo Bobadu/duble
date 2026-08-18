@@ -47,9 +47,8 @@ public static class CoreServiceCollectionExtensions
 
         services.AddSingleton<ICalibrator, Calibrator>();
 
-        services.AddSingleton<HtmlReportBuilder>();
-        services.AddSingleton<IHtmlReportBuilder>(sp => sp.GetRequiredService<HtmlReportBuilder>());
-        services.AddSingleton<ICsvExporter>(sp => sp.GetRequiredService<HtmlReportBuilder>());
+        services.AddSingleton<IHtmlReportBuilder, HtmlReportBuilder>();
+        services.AddSingleton<ICsvExporter, CsvExporter>();
 
         services.AddSingleton<ArchiveSourceReader>();
         services.AddSingleton<FolderSourceReader>();
