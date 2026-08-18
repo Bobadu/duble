@@ -136,4 +136,27 @@ public class I18nUiTests
             Assert.True(en.ContainsKey("slot." + slot), "en slot." + slot);
         }
     }
+
+    /// <summary>
+    /// The placeholders of a sentence are part of its meaning: `{name}` filled from a `name` given at the call
+    /// site. A translation that spells one differently drops the value silently and prints the braces, and this
+    /// whole stage renamed every one of them, so the two dictionaries are compared placeholder by placeholder.
+    /// </summary>
+    [Fact]
+    public void Both_languages_use_the_same_placeholders_in_every_sentence()
+    {
+        var pl = Translations("pl");
+        var en = Translations("en");
+        var placeholder = new Regex(@"\{([a-zA-Z][a-zA-Z0-9]*)\}");
+
+        SortedSet<string> Placeholders(string text)
+            => new(placeholder.Matches(text).Select(match => match.Groups[1].Value));
+
+        var different = pl.Keys
+            .Where(key => !Placeholders(pl[key]).SetEquals(Placeholders(en[key])))
+            .Select(key => $"{key}: pl {string.Join(",", Placeholders(pl[key]))} / en {string.Join(",", Placeholders(en[key]))}")
+            .ToList();
+
+        Assert.Empty(different);
+    }
 }

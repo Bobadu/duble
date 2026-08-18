@@ -35,7 +35,7 @@ export function GroupFilters({
   const { filters, set, clear, any } = state;
 
   // one verdict at a time: the segmented control is a choice, not a set of checkboxes
-  const chosenVerdict = filters.werdykty.length === 1 ? (filters.werdykty[0] as Verdict) : '';
+  const chosenVerdict = filters.verdicts.length === 1 ? (filters.verdicts[0] as Verdict) : '';
 
   const segments: Segment<Verdict | ''>[] = [
     { value: '', label: t('dup.allVerdicts'), count: counts.all },
@@ -51,20 +51,20 @@ export function GroupFilters({
   return (
     <div className="filterbar">
       <Segmented
-        className="seg-werdykt"
+        className="seg-verdict"
         segments={segments}
         value={chosenVerdict}
-        onChange={(verdict) => set('werdykty', verdict ? [verdict] : [])}
+        onChange={(verdict) => set('verdicts', verdict ? [verdict] : [])}
       />
 
       {slots.length > 1 && (
         <Select
           label={t('dup.slots')}
-          value={filters.sloty[0] ?? ''}
-          onChange={(slot) => set('sloty', slot ? [slot] : [])}
+          value={filters.slots[0] ?? ''}
+          onChange={(slot) => set('slots', slot ? [slot] : [])}
           options={[
             { value: '', label: t('dup.slotAll') },
-            ...slots.map((slot) => ({ value: slot.typ, label: `${t(`slot.${slot.typ}`)} (${slot.n})` })),
+            ...slots.map((slot) => ({ value: slot.slot, label: `${t(`slot.${slot.slot}`)} (${slot.n})` })),
           ]}
         />
       )}
@@ -72,18 +72,18 @@ export function GroupFilters({
       {sources.length > 1 && (
         <Select
           label={t('dup.sourcesFilter')}
-          value={filters.zrodla[0] ?? ''}
-          onChange={(source) => set('zrodla', source ? [source] : [])}
+          value={filters.sources[0] ?? ''}
+          onChange={(source) => set('sources', source ? [source] : [])}
           options={[
             { value: '', label: t('dup.sourceAll') },
-            ...sources.map((source) => ({ value: source.id, label: `${source.nazwa} (${source.n})` })),
+            ...sources.map((source) => ({ value: source.id, label: `${source.name} (${source.n})` })),
           ]}
         />
       )}
 
       <SearchField
-        value={filters.szukaj}
-        onChange={(text) => set('szukaj', text)}
+        value={filters.search}
+        onChange={(text) => set('search', text)}
         placeholder={t('dup.searchPlaceholder')}
         label={t('dup.search')}
       />

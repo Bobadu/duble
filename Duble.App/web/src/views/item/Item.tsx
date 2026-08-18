@@ -39,8 +39,8 @@ export function Item({ id }: { id: string }) {
 
   if (!item.data) return null;
 
-  const garment = item.data.pozycja;
-  const textures = garment.tekstury ?? [];
+  const garment = item.data.garment;
+  const textures = garment.textures ?? [];
 
   return (
     <>
@@ -61,7 +61,7 @@ export function Item({ id }: { id: string }) {
           <h1 className="group-h1">
             <span className="nm">
               {garmentName(garment)}
-              <sub>{garment.sufiks ?? ''}</sub>
+              <sub>{garment.suffix ?? ''}</sub>
             </span>
           </h1>
 
@@ -69,23 +69,23 @@ export function Item({ id }: { id: string }) {
             <Badge tone={garment.gen9 ? 'gen9' : 'legacy'}>
               {t(garment.gen9 ? 'sources.formatGen9' : 'sources.formatLegacy')}
             </Badge>
-            {garment.wArchiwum && <Badge tone="unknown">{t('group.inArchive')}</Badge>}
+            {garment.inArchive && <Badge tone="unknown">{t('group.inArchive')}</Badge>}
             <span>
-              {garment.zrodlo}
-              <span className="faint"> › {garment.kontener ?? ''}</span>
+              {garment.source}
+              <span className="faint"> › {garment.container ?? ''}</span>
             </span>
-            {garment.typ && <span className="faint">· {t(`slot.${garment.typ}`)}</span>}
+            {garment.slot && <span className="faint">· {t(`slot.${garment.slot}`)}</span>}
           </div>
         </div>
 
-        {!garment.wArchiwum && (
+        {!garment.inArchive && (
           <div className="actions">
             <Button
               icon="external"
               title={t('group.showInExplorer')}
               onClick={() =>
                 void bridge
-                  .call('shell.showInExplorer', { sciezka: garment.sciezkaYdd ?? '' })
+                  .call('shell.showInExplorer', { path: garment.modelPath ?? '' })
                   .catch((failure: unknown) => toast.warn(messageOf(failure)))
               }
             >
@@ -119,17 +119,17 @@ export function Item({ id }: { id: string }) {
 
             <div className="col-facts">
               <div>
-                <span className="faint">{t('group.model')}</span> <b>{formatNumber(garment.wierzcholki)}</b> {t('group.verts')} ·{' '}
-                <b>{formatNumber(garment.trojkaty)}</b> {t('group.tris')} · {t('group.lods')} <b>{garment.lody}</b>
+                <span className="faint">{t('group.model')}</span> <b>{formatNumber(garment.vertices)}</b> {t('group.verts')} ·{' '}
+                <b>{formatNumber(garment.triangles)}</b> {t('group.tris')} · {t('group.lods')} <b>{garment.lods}</b>
               </div>
               <div>
-                <span className="faint">{t('group.size')}</span> <b>{formatSize(garment.bajty, language)}</b> ·{' '}
-                {t('dup.textures', { n: garment.tekstur })}
+                <span className="faint">{t('group.size')}</span> <b>{formatSize(garment.bytes, language)}</b> ·{' '}
+                {t('dup.textures', { n: garment.textureCount })}
               </div>
               <div className="col-path">
                 <span className="faint">{t('group.path')}</span>{' '}
-                <span className="mono select-text" title={garment.sciezkaYdd ?? ''}>
-                  {texturePath(garment.sciezkaYdd, 10000)}
+                <span className="mono select-text" title={garment.modelPath ?? ''}>
+                  {texturePath(garment.modelPath, 10000)}
                 </span>
               </div>
             </div>
@@ -141,11 +141,11 @@ export function Item({ id }: { id: string }) {
             <div className="tex-grid item-tex">
               {textures.map((texture) => (
                 <TextureTile
-                  key={texture.sha ?? texture.plik}
+                  key={texture.sha ?? texture.file}
                   texture={texture}
                   note={t('group.single')}
                   onClick={() => {
-                    if (!texture.zdekodowana || !texture.sha) {
+                    if (!texture.decoded || !texture.sha) {
                       toast.warn(t('wipe.noPreview'));
                       return;
                     }
@@ -153,12 +153,12 @@ export function Item({ id }: { id: string }) {
                       {
                         sha: texture.sha,
                         name: garmentName(garment),
-                        variant: texture.litera ? t('wipe.variant', { x: variantLabel(texture) }) : '',
-                        file: texture.plik,
-                        width: texture.w,
-                        height: texture.h,
+                        variant: texture.variant ? t('wipe.variant', { x: variantLabel(texture) }) : '',
+                        file: texture.file,
+                        width: texture.width,
+                        height: texture.height,
                         format: texture.format,
-                        mipmaps: texture.mipy,
+                        mipmaps: texture.mipmaps,
                       },
                     ]);
                   }}
@@ -172,12 +172,12 @@ export function Item({ id }: { id: string }) {
               <h2>{t('item.groups')}</h2>
             </div>
             <div className="item-groups-list">
-              {item.data.grupy.length === 0 ? (
+              {item.data.groups.length === 0 ? (
                 <p className="muted">
                   <Icon name="ok" /> {t('item.noGroups')}
                 </p>
               ) : (
-                item.data.grupy.map((group) => <GroupRow key={group.id} group={group} />)
+                item.data.groups.map((group) => <GroupRow key={group.id} group={group} />)
               )}
             </div>
           </div>
@@ -192,11 +192,11 @@ export function Item({ id }: { id: string }) {
 function GroupRow({ group }: { group: GarmentGroupRef }) {
   const t = useTranslate();
 
-  const standing = group.ignoruj
+  const standing = group.ignored
     ? { label: t('dup.ignored'), tone: 'unknown' as const }
-    : group.stan === 'zostaje'
+    : group.standing === 'stays'
       ? { label: t('group.stays'), tone: 'ok' as const }
-      : group.stan === 'odrzucona'
+      : group.standing === 'rejected'
         ? { label: t('group.rejected'), tone: 'warn' as const }
         : { label: t('group.neutral'), tone: 'unknown' as const };
 
@@ -214,23 +214,23 @@ function GroupRow({ group }: { group: GarmentGroupRef }) {
     >
       <div className="card-body">
         <div className="dup-card-head">
-          <VerdictBadge verdict={group.werdykt} />
-          <span className="dup-powod">{reasonText(t, group.powod)}</span>
-          <span className={group.stan === 'odrzucona' && !group.ignoruj ? 'badge err' : `badge ${standing.tone}`}>
+          <VerdictBadge verdict={group.verdict} />
+          <span className="dup-reason">{reasonText(t, group.reason)}</span>
+          <span className={group.standing === 'rejected' && !group.ignored ? 'badge err' : `badge ${standing.tone}`}>
             {standing.label}
           </span>
         </div>
 
         <div className="item-group-with">
           <span className="faint">{t('item.with')}</span>{' '}
-          {group.inni.map((other, index) => (
+          {group.others.map((other, index) => (
             <span key={other.id}>
               {index > 0 && ', '}
               <span className="mono">
-                {other.nazwa}
-                <sub>{other.sufiks ?? ''}</sub>
+                {other.name}
+                <sub>{other.suffix ?? ''}</sub>
               </span>{' '}
-              <span className="faint">({other.zrodlo})</span>
+              <span className="faint">({other.source})</span>
             </span>
           ))}
         </div>

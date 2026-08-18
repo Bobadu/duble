@@ -29,62 +29,62 @@ public class GroupCommandTests
         using var app = Compared("groups");
 
         var list = await app.Call("groups.list", "{}");
-        Assert.Equal(3, list.GetProperty("grupy").GetArrayLength());
+        Assert.Equal(3, list.GetProperty("groups").GetArrayLength());
 
-        var summary = list.GetProperty("podsumowanie");
-        Assert.Equal(2, summary.GetProperty("duplikat").GetInt32());
-        Assert.Equal(1, summary.GetProperty("przemalowanie").GetInt32());
-        Assert.Equal(3, summary.GetProperty("doOdrzucenia").GetProperty("pozycje").GetInt32());   // b, f and g
-        Assert.Equal(Verdict.Duplicate.ToKey(), list.GetProperty("grupy")[0].GetProperty("werdykt").GetString());
-        Assert.Equal(3, list.GetProperty("grupy")[0].GetProperty("czlonkowie").GetArrayLength());   // the larger group first
-        Assert.True(list.GetProperty("filtry").GetProperty("sloty").GetArrayLength() >= 3);
+        var summary = list.GetProperty("summary");
+        Assert.Equal(2, summary.GetProperty("duplicate").GetInt32());
+        Assert.Equal(1, summary.GetProperty("retexture").GetInt32());
+        Assert.Equal(3, summary.GetProperty("toReject").GetProperty("garments").GetInt32());   // b, f and g
+        Assert.Equal(Verdict.Duplicate.ToKey(), list.GetProperty("groups")[0].GetProperty("verdict").GetString());
+        Assert.Equal(3, list.GetProperty("groups")[0].GetProperty("members").GetArrayLength());   // the larger group first
+        Assert.True(list.GetProperty("filters").GetProperty("slots").GetArrayLength() >= 3);
 
-        Assert.Equal(1, (await app.Call("groups.list", "{\"werdykty\":[\"retexture\"]}")).GetProperty("grupy").GetArrayLength());
-        Assert.Equal(1, (await app.Call("groups.list", "{\"szukaj\":\"jbib_007\"}")).GetProperty("grupy").GetArrayLength());
-        Assert.Equal(1, (await app.Call("groups.list", "{\"sloty\":[\"feet\"]}")).GetProperty("grupy").GetArrayLength());
+        Assert.Equal(1, (await app.Call("groups.list", "{\"verdicts\":[\"retexture\"]}")).GetProperty("groups").GetArrayLength());
+        Assert.Equal(1, (await app.Call("groups.list", "{\"search\":\"jbib_007\"}")).GetProperty("groups").GetArrayLength());
+        Assert.Equal(1, (await app.Call("groups.list", "{\"slots\":[\"feet\"]}")).GetProperty("groups").GetArrayLength());
 
         // the a=b group: make b the one to keep
-        var jbib = (await app.Call("groups.list", "{\"sloty\":[\"jbib\"]}")).GetProperty("grupy")[0];
+        var jbib = (await app.Call("groups.list", "{\"slots\":[\"jbib\"]}")).GetProperty("groups")[0];
         var groupId = jbib.GetProperty("id").GetString();
         var idOfB = MemberId(jbib, number: 7);
         var idOfA = MemberId(jbib, number: 1);
 
-        var decided = (await app.Call("groups.decide", $"{{\"id\":\"{groupId}\",\"zwyciezca\":\"{idOfB}\"}}"))
-            .GetProperty("rozstrzygniecie");
-        Assert.Equal(idOfB, decided.GetProperty("zwyciezca").GetString());
-        Assert.Equal(idOfA, decided.GetProperty("odrzucone")[0].GetString());
-        Assert.False(decided.GetProperty("domyslna").GetBoolean());
+        var decided = (await app.Call("groups.decide", $"{{\"id\":\"{groupId}\",\"winner\":\"{idOfB}\"}}"))
+            .GetProperty("resolution");
+        Assert.Equal(idOfB, decided.GetProperty("winner").GetString());
+        Assert.Equal(idOfA, decided.GetProperty("rejected")[0].GetString());
+        Assert.False(decided.GetProperty("isDefault").GetBoolean());
         Assert.True(app.Saw("groups.changed"));
         Assert.Contains(groupId, File.ReadAllText(app.Session.Project.Path));   // written into the .duble file
 
         // the e=f=g group: not a duplicate at all
-        var feet = (await app.Call("groups.list", "{\"sloty\":[\"feet\"]}")).GetProperty("grupy")[0];
+        var feet = (await app.Call("groups.list", "{\"slots\":[\"feet\"]}")).GetProperty("groups")[0];
         var bootsId = feet.GetProperty("id").GetString();
-        await app.Call("groups.decide", $"{{\"id\":\"{bootsId}\",\"ignoruj\":true,\"notatka\":\"other boots\"}}");
+        await app.Call("groups.decide", $"{{\"id\":\"{bootsId}\",\"ignored\":true,\"note\":\"other boots\"}}");
 
-        Assert.Equal(2, (await app.Call("groups.list", "{}")).GetProperty("grupy").GetArrayLength());
-        Assert.Equal(3, (await app.Call("groups.list", "{\"zignorowane\":true}")).GetProperty("grupy").GetArrayLength());
+        Assert.Equal(2, (await app.Call("groups.list", "{}")).GetProperty("groups").GetArrayLength());
+        Assert.Equal(3, (await app.Call("groups.list", "{\"ignored\":true}")).GetProperty("groups").GetArrayLength());
 
         var preview = await app.Call("apply.preview");
-        Assert.Equal(1, preview.GetProperty("pozycje").GetInt32());   // only a
-        Assert.Equal(3, preview.GetProperty("pliki").GetInt32());     // its .ydd and two .ytd
-        Assert.Equal(200, preview.GetProperty("bajty").GetInt64());   // 100 + 50 + 50
+        Assert.Equal(1, preview.GetProperty("garments").GetInt32());   // only a
+        Assert.Equal(3, preview.GetProperty("files").GetInt32());     // its .ydd and two .ytd
+        Assert.Equal(200, preview.GetProperty("bytes").GetInt64());   // 100 + 50 + 50
 
         // the details of a group: which textures match, and the quality breakdown
-        var details = (await app.Call("groups.get", $"{{\"id\":\"{groupId}\"}}")).GetProperty("grupa");
-        Assert.Equal(1, details.GetProperty("dopasowania").GetArrayLength());
-        Assert.Equal(2, details.GetProperty("dopasowania")[0].GetProperty("pary").GetArrayLength());
-        Assert.True(details.GetProperty("czlonkowie")[0].GetProperty("rozpiska").GetProperty("razem").GetDouble() > 0);
-        Assert.Equal(2, details.GetProperty("czlonkowie")[0].GetProperty("tekstury").GetArrayLength());
+        var details = (await app.Call("groups.get", $"{{\"id\":\"{groupId}\"}}")).GetProperty("group");
+        Assert.Equal(1, details.GetProperty("matches").GetArrayLength());
+        Assert.Equal(2, details.GetProperty("matches")[0].GetProperty("pairs").GetArrayLength());
+        Assert.True(details.GetProperty("members")[0].GetProperty("quality").GetProperty("total").GetDouble() > 0);
+        Assert.Equal(2, details.GetProperty("members")[0].GetProperty("textures").GetArrayLength());
 
         var note = (await app.Call("groups.get", $"{{\"id\":\"{bootsId}\"}}"))
-            .GetProperty("grupa").GetProperty("rozstrzygniecie").GetProperty("notatka").GetString();
+            .GetProperty("group").GetProperty("resolution").GetProperty("note").GetString();
         Assert.Equal("other boots", note);
 
         // resetting goes back to what Core would have chosen
-        var reset = (await app.Call("groups.reset", $"{{\"id\":\"{bootsId}\"}}")).GetProperty("rozstrzygniecie");
-        Assert.True(reset.GetProperty("domyslna").GetBoolean());
-        Assert.Equal(3, (await app.Call("groups.list", "{}")).GetProperty("grupy").GetArrayLength());
+        var reset = (await app.Call("groups.reset", $"{{\"id\":\"{bootsId}\"}}")).GetProperty("resolution");
+        Assert.True(reset.GetProperty("isDefault").GetBoolean());
+        Assert.Equal(3, (await app.Call("groups.list", "{}")).GetProperty("groups").GetArrayLength());
 
         var error = await app.Failing("groups.get", "{\"id\":\"no-such-group\"}");
         Assert.Equal(BridgeErrors.NotFound, error.GetProperty("code").GetString());
@@ -94,18 +94,18 @@ public class GroupCommandTests
     public async Task Rejecting_by_hand_keeps_the_winner_out_of_the_list()
     {
         using var app = Compared("groups-reject");
-        var jbib = (await app.Call("groups.list", "{\"sloty\":[\"jbib\"]}")).GetProperty("grupy")[0];
+        var jbib = (await app.Call("groups.list", "{\"slots\":[\"jbib\"]}")).GetProperty("groups")[0];
         var groupId = jbib.GetProperty("id").GetString();
         var idOfA = MemberId(jbib, number: 1);
         var idOfB = MemberId(jbib, number: 7);
 
         // the interface may send the winner among the rejected; it cannot be both
         var decided = (await app.Call("groups.decide",
-                $"{{\"id\":\"{groupId}\",\"zwyciezca\":\"{idOfA}\",\"odrzucone\":[\"{idOfA}\",\"{idOfB}\"]}}"))
-            .GetProperty("rozstrzygniecie");
+                $"{{\"id\":\"{groupId}\",\"winner\":\"{idOfA}\",\"rejected\":[\"{idOfA}\",\"{idOfB}\"]}}"))
+            .GetProperty("resolution");
 
-        Assert.Equal(idOfA, decided.GetProperty("zwyciezca").GetString());
-        Assert.Equal(idOfB, Assert.Single(decided.GetProperty("odrzucone").EnumerateArray()).GetString());
+        Assert.Equal(idOfA, decided.GetProperty("winner").GetString());
+        Assert.Equal(idOfB, Assert.Single(decided.GetProperty("rejected").EnumerateArray()).GetString());
     }
 
     [Fact]
@@ -115,12 +115,12 @@ public class GroupCommandTests
 
         var started = await app.Call("compare.run");
 
-        Assert.True(started.GetProperty("uruchomiono").GetBoolean());
+        Assert.True(started.GetProperty("started").GetBoolean());
         await app.WaitFor("compare.done");
     }
 
     static string MemberId(JsonElement group, int number)
-        => group.GetProperty("czlonkowie").EnumerateArray()
-            .First(member => member.GetProperty("numer").GetInt32() == number)
+        => group.GetProperty("members").EnumerateArray()
+            .First(member => member.GetProperty("number").GetInt32() == number)
             .GetProperty("id").GetString();
 }

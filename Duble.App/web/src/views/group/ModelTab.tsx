@@ -165,9 +165,9 @@ function ModelCard({
         <div className="v3d-title">
           <span className="nm">
             {garmentName(member)}
-            <sub>{member.sufiks ?? ''}</sub>
+            <sub>{member.suffix ?? ''}</sub>
           </span>
-          <span className="faint">{member.zrodlo}</span>
+          <span className="faint">{member.source}</span>
         </div>
         <div className="v3d-ctl">
           {variants.length > 1 && (
@@ -286,7 +286,7 @@ function OverlayCard({
           ) : (
             <span className="nm">
               {garmentName(member)}
-              <sub>{member.sufiks ?? ''}</sub>
+              <sub>{member.suffix ?? ''}</sub>
             </span>
           )}
 
@@ -391,7 +391,7 @@ function useModelView({ wireframe, onCreated }: { wireframe: boolean; onCreated?
 
 /** The colour variants a garment has, as the engine worked them out — the letter goes into the mesh URL. */
 function variantsOf(garment: Garment): string[] {
-  return [...new Set((garment.tekstury ?? []).map((texture) => texture.litera).filter((letter): letter is string => !!letter))];
+  return [...new Set((garment.textures ?? []).map((texture) => texture.variant).filter((letter): letter is string => !!letter))];
 }
 
 function meshUrl(garmentId: string, variant: string | null): string {

@@ -29,10 +29,10 @@ export function Calibration() {
   const toast = useToast();
   const [report, setReport] = useState<CalibrationReport | null>(null);
 
-  useBridgeEvent('calibrate.done', (done) => setReport(done.wynik));
+  useBridgeEvent('calibrate.done', (done) => setReport(done.report));
   useBridgeEvent('project.opened', () => setReport(null));
 
-  const running = job?.typ === 'kalibracja' && (job.stan === 'start' || job.stan === 'postep');
+  const running = job?.kind === 'calibration' && (job.state === 'start' || job.state === 'progress');
 
   const run = async () => {
     try {
@@ -84,14 +84,14 @@ function Report({ report }: { report: CalibrationReport }) {
     if (!proposal) return;
     try {
       const state = await bridge.call('project.settings.set', {
-        progi: {
+        thresholds: {
           geometryIdentical: proposal.geometryIdentical,
           geometrySimilar: proposal.geometrySimilar,
           textureHashDistance: proposal.textureHashDistance,
           textureColorDistance: proposal.textureColorDistance,
         },
       });
-      toast.ok(state.porownanie ? t('settings.thresholdSavedCompare') : t('settings.saved'));
+      toast.ok(state.comparing ? t('settings.thresholdSavedCompare') : t('settings.saved'));
     } catch (failure) {
       toast.error(messageOf(failure));
     }
@@ -101,7 +101,7 @@ function Report({ report }: { report: CalibrationReport }) {
     <div>
       <p className="muted">
         {t('settings.calibSummary', {
-          poz: formatNumber(report.garmentsWithGeometry),
+          withGeometry: formatNumber(report.garmentsWithGeometry),
           tex: formatNumber(report.decodedTextures),
           when: formatDate(report.when),
         })}
@@ -126,7 +126,7 @@ function Report({ report }: { report: CalibrationReport }) {
               geo: twoPlaces(proposal.geometryIdentical),
               geo4: twoPlaces(proposal.geometrySimilar),
               ph: whole(proposal.textureHashDistance),
-              kol: twoPlaces(proposal.textureColorDistance),
+              colour: twoPlaces(proposal.textureColorDistance),
             })}
           </span>
           {differs ? (

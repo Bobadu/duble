@@ -17,11 +17,11 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const [creating, setCreating] = useState(false);
 
   // the default folder is only known once the host answers, and the user may have typed their own by then
-  const shownFolder = folder ?? recent.data?.folderDomyslny ?? '';
+  const shownFolder = folder ?? recent.data?.defaultFolder ?? '';
 
   const browse = async () => {
     const picked = await bridge.call('project.pickFolder');
-    if (picked.sciezka) setFolder(picked.sciezka);
+    if (picked.path) setFolder(picked.path);
   };
 
   const create = async () => {
@@ -33,7 +33,7 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
 
     setCreating(true);
     try {
-      await bridge.call('project.new', { nazwa: trimmed, folder: shownFolder.trim() });
+      await bridge.call('project.new', { name: trimmed, folder: shownFolder.trim() });
       onClose();
       navigate('sources');
     } catch (failure) {

@@ -22,7 +22,7 @@ export function UnpackDialog({ source, onClose }: { source: Source; onClose: () 
   const browse = async () => {
     try {
       const picked = await bridge.call('dialogs.pickFolder', folder ? { start: folder } : {});
-      if (picked.sciezka) setFolder(picked.sciezka);
+      if (picked.path) setFolder(picked.path);
     } catch (failure) {
       toast.error(messageOf(failure));
     }
@@ -38,12 +38,12 @@ export function UnpackDialog({ source, onClose }: { source: Source; onClose: () 
     setStarting(true);
     sessionStorage.setItem(LAST_FOLDER_KEY, target);
     try {
-      await bridge.call('sources.unpack', { id: source.id, folder: target, dodajZrodlo: addAsSource });
+      await bridge.call('sources.unpack', { id: source.id, folder: target, addAsSource: addAsSource });
       toast.info(t('unpack.running'), { duration: 2500 });
       onClose();
     } catch (failure) {
       const busy = errorCodeOf(failure) === ErrorCode.Busy;
-      toast.error(busy ? t('sources.busy') : t('unpack.failed', { blad: messageOf(failure) }), { duration: 8000 });
+      toast.error(busy ? t('sources.busy') : t('unpack.failed', { error: messageOf(failure) }), { duration: 8000 });
       setStarting(false);
     }
   };
@@ -61,7 +61,7 @@ export function UnpackDialog({ source, onClose }: { source: Source; onClose: () 
         </>
       }
     >
-      <p className="lead">{t('unpack.text', { nazwa: source.nazwa })}</p>
+      <p className="lead">{t('unpack.text', { name: source.name })}</p>
 
       <div className="field">
         <label htmlFor="unpack-folder">{t('unpack.folder')}</label>
@@ -77,7 +77,7 @@ export function UnpackDialog({ source, onClose }: { source: Source; onClose: () 
             {t('apply.pick')}
           </Button>
         </div>
-        <p className="help">{t('unpack.folderHint', { nazwa: copyFolderName(source) })}</p>
+        <p className="help">{t('unpack.folderHint', { name: copyFolderName(source) })}</p>
       </div>
 
       <label className="check-row">
@@ -93,7 +93,7 @@ export function UnpackDialog({ source, onClose }: { source: Source; onClose: () 
  * takes the name of the source, any other archive the name of its file, a folder its own name.
  */
 function copyFolderName(source: Source): string {
-  if (source.typ !== 'rpf') return source.nazwa;
-  const file = source.sciezka.split(/[\\/]/).pop() ?? source.nazwa;
-  return /^dlc\.rpf$/i.test(file) ? source.nazwa : file;
+  if (source.kind !== 'rpf') return source.name;
+  const file = source.path.split(/[\\/]/).pop() ?? source.name;
+  return /^dlc\.rpf$/i.test(file) ? source.name : file;
 }

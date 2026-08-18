@@ -29,8 +29,8 @@ public sealed class SourceCommands : CommandModule
 
     public override void Register()
     {
-        Bridge.Register("sources.list", _ => new { zrodla = Project.Sources.Select(Describe).ToList() });
-        Bridge.Register("sources.add", args => Add(args.Strings("sciezki")));
+        Bridge.Register("sources.list", _ => new { sources = Project.Sources.Select(Describe).ToList() });
+        Bridge.Register("sources.add", args => Add(args.Strings("paths")));
         Bridge.Register("sources.pickFolder", _ => AddFromDialog(() => Pick(Bridge.Dialogs.PickFolder(null, null))));
         Bridge.Register("sources.pickRpf", _ => AddFromDialog(() => Bridge.Dialogs.PickFiles(null, "rpf", true, null)));
         Bridge.Register("sources.remove", Remove);
@@ -59,19 +59,19 @@ public sealed class SourceCommands : CommandModule
         return new
         {
             id = source.Id,
-            nazwa = source.Name,
-            sciezka = source.Path,
-            typ = source.Kind.ToLabel(),
+            name = source.Name,
+            path = source.Path,
+            kind = source.Kind.ToLabel(),
             format = statistics.Format ?? source.Format.ToLabel(),
-            wlaczone = source.Enabled,
-            zaindeksowano = source.IndexedAt,
-            istnieje = Directory.Exists(source.Path) || File.Exists(source.Path),
-            pozycje = statistics.Garments,
-            tekstury = statistics.Textures,
+            enabled = source.Enabled,
+            indexedAt = source.IndexedAt,
+            exists = Directory.Exists(source.Path) || File.Exists(source.Path),
+            garments = statistics.Garments,
+            textures = statistics.Textures,
             perSlot = statistics.PerSlot,
             bc7 = statistics.Bc7,
-            archiwa = statistics.InArchive,
-            kosz = Session.BinFolderFor(source),
+            inArchives = statistics.InArchive,
+            bin = Session.BinFolderFor(source),
         };
     }
 
@@ -103,7 +103,7 @@ public sealed class SourceCommands : CommandModule
             Session.SaveProject();
             SourcesChanged();
         }
-        return new { dodane = added, pominiete = skipped };
+        return new { added = added, skipped = skipped };
     }
 
     object Remove(JsonElement args)
@@ -123,29 +123,29 @@ public sealed class SourceCommands : CommandModule
     object Toggle(JsonElement args)
     {
         var source = Required(args);
-        source.Enabled = args.Flag("wlaczone", !source.Enabled);
+        source.Enabled = args.Flag("enabled", !source.Enabled);
         Session.SaveProject();
         SourcesChanged(source.Id);
-        return new { wlaczone = source.Enabled };
+        return new { enabled = source.Enabled };
     }
 
     object DetectedGames() => new
     {
-        gry = GameDetector.Detect().Select(game => new
+        games = GameDetector.Detect().Select(game => new
         {
-            gra = game.Edition,
-            sciezka = game.Path,
-            propozycje = game.Folders.Select(folder => new { nazwa = folder.Name, sciezka = folder.Path, typ = folder.Kind }).ToList(),
+            edition = game.Edition,
+            path = game.Path,
+            folders = game.Folders.Select(folder => new { name = folder.Name, path = folder.Path, kind = folder.Kind }).ToList(),
         }).ToList(),
     };
 
     object StartIndexing(JsonElement args)
     {
         var ids = args.Strings("ids");
-        bool force = args.Flag("wymus");
+        bool force = args.Flag("force");
         // no ids at all means "everything that is switched on", which is what the Index all button sends
         var sources = Project.Sources.Where(source => ids.Count == 0 ? source.Enabled : ids.Contains(source.Id ?? "")).ToList();
-        if (sources.Count == 0) return new { uruchomiono = false };
+        if (sources.Count == 0) return new { started = false };
 
         var description = string.Join(", ", sources.Select(source => source.Name));
         bool started = jobs.TryStart(JobKinds.Index, description, async (cancellation, progress) =>
@@ -156,7 +156,7 @@ public sealed class SourceCommands : CommandModule
         });
         if (!started) throw Busy();
 
-        return new { uruchomiono = true, zrodla = sources.Select(source => source.Id).ToList() };
+        return new { started = true, sources = sources.Select(source => source.Id).ToList() };
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public sealed class SourceCommands : CommandModule
     {
         var source = Required(args);
         var folder = args.Required("folder");
-        bool addAsSource = args.Flag("dodajZrodlo", true);
+        bool addAsSource = args.Flag("addAsSource", true);
 
         if (!Directory.Exists(source.Path) && !File.Exists(source.Path))
             throw new BridgeException(BridgeErrors.NotFound, source.Path ?? "");
@@ -197,16 +197,16 @@ public sealed class SourceCommands : CommandModule
             {
                 id = source.Id,
                 folder = target,
-                pliki = unpacked.Files,
-                archiwa = unpacked.Archives,
-                bajty = unpacked.Bytes,
-                bledy = unpacked.Errors.Take(20).ToList(),
-                dodano = addedId,
+                files = unpacked.Files,
+                inArchives = unpacked.Archives,
+                bytes = unpacked.Bytes,
+                errors = unpacked.Errors.Take(20).ToList(),
+                added = addedId,
             });
         });
         if (!started) throw Busy();
 
-        return new { uruchomiono = true, folder = target };
+        return new { started = true, folder = target };
     }
 
     /// <summary>

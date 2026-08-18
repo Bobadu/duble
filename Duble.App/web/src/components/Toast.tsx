@@ -70,7 +70,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <Icon name={iconFor[toast.kind]} />
             <div className="txt">
               <span>{toast.text}</span>
-              {toast.detail && <span className="opis">{toast.detail}</span>}
+              {toast.detail && <span className="description">{toast.detail}</span>}
             </div>
             {toast.action && (
               <button

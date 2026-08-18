@@ -8,7 +8,7 @@ export type GroupFilters = Required<NonNullable<CommandArgs<'groups.list'>>>;
 
 const STORAGE_KEY = 'duplicates.filters';
 
-const NONE: GroupFilters = { werdykty: [], sloty: [], zrodla: [], szukaj: '', zignorowane: false };
+const NONE: GroupFilters = { verdicts: [], slots: [], sources: [], search: '', ignored: false };
 
 function read(): GroupFilters {
   try {
@@ -42,9 +42,9 @@ export function useGroupFilters(): GroupFiltersState {
 
   const set = useCallback<GroupFiltersState['set']>((key, value) => store({ ...read(), [key]: value }), [store]);
 
-  const clear = useCallback(() => store({ ...NONE, zignorowane: read().zignorowane }), [store]);
+  const clear = useCallback(() => store({ ...NONE, ignored: read().ignored }), [store]);
 
-  const any = filters.werdykty.length > 0 || filters.sloty.length > 0 || filters.zrodla.length > 0 || filters.szukaj !== '';
+  const any = filters.verdicts.length > 0 || filters.slots.length > 0 || filters.sources.length > 0 || filters.search !== '';
 
   return { filters, set, clear, any };
 }

@@ -36,9 +36,9 @@ public class JobRunnerTests
         Assert.False(jobs.Busy);
         Assert.Null(jobs.Current);
 
-        Assert.Contains(events, e => e.StartsWith("job ") && e.Contains("\"stan\":\"start\"") && e.Contains("\"typ\":\"indeks\"") && e.Contains("\"opis\":\"A\""));
-        Assert.Contains(events, e => e.Contains("\"stan\":\"postep\"") && e.Contains("\"procent\":50"));
-        Assert.Contains(events, e => e.Contains("\"stan\":\"koniec\""));
+        Assert.Contains(events, e => e.StartsWith("job ") && e.Contains("\"state\":\"start\"") && e.Contains("\"kind\":\"index\"") && e.Contains("\"description\":\"A\""));
+        Assert.Contains(events, e => e.Contains("\"state\":\"progress\"") && e.Contains("\"percent\":50"));
+        Assert.Contains(events, e => e.Contains("\"state\":\"done\""));
     }
 
     [Fact]
@@ -64,16 +64,16 @@ public class JobRunnerTests
 
         await jobs.Run(JobKinds.Apply, "A", (_, progress) =>
         {
-            for (int i = 0; i < 500; i++) progress(new ProgressReport("zastosuj", i, 500, "x"));   // 500 in a moment
-            progress(new ProgressReport("zastosuj", 500, 500, null));                              // end of the stage
-            progress(new ProgressReport("porownaj", 0, 0, null));                                  // a new stage
+            for (int i = 0; i < 500; i++) progress(new ProgressReport("apply", i, 500, "x"));   // 500 in a moment
+            progress(new ProgressReport("apply", 500, 500, null));                              // end of the stage
+            progress(new ProgressReport("compare", 0, 0, null));                                  // a new stage
             return Task.CompletedTask;
         });
 
-        int reported = events.FindAll(e => e.Contains("\"stan\":\"postep\"")).Count;
+        int reported = events.FindAll(e => e.Contains("\"state\":\"progress\"")).Count;
         Assert.InRange(reported, 3, 30);   // the first, the end of the stage, the new stage, plus any 100 ms ticks
-        Assert.Contains(events, e => e.Contains("\"zrobione\":500") && e.Contains("\"procent\":100"));
-        Assert.Contains(events, e => e.Contains("\"etap\":\"porownaj\""));
+        Assert.Contains(events, e => e.Contains("\"done\":500") && e.Contains("\"percent\":100"));
+        Assert.Contains(events, e => e.Contains("\"stage\":\"compare\""));
     }
 
     [Fact]
@@ -95,19 +95,19 @@ public class JobRunnerTests
         jobs.Cancel();
 
         Assert.True(await job);
-        Assert.Contains(events, e => e.Contains("\"stan\":\"anulowano\""));
+        Assert.Contains(events, e => e.Contains("\"state\":\"cancelled\""));
         Assert.False(jobs.Busy);
     }
 
     [Fact]
-    public async Task A_failure_ends_the_job_as_an_error_and_frees_the_runner()
+    public async Task A_failure_ends_the_job_as_failed_and_frees_the_runner()
     {
         var events = new List<string>();
         var jobs = new JobRunner((_, data) => events.Add(Json(data)));
 
         Assert.True(await jobs.Run(JobKinds.Index, "A", (_, _) => throw new System.IO.IOException("disk")));
 
-        Assert.Contains(events, e => e.Contains("\"stan\":\"blad\"") && e.Contains("disk"));
+        Assert.Contains(events, e => e.Contains("\"state\":\"failed\"") && e.Contains("disk"));
         Assert.False(jobs.Busy);
     }
 }

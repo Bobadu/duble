@@ -31,7 +31,7 @@ export function SearchField({
   }, [typed, value, delay, onChange]);
 
   return (
-    <div className="filtr-szukaj">
+    <div className="filter-search">
       <span className="ico-wrap">
         <Icon name="search" />
       </span>

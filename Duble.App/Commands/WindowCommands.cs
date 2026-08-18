@@ -27,19 +27,19 @@ public sealed class WindowCommands : ICommandModule
 
         bridge.Register("dialogs.pickFolder", args => new
         {
-            sciezka = bridge.Dialogs.PickFolder(args.Text("tytul"), args.Text("start")),
+            path = bridge.Dialogs.PickFolder(args.Text("title"), args.Text("start")),
         });
         bridge.Register("dialogs.pickFiles", args => new
         {
-            sciezki = bridge.Dialogs.PickFiles(args.Text("tytul"), args.Text("filtr"), args.Flag("wiele", true), args.Text("start")),
+            paths = bridge.Dialogs.PickFiles(args.Text("title"), args.Text("filter"), args.Flag("multiple", true), args.Text("start")),
         });
         bridge.Register("dialogs.saveFile", args => new
         {
-            sciezka = bridge.Dialogs.SaveFile(args.Text("tytul"), args.Text("filtr"), args.Text("nazwa"), args.Text("start")),
+            path = bridge.Dialogs.SaveFile(args.Text("title"), args.Text("filter"), args.Text("name"), args.Text("start")),
         });
     }
 
-    object State() => new { maks = bridge.Window.IsMaximized };
+    object State() => new { maximized = bridge.Window.IsMaximized };
 
     object OnUiThread(Action action)
     {
@@ -62,7 +62,7 @@ public sealed class WindowCommands : ICommandModule
 
     static string Existing(JsonElement args)
     {
-        var path = args.Required("sciezka");
+        var path = args.Required("path");
         if (!Directory.Exists(path) && !File.Exists(path)) throw new BridgeException(BridgeErrors.NotFound, path);
         return path;
     }

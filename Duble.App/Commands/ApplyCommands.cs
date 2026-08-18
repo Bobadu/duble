@@ -46,13 +46,13 @@ public sealed class ApplyCommands : CommandModule
     ApplyPlan CurrentPlan() => Session.Plan(LiveGroups.RejectedIds(groups.All()));
 
     /// <summary>
-    /// {kosz?: string|null, ustawKosz?: bool} — the Apply dialog can change where rejected files go and see
+    /// {bin?: string|null, setBin?: bool} — the Apply dialog can change where rejected files go and see
     /// the new plan in the same call.
     /// </summary>
     void SetBinFolder(JsonElement args)
     {
-        if (!args.Flag("ustawKosz")) return;
-        var bin = args.Text("kosz");
+        if (!args.Flag("setBin")) return;
+        var bin = args.Text("bin");
         var project = Project;
         project.Settings ??= new ProjectSettings();
         project.Settings.BinFolder = string.IsNullOrWhiteSpace(bin) ? null : bin;
@@ -65,7 +65,7 @@ public sealed class ApplyCommands : CommandModule
         SetBinFolder(args);
 
         var plan = CurrentPlan();
-        if (plan.Files == 0) return new { uruchomiono = false, plan = PlanView.Describe(Session, plan, withList: false) };
+        if (plan.Files == 0) return new { started = false, plan = PlanView.Describe(Session, plan, withList: false) };
 
         bool started = jobs.TryStart(JobKinds.Apply, name, async (cancellation, progress) =>
         {
@@ -74,7 +74,7 @@ public sealed class ApplyCommands : CommandModule
         });
         if (!started) throw Busy();
 
-        return new { uruchomiono = true, plan = PlanView.Describe(Session, plan, withList: false) };
+        return new { started = true, plan = PlanView.Describe(Session, plan, withList: false) };
     }
 
     void Apply(ApplyPlan plan, string description, CancellationToken cancellation, Action<ProgressReport> progress)
@@ -84,7 +84,7 @@ public sealed class ApplyCommands : CommandModule
         // ALWAYS, an aborted apply included: whatever did move has to remain undoable
         var file = Session.NewHistoryFile();
         var saved = undoLogs.Save(log, file);
-        Bridge.Event("history.changed", new { plik = file });
+        Bridge.Event("history.changed", new { file = file });
 
         // after an abort the catalog is tidied up anyway — it would otherwise still list files that moved
         var afterwards = log.Aborted ? CancellationToken.None : cancellation;
@@ -94,18 +94,18 @@ public sealed class ApplyCommands : CommandModule
 
         Bridge.Event("apply.done", new
         {
-            plik = file,
-            przeniesione = log.Moves.Count,
-            pozycje = log.Garments.Count,
-            bajty = log.Bytes,
-            wspoldzielone = log.SharedCount,
-            wArchiwum = log.InArchiveCount,
-            brakujace = log.MissingCount,
-            kosze = log.Garments.Select(garment => garment.BinFolder).Where(bin => bin != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-            przerwano = log.Aborted,
+            file = file,
+            moved = log.Moves.Count,
+            garments = log.Garments.Count,
+            bytes = log.Bytes,
+            shared = log.SharedCount,
+            inArchive = log.InArchiveCount,
+            missing = log.MissingCount,
+            bins = log.Garments.Select(garment => garment.BinFolder).Where(bin => bin != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            aborted = log.Aborted,
             // an undo log that could not be written is the one failure worth interrupting the good news for:
             // the files have moved and, without it, nothing can put them back
-            blad = log.Error ?? (saved.IsFailure ? saved.Error.Message : null),
+            error = log.Error ?? (saved.IsFailure ? saved.Error.Message : null),
         });
     }
 }

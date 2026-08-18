@@ -1,4 +1,3 @@
-using System.Threading;
 using CodeWalker.GameFiles;
 
 namespace Duble.Core.Formats;
@@ -16,13 +15,23 @@ namespace Duble.Core.Formats;
 /// </summary>
 public sealed class CodeWalkerRuntime
 {
-    static int initialized;
+    static readonly object gate = new();
+    static bool initialized;
 
     public CodeWalkerRuntime() => Initialize();
 
-    /// <summary>Idempotent and safe to call from any thread.</summary>
+    /// <summary>
+    /// Idempotent and safe to call from any thread. Under the lock rather than a compare-and-swap, because a
+    /// caller that loses the race must not return before the flag is actually set: the next thing it does is
+    /// read a game file.
+    /// </summary>
     public static void Initialize()
     {
-        if (Interlocked.Exchange(ref initialized, 1) == 0) RpfManager.IsGen9 = true;
+        lock (gate)
+        {
+            if (initialized) return;
+            RpfManager.IsGen9 = true;
+            initialized = true;
+        }
     }
 }

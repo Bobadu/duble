@@ -28,8 +28,8 @@ public class SessionTests
         Assert.Equal("My studio", session.Project.Name);
 
         var summary = JsonSerializer.Serialize(session.Summary(), Bridge.Json);
-        Assert.Contains("\"zrodla\":0", summary);
-        Assert.Contains("\"pozycje\":0", summary);
+        Assert.Contains("\"sources\":0", summary);
+        Assert.Contains("\"garments\":0", summary);
     }
 
     [Fact]
@@ -46,29 +46,29 @@ public class SessionTests
         using var app = new TestApp("session-bridge");
         var folder = JsonSerializer.Serialize(app.Temp);
 
-        var created = await app.Call("project.new", $"{{\"nazwa\":\"Test: A/B\",\"folder\":{folder}}}");
+        var created = await app.Call("project.new", $"{{\"name\":\"Test: A/B\",\"folder\":{folder}}}");
 
-        Assert.Equal("Test: A/B", created.GetProperty("projekt").GetProperty("nazwa").GetString());
+        Assert.Equal("Test: A/B", created.GetProperty("project").GetProperty("name").GetString());
         Assert.True(File.Exists(Path.Combine(app.Temp, "Test A B.duble")));   // characters Windows forbids become spaces
         Assert.Single(app.Settings.Recent);
         Assert.True(app.Saw("project.opened"));
 
-        var again = await app.Failing("project.new", $"{{\"nazwa\":\"Test: A/B\",\"folder\":{folder}}}");
+        var again = await app.Failing("project.new", $"{{\"name\":\"Test: A/B\",\"folder\":{folder}}}");
         Assert.Equal(BridgeErrors.Io, again.GetProperty("code").GetString());   // the file is already there
 
         var recent = await app.Call("project.recent");
-        Assert.True(recent.GetProperty("ostatnie")[0].GetProperty("istnieje").GetBoolean());
+        Assert.True(recent.GetProperty("recent")[0].GetProperty("exists").GetBoolean());
 
-        var missing = await app.Failing("project.open", "{\"sciezka\":\"C:\\\\no\\\\such.duble\"}");
+        var missing = await app.Failing("project.open", "{\"path\":\"C:\\\\no\\\\such.duble\"}");
         Assert.Equal(BridgeErrors.NotFound, missing.GetProperty("code").GetString());
 
         var current = await app.Call("project.get");
-        Assert.Equal("Test: A/B", current.GetProperty("projekt").GetProperty("nazwa").GetString());
+        Assert.Equal("Test: A/B", current.GetProperty("project").GetProperty("name").GetString());
 
         await app.Call("project.close");
         var closed = await app.Call("project.get");
         // a null is left out of the JSON (WhenWritingNull), so a missing key means no project
-        Assert.False(closed.TryGetProperty("projekt", out var project) && project.ValueKind != JsonValueKind.Null);
+        Assert.False(closed.TryGetProperty("project", out var project) && project.ValueKind != JsonValueKind.Null);
     }
 
     [Fact]
@@ -76,12 +76,12 @@ public class SessionTests
     {
         using var app = new TestApp("session-forget");
         var folder = JsonSerializer.Serialize(app.Temp);
-        await app.Call("project.new", $"{{\"nazwa\":\"Gone\",\"folder\":{folder}}}");
+        await app.Call("project.new", $"{{\"name\":\"Gone\",\"folder\":{folder}}}");
 
         var file = JsonSerializer.Serialize(Path.Combine(app.Temp, "Gone.duble"));
-        await app.Call("project.forget", $"{{\"sciezka\":{file}}}");
+        await app.Call("project.forget", $"{{\"path\":{file}}}");
 
-        Assert.Empty((await app.Call("project.recent")).GetProperty("ostatnie").EnumerateArray());
+        Assert.Empty((await app.Call("project.recent")).GetProperty("recent").EnumerateArray());
     }
 
     [Fact]

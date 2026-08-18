@@ -71,7 +71,7 @@ public sealed class CatalogWorkflow
             source.Format = SourceFormats.Of(garments);
 
             bridge.Event("sources.changed", new { id = source.Id });
-            bridge.Event("project.changed", new { projekt = session.Summary() });
+            bridge.Event("project.changed", new { project = session.Summary() });
         }
     }
 
@@ -83,7 +83,7 @@ public sealed class CatalogWorkflow
         session.Save();
 
         bridge.Event("sources.changed", new { id = (string?)null });
-        bridge.Event("project.changed", new { projekt = session.Summary() });
-        bridge.Event("compare.done", new { podsumowanie = session.Summary() });
+        bridge.Event("project.changed", new { project = session.Summary() });
+        bridge.Event("compare.done", new { summary = session.Summary() });
     }
 }

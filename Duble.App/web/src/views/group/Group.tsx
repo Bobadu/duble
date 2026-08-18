@@ -24,12 +24,12 @@ export function Group({ id }: { id: string }) {
   const toast = useToast();
   const [tab, setTab] = useModelTab('group.tab');
 
-  const group = useCommand('groups.get', { id }, { reloadOn: ['groups.changed', 'compare.done'] });
+  const request = useCommand('groups.get', { id }, { reloadOn: ['groups.changed', 'compare.done'] });
 
   // a group can stop existing while it is open — after applying, or after a re-index
   useEffect(() => {
-    if (errorCodeOf(group.error) === ErrorCode.NotFound) navigate('duplicates');
-  }, [group.error]);
+    if (errorCodeOf(request.error) === ErrorCode.NotFound) navigate('duplicates');
+  }, [request.error]);
 
   const decide = async (change: Omit<CommandArgs<'groups.decide'>, 'id'>, quiet = false) => {
     try {
@@ -49,14 +49,14 @@ export function Group({ id }: { id: string }) {
     }
   };
 
-  if (group.error && errorCodeOf(group.error) !== ErrorCode.NotFound)
-    return <EmptyState icon="warn" title={t('common.error')} hint={messageOf(group.error)} />;
+  if (request.error && errorCodeOf(request.error) !== ErrorCode.NotFound)
+    return <EmptyState icon="warn" title={t('common.error')} hint={messageOf(request.error)} />;
 
-  if (!group.data) return null;
+  if (!request.data) return null;
 
-  const { grupa } = group.data;
-  const resolution = grupa.rozstrzygniecie;
-  const slot = grupa.czlonkowie[0]?.typ;
+  const { group } = request.data;
+  const resolution = group.resolution;
+  const slot = group.members[0]?.slot;
 
   return (
     <>
@@ -75,47 +75,47 @@ export function Group({ id }: { id: string }) {
           </a>
 
           <h1 className="group-h1">
-            {grupa.czlonkowie.map((member, index) => (
+            {group.members.map((member, index) => (
               <span key={member.id}>
                 {index > 0 && <span className="sep">·</span>}
                 <span className="nm">
                   {garmentName(member)}
-                  <sub>{member.sufiks ?? ''}</sub>
+                  <sub>{member.suffix ?? ''}</sub>
                 </span>
               </span>
             ))}
           </h1>
 
           <div className="group-sub">
-            <VerdictBadge verdict={grupa.werdykt} />
-            <span className="group-powod">{reasonText(t, grupa.powod)}</span>
+            <VerdictBadge verdict={group.verdict} />
+            <span className="group-reason">{reasonText(t, group.reason)}</span>
             {slot && <span className="faint">· {t(`slot.${slot}`)}</span>}
           </div>
         </div>
 
         <div className="actions">
-          <Note value={resolution.notatka ?? ''} onChange={(notatka) => void decide({ notatka }, true)} />
+          <Note value={resolution.note ?? ''} onChange={(note) => void decide({ note }, true)} />
 
           <Button
-            icon={resolution.ignoruj ? 'ok' : 'x'}
-            aria-pressed={resolution.ignoruj}
-            onClick={() => void decide({ ignoruj: !resolution.ignoruj })}
+            icon={resolution.ignored ? 'ok' : 'x'}
+            aria-pressed={resolution.ignored}
+            onClick={() => void decide({ ignored: !resolution.ignored })}
           >
-            {t(resolution.ignoruj ? 'group.isDuplicate' : 'group.notDuplicate')}
+            {t(resolution.ignored ? 'group.isDuplicate' : 'group.notDuplicate')}
           </Button>
 
           <Button
             icon="refresh"
             title={t('group.reset')}
             aria-label={t('group.reset')}
-            style={resolution.domyslna ? { visibility: 'hidden' } : undefined}
+            style={resolution.isDefault ? { visibility: 'hidden' } : undefined}
             onClick={reset}
           />
         </div>
       </div>
 
       <div className="group-bar">
-        {resolution.ignoruj && (
+        {resolution.ignored && (
           <div className="banner">
             <Icon name="info" />
             <span>{t('group.ignoredBanner')}</span>
@@ -135,9 +135,9 @@ export function Group({ id }: { id: string }) {
       </div>
 
       {tab === '3d' ? (
-        <LazyModelTab members={grupa.czlonkowie} />
+        <LazyModelTab members={group.members} />
       ) : (
-        <GroupColumns group={grupa} onDecide={(change) => void decide(change)} />
+        <GroupColumns group={group} onDecide={(change) => void decide(change)} />
       )}
     </>
   );
@@ -157,7 +157,7 @@ function Note({ value, onChange }: { value: string; onChange: (note: string) => 
   }, [typed, value, onChange]);
 
   return (
-    <div className="filtr-szukaj note">
+    <div className="filter-search note">
       <span className="ico-wrap">
         <Icon name="file" />
       </span>

@@ -29,7 +29,7 @@ export function History() {
   const exportTo = async (command: Extract<CommandName, 'report.exportHtml' | 'report.exportCsv'>) => {
     try {
       const done = await bridge.call(command, {});
-      if ('uruchomiono' in done && done.uruchomiono) toast.info(t('history.exporting'), { duration: 2500 });
+      if ('started' in done && done.started) toast.info(t('history.exporting'), { duration: 2500 });
     } catch (failure) {
       const code = errorCodeOf(failure);
       toast.warn(
@@ -47,8 +47,8 @@ export function History() {
     if (!sure) return;
 
     try {
-      const started = await bridge.call('history.undo', { plik: file, pozycje: garmentIds ?? [] });
-      if (started.uruchomiono) toast.info(t('history.undoing'), { duration: 2500 });
+      const started = await bridge.call('history.undo', { file: file, garments: garmentIds ?? [] });
+      if (started.started) toast.info(t('history.undoing'), { duration: 2500 });
       else toast.warn(t('history.gone'));
     } catch (failure) {
       toast.error(errorCodeOf(failure) === ErrorCode.Busy ? t('sources.busy') : messageOf(failure));
@@ -68,7 +68,7 @@ export function History() {
     );
   }
 
-  const entries = history.data?.wpisy ?? [];
+  const entries = history.data?.entries ?? [];
 
   return (
     <>
@@ -88,12 +88,12 @@ export function History() {
         <div className="hist-list">
           {entries.map((entry) =>
             isDamaged(entry) ? (
-              <DamagedCard key={entry.plik} entry={entry} />
+              <DamagedCard key={entry.file} entry={entry} />
             ) : (
               <HistoryCard
-                key={entry.plik}
+                key={entry.file}
                 entry={entry}
-                onUndo={(garmentIds, files) => void undo(entry.plik, garmentIds, files)}
+                onUndo={(garmentIds, files) => void undo(entry.file, garmentIds, files)}
               />
             ),
           )}
@@ -104,7 +104,7 @@ export function History() {
 }
 
 function isDamaged(entry: HistoryEntry | DamagedHistoryEntry): entry is DamagedHistoryEntry {
-  return 'uszkodzony' in entry;
+  return 'damaged' in entry;
 }
 
 /** A log that will not parse. It is still listed: the files it describes are sitting in a bin folder. */
@@ -114,8 +114,8 @@ function DamagedCard({ entry }: { entry: DamagedHistoryEntry }) {
   return (
     <div className="card hist-card">
       <div className="card-body">
-        <span className="badge err">{t('common.error')}</span> <span className="mono">{entry.nazwa}</span>{' '}
-        <span className="faint">{entry.blad}</span>
+        <span className="badge err">{t('common.error')}</span> <span className="mono">{entry.name}</span>{' '}
+        <span className="faint">{entry.error}</span>
       </div>
     </div>
   );

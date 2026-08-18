@@ -44,14 +44,14 @@ export function Thresholds({ state }: { state: ProjectSettingsState }) {
   const save = async (field: Field, typed: string) => {
     const value = Number(typed.replace(',', '.'));
     if (!Number.isFinite(value)) {
-      toast.warn(t('settings.thresholdInvalid', { pole: t(`settings.th.${field.key}`) }));
+      toast.warn(t('settings.thresholdInvalid', { field: t(`settings.th.${field.key}`) }));
       return;
     }
 
     try {
-      const saved = await bridge.call('project.settings.set', { progi: { [field.key]: value } });
+      const saved = await bridge.call('project.settings.set', { thresholds: { [field.key]: value } });
       setRejected((previous) => without(previous, field.key));
-      toast.ok(saved.porownanie ? t('settings.thresholdSavedCompare') : saved.porownanie === false ? t('sources.busy') : t('settings.saved'), {
+      toast.ok(saved.comparing ? t('settings.thresholdSavedCompare') : saved.comparing === false ? t('sources.busy') : t('settings.saved'), {
         duration: 2200,
       });
     } catch (failure) {
@@ -59,7 +59,7 @@ export function Thresholds({ state }: { state: ProjectSettingsState }) {
       // bad_args answers with the names of the fields Core refused, which are worth naming back
       toast.warn(
         errorCodeOf(failure) === ErrorCode.BadArguments
-          ? t('settings.thresholdInvalid', { pole: fieldNames(messageOf(failure), t) })
+          ? t('settings.thresholdInvalid', { field: fieldNames(messageOf(failure), t) })
           : messageOf(failure),
       );
     }
@@ -74,9 +74,9 @@ export function Thresholds({ state }: { state: ProjectSettingsState }) {
     if (!sure) return;
 
     try {
-      const saved = await bridge.call('project.settings.resetProgi');
+      const saved = await bridge.call('project.settings.resetThresholds');
       setRejected(new Set());
-      toast.ok(saved.porownanie ? t('settings.thresholdSavedCompare') : t('settings.saved'));
+      toast.ok(saved.comparing ? t('settings.thresholdSavedCompare') : t('settings.saved'));
     } catch (failure) {
       toast.error(messageOf(failure));
     }
@@ -86,7 +86,7 @@ export function Thresholds({ state }: { state: ProjectSettingsState }) {
     <div className="th-block">
       <div className="th-head">
         <h3>{t('settings.thresholds')}</h3>
-        {state.progiZmienione ? (
+        {state.thresholdsChanged ? (
           <Button small icon="refresh" onClick={restoreDefaults}>
             {t('settings.restoreDefaults')}
           </Button>
@@ -104,8 +104,8 @@ export function Thresholds({ state }: { state: ProjectSettingsState }) {
               <ThresholdField
                 key={field.key}
                 field={field}
-                value={state.progi[field.key]}
-                fallback={state.progiDomyslne[field.key]}
+                value={state.thresholds[field.key]}
+                fallback={state.defaultThresholds[field.key]}
                 bad={rejected.has(field.key)}
                 onSave={(typed) => void save(field, typed)}
               />

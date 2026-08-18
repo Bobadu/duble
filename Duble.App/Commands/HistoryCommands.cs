@@ -30,7 +30,7 @@ public sealed class HistoryCommands : CommandModule
 
     public override void Register()
     {
-        Bridge.Register("history.list", _ => new { wpisy = All() });
+        Bridge.Register("history.list", _ => new { entries = All() });
         Bridge.Register("history.get", Get);
         Bridge.Register("history.undo", Undo);
     }
@@ -45,7 +45,7 @@ public sealed class HistoryCommands : CommandModule
             entries.Add(log.IsSuccess
                 ? Describe(file, log.Value, details: false)
                 // a log that will not parse is still shown: the files it describes are sitting in a bin folder
-                : new { plik = file, nazwa = Path.GetFileName(file), blad = log.Error.Message, uszkodzony = true });
+                : new { file = file, name = Path.GetFileName(file), error = log.Error.Message, damaged = true });
         }
         return entries;
     }
@@ -53,15 +53,15 @@ public sealed class HistoryCommands : CommandModule
     object Get(JsonElement args)
     {
         var file = LogFile(args);
-        return new { wpis = Describe(file, Load(file), details: true) };
+        return new { entry = Describe(file, Load(file), details: true) };
     }
 
     object Undo(JsonElement args)
     {
         var file = LogFile(args);
-        var garmentIds = args.Strings("pozycje");
+        var garmentIds = args.Strings("garments");
         var log = Load(file);
-        if (!log.CanUndo) return new { uruchomiono = false, wrocilo = 0, pominieto = 0 };
+        if (!log.CanUndo) return new { started = false, restored = 0, skipped = 0 };
 
         bool started = jobs.TryStart(JobKinds.Undo, Path.GetFileName(file), async (cancellation, progress) =>
         {
@@ -75,7 +75,7 @@ public sealed class HistoryCommands : CommandModule
             {
                 // written even after a failure: the log on disk is the record of what moved back
                 undoLogs.Save(log, file);
-                Bridge.Event("history.changed", new { plik = file });
+                Bridge.Event("history.changed", new { file = file });
             }
 
             var chosen = garmentIds.Count > 0 ? new HashSet<string>(garmentIds) : null;
@@ -85,11 +85,11 @@ public sealed class HistoryCommands : CommandModule
             if (touched.Count > 0) workflow.Index(touched, false, cancellation, progress);
             workflow.CompareAndSave(cancellation, progress);
 
-            Bridge.Event("undo.done", new { plik = file, wrocilo = restored, pominieto = skipped, cofnieto = log.UndoneAt });
+            Bridge.Event("undo.done", new { file = file, restored = restored, skipped = skipped, undoneAt = log.UndoneAt });
         });
         if (!started) throw Busy();
 
-        return new { uruchomiono = true };
+        return new { started = true };
     }
 
     /// <summary>
@@ -98,7 +98,7 @@ public sealed class HistoryCommands : CommandModule
     /// </summary>
     string LogFile(JsonElement args)
     {
-        var name = args.Required("plik");
+        var name = args.Required("file");
         var history = Project.HistoryFolder;
         var candidate = Path.GetFullPath(Path.IsPathRooted(name) ? name : Path.Combine(history, name));
         if (!candidate.StartsWith(Path.GetFullPath(history), StringComparison.OrdinalIgnoreCase) || !File.Exists(candidate))
@@ -117,41 +117,41 @@ public sealed class HistoryCommands : CommandModule
     {
         var described = new Dictionary<string, object?>
         {
-            ["plik"] = file,
-            ["nazwa"] = Path.GetFileName(file),
-            ["kiedy"] = log.When,
-            ["opis"] = log.Description,
-            ["pozycje"] = log.Garments.Count,
-            ["pliki"] = log.Moves.Count,
-            ["bajty"] = log.Bytes,
-            ["kosze"] = log.Garments.Select(garment => garment.BinFolder).Where(bin => bin != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-            ["wspoldzielone"] = log.SharedCount,
-            ["wArchiwum"] = log.InArchiveCount,
-            ["brakujace"] = log.MissingCount,
-            ["cofnieto"] = log.UndoneAt,
-            ["czesciowo"] = log.PartlyUndone,
-            ["moznaCofnac"] = log.CanUndo,
-            ["przerwano"] = log.Aborted,
-            ["blad"] = log.Error,
+            ["file"] = file,
+            ["name"] = Path.GetFileName(file),
+            ["when"] = log.When,
+            ["description"] = log.Description,
+            ["garments"] = log.Garments.Count,
+            ["files"] = log.Moves.Count,
+            ["bytes"] = log.Bytes,
+            ["bins"] = log.Garments.Select(garment => garment.BinFolder).Where(bin => bin != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            ["shared"] = log.SharedCount,
+            ["inArchive"] = log.InArchiveCount,
+            ["missing"] = log.MissingCount,
+            ["undoneAt"] = log.UndoneAt,
+            ["partlyUndone"] = log.PartlyUndone,
+            ["canUndo"] = log.CanUndo,
+            ["aborted"] = log.Aborted,
+            ["error"] = log.Error,
         };
 
         if (details)
-            described["lista"] = log.Garments.Select(garment => new
+            described["list"] = log.Garments.Select(garment => new
             {
                 id = garment.Id,
-                nazwa = garment.Name,
-                zrodlo = garment.SourceName,
-                zrodloId = garment.SourceId,
-                kosz = garment.BinFolder,
-                pliki = log.Moves.Where(move => move.GarmentId == garment.Id).Select(move => new
+                name = garment.Name,
+                source = garment.SourceName,
+                sourceId = garment.SourceId,
+                bin = garment.BinFolder,
+                files = log.Moves.Where(move => move.GarmentId == garment.Id).Select(move => new
                 {
-                    z = move.From,
-                    @do = move.To,
-                    bajty = move.Bytes,
-                    cofniety = move.Undone,
-                    jest = File.Exists(move.To),
+                    from = move.From,
+                    to = move.To,
+                    bytes = move.Bytes,
+                    undone = move.Undone,
+                    exists = File.Exists(move.To),
                 }).ToList(),
-                moznaCofnac = log.CanRestoreGarment(garment.Id),
+                canUndo = log.CanRestoreGarment(garment.Id),
             }).ToList();
 
         return described;

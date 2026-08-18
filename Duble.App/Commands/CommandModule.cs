@@ -50,7 +50,7 @@ public abstract class CommandModule : ICommandModule
         => $"{garment.Slot}_{garment.Number:d3} {garment.PackName} {garment.Container} {SourceName(garment)} {garment.Id}".ToLowerInvariant();
 
     /// <summary>The status bar shows counts from the summary, so anything that changes them says so.</summary>
-    protected void ProjectChanged() => Bridge.Event("project.changed", new { projekt = Session.Summary() });
+    protected void ProjectChanged() => Bridge.Event("project.changed", new { project = Session.Summary() });
 
     /// <summary>The one long job at a time is taken; the interface says so rather than queueing.</summary>
     protected static BridgeException Busy() => new(BridgeErrors.Busy, "another job is running");

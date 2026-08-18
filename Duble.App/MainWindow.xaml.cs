@@ -69,7 +69,7 @@ public partial class MainWindow : Window, IHostWindow, IFileDialogs
                     Maximized = WindowState == WindowState.Maximized,
                 };
         };
-        StateChanged += (_, _) => Bridge?.Event("window.state", new { maks = WindowState == WindowState.Maximized });
+        StateChanged += (_, _) => Bridge?.Event("window.state", new { maximized = WindowState == WindowState.Maximized });
     }
 
     async Task Start()
@@ -115,7 +115,7 @@ public partial class MainWindow : Window, IHostWindow, IFileDialogs
                 if (module is AppCommands app) app.UiReady += OnUiReady;
             }
 
-            Dropped += paths => bridge.Event("files.dropped", new { sciezki = paths });
+            Dropped += paths => bridge.Event("files.dropped", new { paths = paths });
             core.WebMessageReceived += (_, e) => OnWebMessage(bridge, e);
             core.NavigationCompleted += (_, e) => Log($"navigation completed ok={e.IsSuccess} status={e.HttpStatusCode} err={e.WebErrorStatus}");
 
@@ -247,7 +247,7 @@ public partial class MainWindow : Window, IHostWindow, IFileDialogs
                     {
                         id = "start",
                         cmd = "project.open",
-                        args = new { sciezka = App.Options.ProjectFile },
+                        args = new { path = App.Options.ProjectFile },
                     });
                     Log("project from the command line: " + await Bridge!.Handle(request));
                 }

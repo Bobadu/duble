@@ -238,13 +238,13 @@ public sealed class Session
             int? duplicates = Comparison?.Groups.Count(g => g.Verdict is Verdict.Duplicate or Verdict.Superset);
             return new
             {
-                nazwa = Project.Name,
-                sciezka = Project.Path,
-                zrodla = Project.Sources.Count,
-                pozycje = Catalog.Garments.Count,
-                tekstury = Catalog.Garments.Sum(g => g.Textures.Count),
-                duplikaty = duplicates,
-                porownano = Comparison?.Built,
+                name = Project.Name,
+                path = Project.Path,
+                sources = Project.Sources.Count,
+                garments = Catalog.Garments.Count,
+                textures = Catalog.Garments.Sum(g => g.Textures.Count),
+                duplicates = duplicates,
+                compared = Comparison?.Built,
             };
         }
     }
@@ -288,7 +288,7 @@ public sealed class Session
 
     // ---------------- the project cache ----------------
 
-    /// <summary>How much each part of the cache holds. The keys are the interface's, "historia" included.</summary>
+    /// <summary>How much each part of the cache holds, by the names the settings screen lists them under.</summary>
     public Dictionary<string, (int Files, long Bytes)> CacheSize()
     {
         var sizes = new Dictionary<string, (int, long)>();
@@ -300,7 +300,7 @@ public sealed class Session
         foreach (var (name, folder) in new[]
                  {
                      ("thumbs", project.ThumbnailFolder), ("tex", project.TextureFolder),
-                     ("mesh", project.MeshFolder), ("historia", project.HistoryFolder),
+                     ("mesh", project.MeshFolder), ("history", project.HistoryFolder),
                  })
         {
             int files = 0;
@@ -315,7 +315,7 @@ public sealed class Session
             totalFiles += files;
             totalBytes += bytes;
         }
-        sizes["razem"] = (totalFiles, totalBytes);
+        sizes["total"] = (totalFiles, totalBytes);
         return sizes;
     }
 

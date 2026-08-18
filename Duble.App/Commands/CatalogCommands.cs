@@ -30,24 +30,24 @@ public sealed class CatalogCommands : CommandModule
     object List(JsonElement args)
     {
         RequireProject();
-        var sources = args.Strings("zrodla");
-        var slots = args.Strings("sloty");
-        var formats = args.Strings("formaty");
-        bool problemsOnly = args.Flag("problemy");
-        bool inGroupOnly = args.Flag("wGrupie");
-        var search = (args.Text("szukaj") ?? "").Trim().ToLowerInvariant();
+        var sources = args.Strings("sources");
+        var slots = args.Strings("slots");
+        var formats = args.Strings("formats");
+        bool problemsOnly = args.Flag("problems");
+        bool inGroupOnly = args.Flag("inGroup");
+        var search = (args.Text("search") ?? "").Trim().ToLowerInvariant();
 
         var groupsByGarment = GroupsByGarment();
         var all = Session.Catalog.Garments;
 
         var slotFilter = all.GroupBy(garment => garment.Slot)
-            .Select(group => new { typ = group.Key, n = group.Count() })
-            .OrderBy(entry => entry.typ)
+            .Select(group => new { slot = group.Key, n = group.Count() })
+            .OrderBy(entry => entry.slot)
             .ToList();
 
         var sourceFilter = all.GroupBy(garment => garment.SourceId ?? "")
-            .Select(group => new { id = group.Key, nazwa = Project.Sources.Find(source => source.Id == group.Key)?.Name ?? group.Key, n = group.Count() })
-            .OrderBy(entry => entry.nazwa)
+            .Select(group => new { id = group.Key, name = Project.Sources.Find(source => source.Id == group.Key)?.Name ?? group.Key, n = group.Count() })
+            .OrderBy(entry => entry.name)
             .ToList();
 
         var listed = new List<object>();
@@ -68,41 +68,41 @@ public sealed class CatalogCommands : CommandModule
             listed.Add(new
             {
                 id = garment.Id,
-                zrodloId = garment.SourceId,
-                zrodlo = SourceName(garment),
-                kontener = garment.Container,
-                typ = garment.Slot,
-                numer = garment.Number,
-                sufiks = garment.Suffix,
+                sourceId = garment.SourceId,
+                source = SourceName(garment),
+                container = garment.Container,
+                slot = garment.Slot,
+                number = garment.Number,
+                suffix = garment.Suffix,
                 gen9 = garment.GameFormat == GameFormat.Enhanced,
-                props = garment.IsProp,
-                thumb = GarmentView.Thumbnail(garment),
-                tekstur = garment.Textures.Count,
-                bajty = garment.ModelSize + garment.Textures.Sum(texture => texture.Size),
-                wArchiwum = GarmentView.IsInArchive(garment),
-                bezMipow = withoutMipmaps,
-                bc1Alfa = bc1WithAlpha,
+                prop = garment.IsProp,
+                thumbnail = GarmentView.Thumbnail(garment),
+                textureCount = garment.Textures.Count,
+                bytes = garment.ModelSize + garment.Textures.Sum(texture => texture.Size),
+                inArchive = GarmentView.IsInArchive(garment),
+                noMipmaps = withoutMipmaps,
+                bc1WithAlpha = bc1WithAlpha,
                 bc7 = bc7,
-                grupa = verdict,
+                verdict,
             });
         }
 
         return new
         {
-            razem = all.Count,
-            tekstury = all.Sum(garment => garment.Textures.Count),
-            pokazane = listed.Count,
-            filtry = new
+            total = all.Count,
+            textures = all.Sum(garment => garment.Textures.Count),
+            shown = listed.Count,
+            filters = new
             {
-                sloty = slotFilter,
-                zrodla = sourceFilter,
-                formaty = new
+                slots = slotFilter,
+                sources = sourceFilter,
+                formats = new
                 {
                     legacy = all.Count(garment => garment.GameFormat == GameFormat.Legacy),
                     gen9 = all.Count(garment => garment.GameFormat == GameFormat.Enhanced),
                 },
             },
-            pozycje = listed,
+            garments = listed,
         };
     }
 
@@ -113,39 +113,39 @@ public sealed class CatalogCommands : CommandModule
         var garment = Session.FindGarment(id) ?? throw new BridgeException(BridgeErrors.NotFound, id);
 
         var described = garments.Describe(garment, null, details: true, SourceName);
-        described["zrodloSciezka"] = Session.SourceOf(garment)?.Path;
+        described["sourcePath"] = Session.SourceOf(garment)?.Path;
 
         var byId = Session.Catalog.Garments.ToDictionary(other => other.Id!);
         var inGroups = GroupsByGarment().GetValueOrDefault(id) ?? new List<LiveGroup>();
 
         return new
         {
-            pozycja = described,
-            grupy = inGroups.Select(live => new
+            garment = described,
+            groups = inGroups.Select(live => new
             {
                 id = live.Group.Id,
-                werdykt = live.Group.Verdict.ToKey(),
-                ignoruj = live.Resolution.Ignored,
-                powod = GarmentView.ReasonJson(live.Group.Pairs.FirstOrDefault()?.Reason ?? live.Group.Reason),
-                inni = live.Group.Members
+                verdict = live.Group.Verdict.ToKey(),
+                ignored = live.Resolution.Ignored,
+                reason = GarmentView.ReasonJson(live.Group.Pairs.FirstOrDefault()?.Reason ?? live.Group.Reason),
+                others = live.Group.Members
                     .Where(other => other != id && byId.ContainsKey(other))
                     .Select(other => new
                     {
                         id = other,
-                        nazwa = $"{byId[other].Slot}_{byId[other].Number:d3}",
-                        sufiks = byId[other].Suffix,
-                        zrodlo = SourceName(byId[other]),
+                        name = $"{byId[other].Slot}_{byId[other].Number:d3}",
+                        suffix = byId[other].Suffix,
+                        source = SourceName(byId[other]),
                     }).ToList(),
-                stan = State(live, id),
+                standing = Standing(live, id),
             }).ToList(),
         };
     }
 
     /// <summary>Where this garment stands in that group, as the interface's badge reads it.</summary>
-    static string State(LiveGroup live, string garmentId)
-        => live.Resolution.Ignored ? "ignoruj"
-            : live.Resolution.Winner == garmentId && live.Resolution.Rejected.Count > 0 ? "zostaje"
-            : live.Resolution.Rejected.Contains(garmentId) ? "odrzucona"
+    static string Standing(LiveGroup live, string garmentId)
+        => live.Resolution.Ignored ? "ignored"
+            : live.Resolution.Winner == garmentId && live.Resolution.Rejected.Count > 0 ? "stays"
+            : live.Resolution.Rejected.Contains(garmentId) ? "rejected"
             : "neutral";
 
     Dictionary<string, List<LiveGroup>> GroupsByGarment()

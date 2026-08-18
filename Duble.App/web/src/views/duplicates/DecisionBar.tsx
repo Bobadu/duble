@@ -15,27 +15,27 @@ export function DecisionBar({ plan, busy, onApply }: { plan: ApplyPlan; busy: bo
       <div className="decision-text">
         <Icon name="trash" />
         <span>
-          {plan.pliki
+          {plan.files
             ? t('dup.toReject', {
-                pozycje: formatNumber(plan.pozycje),
-                pliki: formatNumber(plan.pliki),
-                mb: formatSize(plan.bajty, language),
+                garments: formatNumber(plan.garments),
+                files: formatNumber(plan.files),
+                mb: formatSize(plan.bytes, language),
               })
             : t('dup.nothingToReject')}
         </span>
-        {plan.wArchiwum > 0 && (
+        {plan.inArchive > 0 && (
           <a href={routeToHash('sources')} className="faint" title={t('apply.tooltipArchive')}>
-            · {t('dup.inArchive', { n: plan.wArchiwum })}
+            · {t('dup.inArchive', { n: plan.inArchive })}
           </a>
         )}
-        {plan.wspoldzielone > 0 && <span className="faint">· {t('apply.shared', { n: plan.wspoldzielone })}</span>}
+        {plan.shared > 0 && <span className="faint">· {t('apply.shared', { n: plan.shared })}</span>}
       </div>
 
       <Button
         variant="primary"
         icon="check"
-        disabled={!plan.pliki || busy}
-        title={plan.pliki ? t('apply.title') : t('apply.nothing')}
+        disabled={!plan.files || busy}
+        title={plan.files ? t('apply.title') : t('apply.nothing')}
         onClick={onApply}
       >
         {t('dup.apply')}

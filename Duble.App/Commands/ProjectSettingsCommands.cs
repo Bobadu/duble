@@ -30,7 +30,7 @@ public sealed class ProjectSettingsCommands : CommandModule
     {
         Bridge.Register("project.settings.get", _ => State());
         Bridge.Register("project.settings.set", Change);
-        Bridge.Register("project.settings.resetProgi", _ => ResetThresholds());
+        Bridge.Register("project.settings.resetThresholds", _ => ResetThresholds());
         Bridge.Register("cache.clear", ClearCache);
         Bridge.Register("calibrate.run", _ => StartCalibrating());
     }
@@ -87,34 +87,34 @@ public sealed class ProjectSettingsCommands : CommandModule
         var thresholds = project.Settings?.Thresholds;
         return new
         {
-            kosz = project.Settings?.BinFolder,
-            progi = ThresholdsJson(thresholds ?? Thresholds.Default),
-            progiDomyslne = ThresholdsJson(Thresholds.Default),
-            progiZmienione = thresholds != null && !thresholds.SameAs(Thresholds.Default),
+            bin = project.Settings?.BinFolder,
+            thresholds = ThresholdsJson(thresholds ?? Thresholds.Default),
+            defaultThresholds = ThresholdsJson(Thresholds.Default),
+            thresholdsChanged = thresholds != null && !thresholds.SameAs(Thresholds.Default),
             cache = CacheJson(),
-            folderCache = project.CacheFolder,
-            zrodla = project.Sources.Count,
-            pozycje = Session.Catalog.Garments.Count,
-            porownanie = comparing,
+            cacheFolder = project.CacheFolder,
+            sources = project.Sources.Count,
+            garments = Session.Catalog.Garments.Count,
+            comparing = comparing,
         };
     }
 
     Dictionary<string, object> CacheJson()
-        => Session.CacheSize().ToDictionary(entry => entry.Key, entry => (object)new { pliki = entry.Value.Files, bajty = entry.Value.Bytes });
+        => Session.CacheSize().ToDictionary(entry => entry.Key, entry => (object)new { files = entry.Value.Files, bytes = entry.Value.Bytes });
 
     object Change(JsonElement args)
     {
         var project = Project;
         project.Settings ??= new ProjectSettings();
 
-        if (args.Has("kosz"))
+        if (args.Has("bin"))
         {
-            var bin = args.Text("kosz");
+            var bin = args.Text("bin");
             project.Settings.BinFolder = string.IsNullOrWhiteSpace(bin) ? null : bin;
         }
 
         bool thresholdsChanged = false;
-        var sent = args.Object("progi");
+        var sent = args.Object("thresholds");
         if (sent.ValueKind == JsonValueKind.Object)
         {
             var updated = (project.Settings.Thresholds ?? Thresholds.Default).Clone();
@@ -129,7 +129,7 @@ public sealed class ProjectSettingsCommands : CommandModule
         }
 
         Session.SaveProject();
-        Bridge.Event("settings.changed", new { zrodlo = "project" });
+        Bridge.Event("settings.changed", new { source = "project" });
         return State(thresholdsChanged && Session.Comparison != null ? StartComparing() : null);
     }
 
@@ -140,16 +140,16 @@ public sealed class ProjectSettingsCommands : CommandModule
         if (project.Settings != null) project.Settings.Thresholds = null;
 
         Session.SaveProject();
-        Bridge.Event("settings.changed", new { zrodlo = "project" });
+        Bridge.Event("settings.changed", new { source = "project" });
         return State(wereChanged && Session.Comparison != null ? StartComparing() : null);
     }
 
     object ClearCache(JsonElement args)
     {
         RequireProject();
-        var (files, bytes) = Session.ClearCache(args.Flag("tex", true), args.Flag("mesh", true));
-        Bridge.Event("settings.changed", new { zrodlo = "cache" });
-        return new { usunieto = files, bajty = bytes, cache = CacheJson() };
+        var (files, bytes) = Session.ClearCache(args.Flag("textures", true), args.Flag("meshes", true));
+        Bridge.Event("settings.changed", new { source = "cache" });
+        return new { deleted = files, bytes = bytes, cache = CacheJson() };
     }
 
     object StartCalibrating()
@@ -165,11 +165,11 @@ public sealed class ProjectSettingsCommands : CommandModule
         {
             await Task.Yield();
             progress(new ProgressReport("calibration", 0, 0, null));
-            Bridge.Event("calibrate.done", new { wynik = calibrator.Run(catalog, thresholds, cancellation) });
+            Bridge.Event("calibrate.done", new { report = calibrator.Run(catalog, thresholds, cancellation) });
         });
         if (!started) throw Busy();
 
-        return new { uruchomiono = true };
+        return new { started = true };
     }
 
     bool StartComparing() => jobs.TryStart(JobKinds.Compare, ProjectName, async (cancellation, progress) =>

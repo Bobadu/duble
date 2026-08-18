@@ -20,49 +20,49 @@ public class CatalogCommandTests
         app.Session.Save();
 
         var list = await app.Call("catalog.list", "{}");
-        Assert.Equal(7, list.GetProperty("razem").GetInt32());
-        Assert.Equal(7, list.GetProperty("pokazane").GetInt32());
-        Assert.Equal(7, list.GetProperty("pozycje").GetArrayLength());
-        Assert.Equal(3, list.GetProperty("filtry").GetProperty("zrodla").GetArrayLength());
-        Assert.Equal(3, list.GetProperty("filtry").GetProperty("sloty").GetArrayLength());
-        Assert.Equal(7, list.GetProperty("filtry").GetProperty("formaty").GetProperty("legacy").GetInt32());
+        Assert.Equal(7, list.GetProperty("total").GetInt32());
+        Assert.Equal(7, list.GetProperty("shown").GetInt32());
+        Assert.Equal(7, list.GetProperty("garments").GetArrayLength());
+        Assert.Equal(3, list.GetProperty("filters").GetProperty("sources").GetArrayLength());
+        Assert.Equal(3, list.GetProperty("filters").GetProperty("slots").GetArrayLength());
+        Assert.Equal(7, list.GetProperty("filters").GetProperty("formats").GetProperty("legacy").GetInt32());
 
-        var b = list.GetProperty("pozycje").EnumerateArray()
-            .First(item => item.GetProperty("typ").GetString() == "jbib" && item.GetProperty("numer").GetInt32() == 7);
-        Assert.True(b.GetProperty("bezMipow").GetBoolean());
+        var b = list.GetProperty("garments").EnumerateArray()
+            .First(item => item.GetProperty("slot").GetString() == "jbib" && item.GetProperty("number").GetInt32() == 7);
+        Assert.True(b.GetProperty("noMipmaps").GetBoolean());
         // the interface reads gen9 as a boolean; the format being an enum in Core must not leak as a number
         Assert.Equal(JsonValueKind.False, b.GetProperty("gen9").ValueKind);
-        Assert.Equal(Verdict.Duplicate.ToKey(), b.GetProperty("grupa").GetString());
+        Assert.Equal(Verdict.Duplicate.ToKey(), b.GetProperty("verdict").GetString());
 
-        var c = list.GetProperty("pozycje").EnumerateArray()
-            .First(item => item.GetProperty("typ").GetString() == "lowr" && item.GetProperty("numer").GetInt32() == 3);
-        Assert.Equal(Verdict.Retexture.ToKey(), c.GetProperty("grupa").GetString());
+        var c = list.GetProperty("garments").EnumerateArray()
+            .First(item => item.GetProperty("slot").GetString() == "lowr" && item.GetProperty("number").GetInt32() == 3);
+        Assert.Equal(Verdict.Retexture.ToKey(), c.GetProperty("verdict").GetString());
 
-        Assert.Equal(3, (await app.Call("catalog.list", "{\"sloty\":[\"feet\"]}")).GetProperty("pozycje").GetArrayLength());
-        Assert.Equal(3, (await app.Call("catalog.list", "{\"zrodla\":[\"z-p2\"]}")).GetProperty("pozycje").GetArrayLength());
-        Assert.Equal(3, (await app.Call("catalog.list", "{\"problemy\":true}")).GetProperty("pozycje").GetArrayLength());   // b, f and g have no mipmaps
-        Assert.Equal(7, (await app.Call("catalog.list", "{\"wGrupie\":true}")).GetProperty("pozycje").GetArrayLength());
-        Assert.Equal(0, (await app.Call("catalog.list", "{\"formaty\":[\"gen9\"]}")).GetProperty("pozycje").GetArrayLength());
-        Assert.Equal(1, (await app.Call("catalog.list", "{\"szukaj\":\"jbib_007\"}")).GetProperty("pozycje").GetArrayLength());
+        Assert.Equal(3, (await app.Call("catalog.list", "{\"slots\":[\"feet\"]}")).GetProperty("garments").GetArrayLength());
+        Assert.Equal(3, (await app.Call("catalog.list", "{\"sources\":[\"z-p2\"]}")).GetProperty("garments").GetArrayLength());
+        Assert.Equal(3, (await app.Call("catalog.list", "{\"problems\":true}")).GetProperty("garments").GetArrayLength());   // b, f and g have no mipmaps
+        Assert.Equal(7, (await app.Call("catalog.list", "{\"inGroup\":true}")).GetProperty("garments").GetArrayLength());
+        Assert.Equal(0, (await app.Call("catalog.list", "{\"formats\":[\"gen9\"]}")).GetProperty("garments").GetArrayLength());
+        Assert.Equal(1, (await app.Call("catalog.list", "{\"search\":\"jbib_007\"}")).GetProperty("garments").GetArrayLength());
 
         // an ignored group does not count as being in a group
         var boots = app.Groups.All().First(live => live.Group.Members.Count == 3).Group;
         app.Session.Project.Decisions[boots.Id] = new Decision { Ignored = true };
-        Assert.Equal(4, (await app.Call("catalog.list", "{\"wGrupie\":true}")).GetProperty("pozycje").GetArrayLength());
+        Assert.Equal(4, (await app.Call("catalog.list", "{\"inGroup\":true}")).GetProperty("garments").GetArrayLength());
 
         var item = await app.Call("catalog.item", $"{{\"id\":{JsonSerializer.Serialize(b.GetProperty("id").GetString())}}}");
-        var garment = item.GetProperty("pozycja");
-        Assert.Equal(2, garment.GetProperty("tekstury").GetArrayLength());
-        Assert.True(garment.GetProperty("rozpiska").GetProperty("razem").GetDouble() >= 0);
-        Assert.Equal("p2", garment.GetProperty("zrodlo").GetString());
-        Assert.EndsWith("p2", garment.GetProperty("zrodloSciezka").GetString());
+        var garment = item.GetProperty("garment");
+        Assert.Equal(2, garment.GetProperty("textures").GetArrayLength());
+        Assert.True(garment.GetProperty("quality").GetProperty("total").GetDouble() >= 0);
+        Assert.Equal("p2", garment.GetProperty("source").GetString());
+        Assert.EndsWith("p2", garment.GetProperty("sourcePath").GetString());
 
-        Assert.Equal(1, item.GetProperty("grupy").GetArrayLength());
-        var group = item.GetProperty("grupy")[0];
-        Assert.Equal(Verdict.Duplicate.ToKey(), group.GetProperty("werdykt").GetString());
-        Assert.Equal("odrzucona", group.GetProperty("stan").GetString());
-        Assert.Equal(1, group.GetProperty("inni").GetArrayLength());
-        Assert.Equal("jbib_001", group.GetProperty("inni")[0].GetProperty("nazwa").GetString());
+        Assert.Equal(1, item.GetProperty("groups").GetArrayLength());
+        var group = item.GetProperty("groups")[0];
+        Assert.Equal(Verdict.Duplicate.ToKey(), group.GetProperty("verdict").GetString());
+        Assert.Equal("rejected", group.GetProperty("standing").GetString());
+        Assert.Equal(1, group.GetProperty("others").GetArrayLength());
+        Assert.Equal("jbib_001", group.GetProperty("others")[0].GetProperty("name").GetString());
 
         var error = await app.Failing("catalog.item", "{\"id\":\"no-such-garment\"}");
         Assert.Equal(BridgeErrors.NotFound, error.GetProperty("code").GetString());

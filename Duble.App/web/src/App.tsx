@@ -78,7 +78,7 @@ function useDroppedFiles(): void {
     // a source is added on the Sources screen, so that is where a drop goes; when it is already up, the screen
     // hears the same event itself and this leaves it alone
     if (route.view === 'sources') return;
-    sessionStorage.setItem('dropped', JSON.stringify(data.sciezki));
+    sessionStorage.setItem('dropped', JSON.stringify(data.paths));
     navigate('sources');
   });
 

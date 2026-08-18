@@ -56,7 +56,7 @@ public class BridgeTests
         var state = await app.Call("window.maximize");
 
         Assert.Equal(new[] { "min", "max" }, app.Window.Calls);
-        Assert.True(state.GetProperty("maks").GetBoolean());
+        Assert.True(state.GetProperty("maximized").GetBoolean());
     }
 
     [Fact]
@@ -64,13 +64,13 @@ public class BridgeTests
     {
         using var app = new TestApp("bridge", new Settings { Language = "pl", Theme = "dark" });
 
-        Assert.Equal("pl", (await app.Call("settings.get")).GetProperty("jezyk").GetString());
+        Assert.Equal("pl", (await app.Call("settings.get")).GetProperty("language").GetString());
 
-        await app.Call("settings.set", "{\"motyw\":\"light\",\"jezyk\":\"en\"}");
+        await app.Call("settings.set", "{\"theme\":\"light\",\"language\":\"en\"}");
         var settings = await app.Call("settings.get");
 
-        Assert.Equal("light", settings.GetProperty("motyw").GetString());
-        Assert.Equal("en", settings.GetProperty("jezyk").GetString());
+        Assert.Equal("light", settings.GetProperty("theme").GetString());
+        Assert.Equal("en", settings.GetProperty("language").GetString());
         Assert.True(File.Exists(app.Bridge.SettingsFile));
     }
 
@@ -79,11 +79,11 @@ public class BridgeTests
     {
         using var app = new TestApp("bridge", new Settings { Language = "pl" });
 
-        var settings = await app.Call("settings.set", "{\"jezyk\":\"system\"}");
+        var settings = await app.Call("settings.set", "{\"language\":\"system\"}");
 
         // null is left out of the JSON (WhenWritingNull), so "no key" is how "not chosen" reaches the interface
-        Assert.False(settings.TryGetProperty("jezykUstawiony", out var chosen) && chosen.ValueKind != JsonValueKind.Null);
-        Assert.Contains(settings.GetProperty("jezyk").GetString(), new[] { "pl", "en" });
+        Assert.False(settings.TryGetProperty("chosenLanguage", out var chosen) && chosen.ValueKind != JsonValueKind.Null);
+        Assert.Contains(settings.GetProperty("language").GetString(), new[] { "pl", "en" });
     }
 
     [Fact]
@@ -91,10 +91,10 @@ public class BridgeTests
     {
         using var app = new TestApp("bridge");
 
-        app.Bridge.Event("test.ping", new { x = 1 });
+        app.Bridge.Event("history.changed", new { file = "log.json" });
 
-        Assert.True(app.Saw("test.ping"));
-        Assert.Equal(1, app.EventData("test.ping").GetProperty("x").GetInt32());
+        Assert.True(app.Saw("history.changed"));
+        Assert.Equal("log.json", app.EventData("history.changed").GetProperty("file").GetString());
     }
 
     [Fact]
@@ -103,11 +103,11 @@ public class BridgeTests
         using var app = new TestApp("bridge");
         app.Dialogs.Folder = @"C:\picked";
 
-        var folder = await app.Call("dialogs.pickFolder", "{\"tytul\":\"x\"}");
-        Assert.Equal(@"C:\picked", folder.GetProperty("sciezka").GetString());
+        var folder = await app.Call("dialogs.pickFolder", "{\"title\":\"x\"}");
+        Assert.Equal(@"C:\picked", folder.GetProperty("path").GetString());
 
-        var files = await app.Call("dialogs.pickFiles", "{\"filtr\":\"rpf\"}");
-        Assert.Equal(1, files.GetProperty("sciezki").GetArrayLength());
+        var files = await app.Call("dialogs.pickFiles", "{\"filter\":\"rpf\"}");
+        Assert.Equal(1, files.GetProperty("paths").GetArrayLength());
     }
 
     [Fact]
@@ -127,9 +127,9 @@ public class BridgeTests
 
         var info = await app.Call("app.info");
 
-        Assert.Equal("Duble", info.GetProperty("nazwa").GetString());
+        Assert.Equal("Duble", info.GetProperty("name").GetString());
         Assert.Equal("Bobadu", info.GetProperty("by").GetString());
-        Assert.Matches(@"^\d+\.\d+\.\d+", info.GetProperty("wersja").GetString());
-        Assert.Equal("MIT", info.GetProperty("licencja").GetString());
+        Assert.Matches(@"^\d+\.\d+\.\d+", info.GetProperty("version").GetString());
+        Assert.Equal("MIT", info.GetProperty("licence").GetString());
     }
 }
