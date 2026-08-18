@@ -1,10 +1,7 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using Duble.Core.Comparison;
 using Duble.Core.Model;
 
 namespace Duble.Core.Apply;
@@ -116,30 +113,5 @@ public sealed class ApplyPlanner : IApplyPlanner
         {
             return Path.GetFileName(path);
         }
-    }
-
-    /// <summary>
-    /// The decisions file the CLI writes after a comparison: one row per garment proposed for rejection, with
-    /// TAK in the first column. A person edits TAK to NIE for anything they want to keep, and `duble zastosuj`
-    /// reads it back.
-    /// </summary>
-    public static void WriteDecisions(ComparisonResult result, Catalog catalog, string path)
-    {
-        var text = new StringBuilder();
-        text.AppendLine("# Lista pozycji, ktore `duble zastosuj` przeniesie do _odrzucone\\.");
-        text.AppendLine("# Zmien TAK na NIE w pierwszej kolumnie przy tych, ktore chcesz zachowac.");
-        text.AppendLine("# Kolumny rozdzielone TABEM. Linie z # sa pomijane.");
-        text.AppendLine("odrzucic\twerdykt\tpozycja\tzostaje_zamiast\tpowod");
-
-        foreach (var group in result.Groups.Where(g => g.Verdict == Verdict.Duplicate || g.Verdict == Verdict.Superset))
-            foreach (var id in group.Members.Where(m => m != group.Winner))
-            {
-                var reason = Texts.Reason(group.Pairs.FirstOrDefault()?.Reason ?? group.Reason, "pl");
-                text.AppendLine($"TAK\t{group.Verdict.ToKey()}\t{id}\t{group.Winner}\t{reason.Replace('\t', ' ')}");
-            }
-
-        var folder = Path.GetDirectoryName(Path.GetFullPath(path));
-        if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
-        File.WriteAllText(path, text.ToString(), Encoding.UTF8);
     }
 }

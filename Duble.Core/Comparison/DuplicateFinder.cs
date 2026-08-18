@@ -1,4 +1,3 @@
-#nullable enable
 // ==================== WHERE THE THRESHOLDS CAME FROM ====================
 // Calibration over 1132 garments and 9437 textures (15.08.2026, `duble kalibruj`):
 //

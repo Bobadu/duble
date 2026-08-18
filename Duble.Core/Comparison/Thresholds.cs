@@ -1,12 +1,11 @@
-#nullable enable
 using System.Collections.Generic;
 
 namespace Duble.Core.Comparison;
 
 /// <summary>
 /// Where the comparison draws its lines. The defaults come from a calibration over 1132 garments and 9437
-/// textures (see the header of Porownanie.cs); a project may override them, and Calibration measures new ones
-/// against the user's own catalog.
+/// textures (see the header of DuplicateFinder.cs); a project may override them, and the calibrator measures
+/// new ones against the user's own catalog.
 /// </summary>
 public class Thresholds
 {

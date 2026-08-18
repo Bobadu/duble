@@ -1,4 +1,3 @@
-#nullable enable
 using Duble.Core.Projects;
 using Duble.Core.Results;
 

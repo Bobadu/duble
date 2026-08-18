@@ -1,4 +1,3 @@
-#nullable enable
 // A .glb preview of one garment, either from the catalog or from raw files (`duble glb`).
 //
 // The base colour comes from the first texture in the .ytd of the chosen variant (letter a/b/c…), decoded to

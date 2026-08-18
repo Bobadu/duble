@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 
 namespace Duble.Core.Fingerprints;
@@ -6,7 +5,7 @@ namespace Duble.Core.Fingerprints;
 /// <summary>How far apart two fingerprints are. Pure arithmetic — the thresholds that judge it live in Thresholds.</summary>
 public static class Distance
 {
-    /// <summary>Odleglosc L1 miedzy histogramami ksztaltu. 0 = identyczne, max 2.</summary>
+    /// <summary>L1 distance between two shape histograms. 0 means identical, 2 is the most they can differ.</summary>
     public static double ShapeHistogram(float[]? a, float[]? b)
     {
         if (a == null || b == null || a.Length != b.Length) return double.MaxValue;
@@ -15,7 +14,7 @@ public static class Distance
         return s;
     }
 
-    /// <summary>Najwieksza wzgledna roznica wymiarow pudelka. 0 = ten sam rozmiar.</summary>
+    /// <summary>The largest relative difference between two bounding boxes. 0 means the same size.</summary>
     public static double BoundingBox(float[]? a, float[]? b)
     {
         if (a == null || b == null || a.Length != 3 || b.Length != 3) return double.MaxValue;
@@ -29,7 +28,9 @@ public static class Distance
         return max;
     }
 
-    // ===================== TEKSTURY =====================
+    // ===================== textures =====================
+
+    /// <summary>Bits that differ between two perceptual hashes, or -1 when either is missing.</summary>
     public static int Hamming(ulong[]? a, ulong[]? b)
     {
         if (a == null || b == null || a.Length != b.Length) return -1;

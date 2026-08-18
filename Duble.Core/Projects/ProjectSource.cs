@@ -1,4 +1,3 @@
-#nullable enable
 namespace Duble.Core.Projects;
 
 /// <summary>One place a project reads garments from.</summary>

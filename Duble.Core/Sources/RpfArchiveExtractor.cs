@@ -1,4 +1,3 @@
-#nullable enable
 // Unpacking a source into a plain folder: an .rpf becomes a folder named "<name>.rpf\" with the files inside.
 //
 // Why: Duble only reads archives, never writes to them, so an apply cannot move a file that lives inside one.
@@ -72,7 +71,7 @@ public sealed class RpfArchiveExtractor : IArchiveExtractor
         var result = new ExtractionResult { Folder = targetFolder };
         if (!File.Exists(archivePath))
         {
-            result.Errors.Add("brak archiwum: " + archivePath);
+            result.Errors.Add("no such archive: " + archivePath);
             return result;
         }
 
@@ -90,7 +89,7 @@ public sealed class RpfArchiveExtractor : IArchiveExtractor
         var result = new ExtractionResult { Folder = targetFolder };
         if (!Directory.Exists(sourcePath))
         {
-            result.Errors.Add("brak folderu: " + sourcePath);
+            result.Errors.Add("no such folder: " + sourcePath);
             return result;
         }
 
@@ -176,7 +175,7 @@ public sealed class RpfArchiveExtractor : IArchiveExtractor
                 var extracted = owner.ExtractFile(entry);
                 if (extracted == null)
                 {
-                    result.Errors.Add($"{path}: nie udalo sie wyciagnac ({owner.LastError})");
+                    result.Errors.Add($"{path}: could not be extracted ({owner.LastError})");
                     continue;
                 }
 

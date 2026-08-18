@@ -1,4 +1,3 @@
-#nullable enable
 namespace Duble.Core.Projects;
 
 /// <summary>Which game build a whole source turned out to hold, once it has been indexed.</summary>

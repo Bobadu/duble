@@ -1,4 +1,3 @@
-#nullable enable
 using Duble.Core.Apply;
 using Duble.Core.Calibration;
 using Duble.Core.Comparison;

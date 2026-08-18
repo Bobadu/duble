@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Duble.Core.Apply;
+using Duble.Core.Comparison;
 using Duble.Core.Model;
 using Duble.Core.Storage;
 
@@ -15,6 +17,31 @@ namespace Duble.Cli;
 /// </summary>
 public static class ApplyCommands
 {
+    /// <summary>
+    /// The decisions file `duble porownaj` writes: one row per garment proposed for rejection, with TAK in the
+    /// first column. A person edits TAK to NIE for anything they want to keep, and `duble zastosuj` reads it
+    /// back. It lives here rather than in the engine because it is Polish prose for one command-line verb.
+    /// </summary>
+    public static void WriteDecisions(ComparisonResult result, string path)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("# Lista pozycji, ktore `duble zastosuj` przeniesie do _odrzucone\\.");
+        text.AppendLine("# Zmien TAK na NIE w pierwszej kolumnie przy tych, ktore chcesz zachowac.");
+        text.AppendLine("# Kolumny rozdzielone TABEM. Linie z # sa pomijane.");
+        text.AppendLine("odrzucic\twerdykt\tpozycja\tzostaje_zamiast\tpowod");
+
+        foreach (var group in result.Groups.Where(g => g.Verdict == Verdict.Duplicate || g.Verdict == Verdict.Superset))
+            foreach (var id in group.Members.Where(member => member != group.Winner))
+            {
+                var reason = Texts.Reason(group.Pairs.FirstOrDefault()?.Reason ?? group.Reason, "pl");
+                text.AppendLine($"TAK\t{group.Verdict.ToKey()}\t{id}\t{group.Winner}\t{reason.Replace('\t', ' ')}");
+            }
+
+        var folder = Path.GetDirectoryName(Path.GetFullPath(path));
+        if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
+        File.WriteAllText(path, text.ToString(), Encoding.UTF8);
+    }
+
     public static int Apply(IApplyPlanner planner, IApplyExecutor executor, IUndoStore undoStore,
                             Catalog catalog, string decisionsFile, string binRoot, string undoFile,
                             Action<string> log)

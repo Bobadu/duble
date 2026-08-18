@@ -1,4 +1,3 @@
-#nullable enable
 // Choosing thresholds BY MEASUREMENT rather than by feel.
 //
 // Three kinds of pair have a known answer, and that is enough to place a threshold:

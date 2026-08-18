@@ -1,4 +1,3 @@
-#nullable enable
 // The on-disk shape of an RSC7 resource: a 16-byte header followed by a deflate payload.
 //
 // RpfFile.ExtractFile hands back a resource DECOMPRESSED and WITHOUT its header, but reading goes through

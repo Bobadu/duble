@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- The engine names every namespace it uses at the top of each file: a reader on GitHub, without an IDE
+         to hover with, can see where a type comes from. -->
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Duble.Core</RootNamespace>
     <AssemblyName>Duble.Core</AssemblyName>

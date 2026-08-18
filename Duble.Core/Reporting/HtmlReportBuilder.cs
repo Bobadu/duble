@@ -1,4 +1,3 @@
-#nullable enable
 // A comparison viewer as one plain, self-contained HTML file.
 //
 // Thumbnails are written into the file as data:image/png;base64, and the stylesheet and script are inlined, so

@@ -1,4 +1,3 @@
-#nullable enable
 // Taking clothing file names apart.
 //
 // The R* convention, inside a folder or container:  <slot>_<NNN>_<u|r>[_k].ydd
