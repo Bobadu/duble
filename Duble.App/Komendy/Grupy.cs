@@ -2,7 +2,7 @@
 //
 // Grupy pochodza z Sesja.Wynik (ComparisonResult z Duble.Core); "kto zostaje" liczy s.Rozstrzygniecia.Resolve(grupa, decyzja z projektu).
 // Powody werdyktow ida do UI jako kody {kod, p} — UI formatuje je z i18n (slownik Core jest zlaczony ze slownikiem UI).
-// Zastosuj: plan z Sesja.Plan (ApplyPlanner w Core), wykonanie w JobRunner "zastosuj", cofka do historia\<czas>.json,
+// Zastosuj: plan z Sesja.Plan (ApplyPlanner w Core), wykonanie w JobRunner "zastosuj", cofka do history\<czas>.json,
 // potem ponowne indeksowanie dotknietych zrodel + porownanie (Zrodla.Indeksuj/PorownajIZapisz).
 using System;
 using System.Collections.Generic;

@@ -1,4 +1,4 @@
-// Komendy/Historia.cs — history.list/get/undo (dzienniki zastosowan = UndoLog w <cache>\historia\*.json), report.exportHtml/exportCsv.
+// Komendy/Historia.cs — history.list/get/undo (dzienniki zastosowan = UndoLog w <cache>\history\*.json), report.exportHtml/exportCsv.
 //
 // Cofniecie idzie przez JobRunner "cofnij": ApplyPlanner.Cofnij (calosc albo wybrane pozycje) -> zapis cofki -> ponowne
 // indeksowanie zrodel tych pozycji -> porownanie; zdarzenia undo.done + history.changed.

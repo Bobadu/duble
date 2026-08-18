@@ -1,5 +1,5 @@
 // Sesja.cs — stan aplikacji: otwarty projekt (*.duble) + katalog odciskow + wynik porownania w pamieci + statystyki zrodel.
-// Zapis: plik projektu (JSON), katalog.json i duble.json w <projekt>.duble.cache\. Miniatury i pelne tekstury z cache serwuje Zasob().
+// Zapis: plik projektu (JSON), catalog.json i duble.json w <projekt>.duble.cache\. Miniatury i pelne tekstury z cache serwuje Zasob().
 using System;
 using System.Collections.Generic;
 using System.IO;
