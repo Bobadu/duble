@@ -1,4 +1,3 @@
-#nullable enable
 namespace Duble.Core.Model;
 
 /// <summary>

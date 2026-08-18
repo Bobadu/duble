@@ -14,7 +14,7 @@ export const i18n = {
   t(k, p) {
     let s = slownik[k];
     if (s === undefined) return k.startsWith('slot.') ? k.slice(5) : `[${k}]`;   // nieznany slot (np. w paczkach glow) = surowa nazwa zamiast [klucza]
-    // wartosc zaczynajaca sie od '@' = klucz do przetlumaczenia (jak Teksty w Core: {geo:'@geo.identyczna'})
+    // wartosc zaczynajaca sie od '@' = klucz do przetlumaczenia (jak Texts w Core: {geo:'@geo.identical'})
     if (p) for (const [a, b] of Object.entries(p)) { const v = typeof b === 'string' && b.startsWith('@') ? i18n.t(b.slice(1)) : String(b); s = s.replaceAll(`{${a}}`, v); }
     return s;
   },

@@ -1,4 +1,3 @@
-#nullable enable
 // A minimal PNG encoder: RGB and RGBA, no filters, no interlacing.
 //
 // WHY OUR OWN: the report embeds thumbnails as data:image/png;base64, and the whole project stands on

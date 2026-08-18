@@ -1,87 +1,116 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CodeWalker.GameFiles;
-using System;
-using System.Collections.Generic;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Duble.Tests;
 
-/// <summary>RpfArchiveExtractor archiwum do folderu: pliki RSC7 z naglowkiem, zagniezdzone .rpf jako podfoldery, indeks kopii = indeks archiwum (pomijane bez gry).</summary>
+/// <summary>
+/// Unpacking an archive into a plain folder: RSC7 files with their headers, nested .rpf archives as
+/// subfolders, and — the point of the whole thing — a copy that indexes to exactly what the archive did.
+/// </summary>
 public class ArchiveExtractorTests
 {
-    static readonly IArchiveExtractor Extractor = new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IArchiveExtractor>();
+    static readonly IServiceProvider Services = new ServiceCollection().AddDubleCore().BuildServiceProvider();
+    static readonly IArchiveExtractor Extractor = Services.GetRequiredService<IArchiveExtractor>();
 
-    static readonly IServiceProvider CoreUslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
-    static IReadOnlyList<Garment> Indeksuj(string zrodlo, string nazwa, IndexOptions opcje = null)
-        => CoreUslugi.GetRequiredService<IGarmentIndexer>().Index(zrodlo, nazwa, opcje ?? new IndexOptions()).Value.Garments;
+    static IReadOnlyList<Garment> Index(string source, string name)
+        => Services.GetRequiredService<IGarmentIndexer>().Index(source, name, new IndexOptions()).Value.Garments;
 
-    readonly ITestOutputHelper wyj;
-    public ArchiveExtractorTests(ITestOutputHelper wyj) { this.wyj = wyj; }
+    readonly ITestOutputHelper output;
+
+    public ArchiveExtractorTests(ITestOutputHelper output) => this.output = output;
 
     [Fact]
-    public void Archiwum_dlc_rozklada_sie_na_foldery_z_plikami_rsc7()
+    public void An_unpacked_archive_indexes_to_the_same_garments_as_the_archive_did()
     {
-        if (!Sciezki.JestGra) { wyj.WriteLine("POMINIETY: brak studio_body\\dlc.rpf"); return; }
-        var tmp = Sciezki.Tymczasowy("rozpakuj");
+        if (!Sciezki.JestGra) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
+
+        var temp = Sciezki.Tymczasowy("unpack");
         try
         {
-            var postepy = new System.Collections.Generic.List<ProgressReport>();
-            var w = Extractor.ExtractArchive(Sciezki.Dlc("studio_body"), Path.Combine(tmp, "studio_body"),
-                                             new SyncProgress<ProgressReport>(postepy.Add));
-            wyj.WriteLine($"pliki={w.Files} archiwa={w.Archives} bajty={w.Bytes} bledy={w.Errors.Count}");
-            foreach (var b in w.Errors.Take(5)) wyj.WriteLine("  " + b);
-            Assert.Empty(w.Errors);
-            Assert.True(w.Archives >= 2);                                   // dlc.rpf + zagniezdzone body.rpf
-            Assert.Contains(postepy, p => p.Stage == "unpack" && p.Total > 0);
-            var ydd = Directory.GetFiles(tmp, "*.ydd", SearchOption.AllDirectories);
-            foreach (var f in ydd.Take(3)) wyj.WriteLine("  " + Path.GetRelativePath(tmp, f));
-            Assert.NotEmpty(ydd);
-            Assert.All(ydd, f => Assert.Contains(".rpf\\", Path.GetRelativePath(tmp, f)));   // zagniezdzone archiwum = folder *.rpf (kontener); w srodku moga byc podfoldery (mp_f_freemode_01)
-            var uppr = ydd.First(f => Path.GetFileName(f).StartsWith("uppr_015"));
-            var bajty = File.ReadAllBytes(uppr);
-            Assert.True(Rsc7Header.IsRsc7(bajty)); Assert.Equal(159, Rsc7Header.Version(bajty));
-            Assert.True(bajty.Length < new FileInfo(uppr).Length + 1);      // (sanity) plik na dysku = to, co zapisalismy
-            // meta/xml binarne tez sa
-            Assert.Contains(Directory.GetFiles(tmp, "*", SearchOption.AllDirectories), f => !f.EndsWith(".ydd") && !f.EndsWith(".ytd"));
+            var progress = new List<ProgressReport>();
+            var result = Extractor.ExtractArchive(Sciezki.Dlc("studio_body"), Path.Combine(temp, "studio_body"),
+                                                  new SyncProgress<ProgressReport>(progress.Add));
 
-            // indeks kopii daje te same pozycje (odciski geometrii) co indeks archiwum
-            var zArch = Indeksuj(Sciezki.Dlc("studio_body"), "x");
-            var zKopii = Indeksuj(Path.Combine(tmp, "studio_body"), "x");
-            Assert.Equal(zArch.Count, zKopii.Count);
-            var a = zArch.OrderBy(p => p.Id).Select(p => p.Geometry.PositionHash + "|" + string.Join(",", p.Textures.Select(t => t.PerceptualHash?[0]))).ToList();
-            var b2 = zKopii.OrderBy(p => p.Id).Select(p => p.Geometry.PositionHash + "|" + string.Join(",", p.Textures.Select(t => t.PerceptualHash?[0]))).ToList();
-            Assert.Equal(a, b2);
-            Assert.All(zKopii, p => Assert.DoesNotContain("|", p.ModelPath));   // luzne pliki -> przenoszalne
+            output.WriteLine($"files={result.Files} archives={result.Archives} bytes={result.Bytes} errors={result.Errors.Count}");
+            foreach (var error in result.Errors.Take(5)) output.WriteLine("  " + error);
+            Assert.Empty(result.Errors);
+            Assert.True(result.Archives >= 2);                          // dlc.rpf and the body.rpf nested in it
+            Assert.Contains(progress, report => report.Stage == "unpack" && report.Total > 0);
 
-            // Zrodlo() na folderze z archiwum w srodku: kopia + rozlozone archiwum
-            var src = Path.Combine(tmp, "src", "stream"); Directory.CreateDirectory(src);
-            File.Copy(Sciezki.Dlc("studio_body"), Path.Combine(src, "paczka.rpf"));
-            File.WriteAllText(Path.Combine(src, "x.meta"), "<meta/>");
-            Directory.CreateDirectory(Path.Combine(tmp, "src", "_odrzucone")); File.WriteAllText(Path.Combine(tmp, "src", "_odrzucone", "a.ydd"), "x");
-            var w2 = Extractor.ExtractSource(Path.Combine(tmp, "src"), Path.Combine(tmp, "kopia"));
-            Assert.Empty(w2.Errors);
-            Assert.True(File.Exists(Path.Combine(tmp, "kopia", "stream", "x.meta")));
-            Assert.True(Directory.Exists(Path.Combine(tmp, "kopia", "stream", "paczka.rpf")));
-            Assert.False(Directory.Exists(Path.Combine(tmp, "kopia", "_odrzucone")));
-            Assert.Equal(w.Files + 1, w2.Files);
+            var models = Directory.GetFiles(temp, "*.ydd", SearchOption.AllDirectories);
+            Assert.NotEmpty(models);
+            // a nested archive becomes a folder named *.rpf, which is what indexing treats as a container
+            Assert.All(models, file => Assert.Contains(".rpf\\", Path.GetRelativePath(temp, file)));
+
+            var uppr = models.First(file => Path.GetFileName(file).StartsWith("uppr_015"));
+            var bytes = File.ReadAllBytes(uppr);
+            Assert.True(Rsc7Header.IsRsc7(bytes));
+            Assert.Equal(159, Rsc7Header.Version(bytes));
+
+            // binary files (.meta, .xml…) come out as they went in
+            Assert.Contains(Directory.GetFiles(temp, "*", SearchOption.AllDirectories),
+                            file => !file.EndsWith(".ydd") && !file.EndsWith(".ytd"));
+
+            var fromArchive = Index(Sciezki.Dlc("studio_body"), "x");
+            var fromCopy = Index(Path.Combine(temp, "studio_body"), "x");
+            Assert.Equal(fromArchive.Count, fromCopy.Count);
+
+            string Fingerprints(IReadOnlyList<Garment> garments) => string.Join("\n", garments.OrderBy(g => g.Id)
+                .Select(g => g.Geometry.PositionHash + "|" + string.Join(",", g.Textures.Select(t => t.PerceptualHash?[0]))));
+            Assert.Equal(Fingerprints(fromArchive), Fingerprints(fromCopy));
+
+            // and the copy is loose files, which is what makes apply and undo possible at all
+            Assert.All(fromCopy, garment => Assert.DoesNotContain("|", garment.ModelPath));
         }
-        finally { Directory.Delete(tmp, true); }
+        finally { Directory.Delete(temp, true); }
     }
 
     [Fact]
-    public void PlikRsc7_binarny_bez_zmian_zasob_z_naglowkiem()
+    public void Unpacking_a_whole_source_copies_the_loose_files_and_skips_the_bin()
     {
-        var dane = new byte[] { 1, 2, 3, 4, 5 };
-        var bin = new RpfBinaryFileEntry { Name = "a.meta" };
-        Assert.Same(dane, RpfArchiveExtractor.ToRsc7File(bin, dane));
-        var res = new RpfResourceFileEntry { Name = "a.ydd", SystemFlags = 0x90000000u, GraphicsFlags = 0xF0000000u };
-        var wy = RpfArchiveExtractor.ToRsc7File(res, dane);
-        Assert.True(Rsc7Header.IsRsc7(wy));
-        Assert.Equal(res.Version, Rsc7Header.Version(wy));
-        Assert.Equal(dane, ResourceBuilder.Decompress(wy.Skip(16).ToArray()));
-        Assert.Null(RpfArchiveExtractor.ToRsc7File(res, null));
+        if (!Sciezki.JestGra) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
+
+        var temp = Sciezki.Tymczasowy("unpack-source");
+        try
+        {
+            var source = Path.Combine(temp, "src", "stream");
+            Directory.CreateDirectory(source);
+            File.Copy(Sciezki.Dlc("studio_body"), Path.Combine(source, "paczka.rpf"));
+            File.WriteAllText(Path.Combine(source, "x.meta"), "<meta/>");
+
+            Directory.CreateDirectory(Path.Combine(temp, "src", "_odrzucone"));
+            File.WriteAllText(Path.Combine(temp, "src", "_odrzucone", "a.ydd"), "x");
+
+            var result = Extractor.ExtractSource(Path.Combine(temp, "src"), Path.Combine(temp, "copy"));
+
+            Assert.Empty(result.Errors);
+            Assert.True(File.Exists(Path.Combine(temp, "copy", "stream", "x.meta")));
+            Assert.True(Directory.Exists(Path.Combine(temp, "copy", "stream", "paczka.rpf")));
+            Assert.False(Directory.Exists(Path.Combine(temp, "copy", "_odrzucone")));
+        }
+        finally { Directory.Delete(temp, true); }
+    }
+
+    [Fact]
+    public void A_resource_entry_gets_its_header_back_and_a_binary_one_is_untouched()
+    {
+        var data = new byte[] { 1, 2, 3, 4, 5 };
+
+        var binary = new RpfBinaryFileEntry { Name = "a.meta" };
+        Assert.Same(data, RpfArchiveExtractor.ToRsc7File(binary, data));
+
+        var resource = new RpfResourceFileEntry { Name = "a.ydd", SystemFlags = 0x90000000u, GraphicsFlags = 0xF0000000u };
+        var wrapped = RpfArchiveExtractor.ToRsc7File(resource, data);
+        Assert.True(Rsc7Header.IsRsc7(wrapped));
+        Assert.Equal(resource.Version, Rsc7Header.Version(wrapped));
+        Assert.Equal(data, ResourceBuilder.Decompress(wrapped.Skip(16).ToArray()));
+
+        Assert.Null(RpfArchiveExtractor.ToRsc7File(resource, null));
     }
 }

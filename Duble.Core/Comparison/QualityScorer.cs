@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -48,21 +47,21 @@ public class QualityScore
     /// <summary>The breakdown as a sentence, in the language asked for.</summary>
     public string Text(string language)
     {
-        if (NoTextures) return Texts.T(language, "jakosc.brak");
+        if (NoTextures) return Texts.T(language, "quality.noTextures");
 
         var invariant = CultureInfo.InvariantCulture;
         var parameters = new Dictionary<string, string>
         {
-            ["px"] = ResolutionPx.ToString("F0", invariant), ["pRozdz"] = Resolution.ToString("F0", invariant),
-            ["mipy"] = MipmapShare.ToString("P0", invariant), ["pMipy"] = Mipmaps.ToString("F0", invariant),
-            ["n"] = VariantCount.ToString(invariant), ["pWar"] = Variants.ToString("F0", invariant),
-            ["pFmt"] = Format.ToString("F0", invariant),
-            ["zly"] = WrongFormatCount > 0
-                ? Texts.T(language, "jakosc.zlyFormat", new Dictionary<string, string> { ["n"] = WrongFormatCount.ToString(invariant) })
+            ["px"] = ResolutionPx.ToString("F0", invariant), ["pxScore"] = Resolution.ToString("F0", invariant),
+            ["mips"] = MipmapShare.ToString("P0", invariant), ["mipsScore"] = Mipmaps.ToString("F0", invariant),
+            ["variants"] = VariantCount.ToString(invariant), ["variantsScore"] = Variants.ToString("F0", invariant),
+            ["formatScore"] = Format.ToString("F0", invariant),
+            ["wrongFormat"] = WrongFormatCount > 0
+                ? Texts.T(language, "quality.wrongFormat", new Dictionary<string, string> { ["n"] = WrongFormatCount.ToString(invariant) })
                 : "",
-            ["lod"] = LodLevels.ToString(invariant), ["pLod"] = Lod.ToString("F0", invariant),
+            ["lod"] = LodLevels.ToString(invariant), ["lodScore"] = Lod.ToString("F0", invariant),
         };
-        return Texts.T(language, "jakosc.rozpiska", parameters);
+        return Texts.T(language, "quality.breakdown", parameters);
     }
 }
 

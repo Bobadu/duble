@@ -44,7 +44,7 @@ public class ZasobyTests
         var z = new Zasoby(null);
         Assert.True(z.Rozwiaz("https://duble.data/i18n/pl.json", out var s, out var mime, out int status));
         var json = new StreamReader(s).ReadToEnd();
-        Assert.Contains("\"powod.SAME_MODEL_SAME_TEX\"", json);   // z Core
+        Assert.Contains("\"reason.SAME_MODEL_SAME_TEX\"", json);   // z Core
         Assert.Contains("\"app.name\"", json);                     // z ui\i18n\pl.json
         string ostatniQuery = null;
         z.Dane = (kategoria, klucz, query) => { ostatniQuery = query; return kategoria == "thumb" && klucz == "ABC" ? new MemoryStream(new byte[] { 1, 2, 3 }) : null; };

@@ -1,9 +1,10 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.Json.Serialization;
 using Duble.Core.Decisions;
+using Duble.Core.Time;
 
 namespace Duble.Core.Projects;
 
@@ -14,7 +15,7 @@ namespace Duble.Core.Projects;
 /// </summary>
 public class Project
 {
-    /// <summary>2 = English keys. Version 1 files are translated when they are opened.</summary>
+    /// <summary>2 = English keys. An older file is refused rather than guessed at; there is no version 1 left.</summary>
     public const int CurrentVersion = 2;
 
     public int Version { get; set; } = CurrentVersion;
@@ -29,18 +30,18 @@ public class Project
 
     [JsonIgnore] public string? Path { get; set; }
     [JsonIgnore] public string CacheFolder => Path + ".cache";
-    [JsonIgnore] public string CatalogFile => System.IO.Path.Combine(CacheFolder, "katalog.json");
+    [JsonIgnore] public string CatalogFile => System.IO.Path.Combine(CacheFolder, "catalog.json");
     [JsonIgnore] public string ComparisonFile => System.IO.Path.Combine(CacheFolder, "duble.json");
     [JsonIgnore] public string ThumbnailFolder => System.IO.Path.Combine(CacheFolder, "thumbs");
     [JsonIgnore] public string TextureFolder => System.IO.Path.Combine(CacheFolder, "tex");
     [JsonIgnore] public string MeshFolder => System.IO.Path.Combine(CacheFolder, "mesh");
-    [JsonIgnore] public string HistoryFolder => System.IO.Path.Combine(CacheFolder, "historia");
+    [JsonIgnore] public string HistoryFolder => System.IO.Path.Combine(CacheFolder, "history");
 
     public static Project Create(string name, string path, DateTimeOffset now) => new()
     {
         Name = name,
         Path = System.IO.Path.GetFullPath(path),
-        Created = now.ToString("yyyy-MM-dd HH:mm:ss"),
+        Created = now.ToString(Timestamps.Format, CultureInfo.InvariantCulture),
     };
 
     /// <summary>

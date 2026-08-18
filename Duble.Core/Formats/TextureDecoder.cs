@@ -1,4 +1,3 @@
-#nullable enable
 // Decoding a texture's pixels: CodeWalker handles BC1–BC5 and the uncompressed formats, BCnEncoder.Net handles
 // BC7.
 //

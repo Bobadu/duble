@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,7 +12,7 @@ namespace Duble.Core.Comparison;
 /// Why a verdict came out the way it did, as a code plus parameters rather than a finished sentence — the app
 /// is bilingual, so the engine must not decide which language to speak.
 ///
-/// A parameter value starting with '@' is itself a key to translate, for example "@geo.identyczna". Numbers
+/// A parameter value starting with '@' is itself a key to translate, for example "@geo.identical". Numbers
 /// arrive already formatted with the invariant culture.
 /// </summary>
 public class Reason
@@ -65,6 +64,12 @@ public static class Texts
     static string Normalise(string? language)
         => string.IsNullOrEmpty(language) ? "pl" : language.ToLowerInvariant().StartsWith("pl") ? "pl" : "en";
 
+    /// <summary>
+    /// The language tag the text will actually be in — what belongs in a document's lang attribute. Anything
+    /// Duble does not speak resolves to English, so the tag has to say so rather than repeat what was asked for.
+    /// </summary>
+    public static string Tag(string? language) => Normalise(language);
+
     static Dictionary<string, string> Load(string language)
     {
         var name = $"Duble.Core.i18n.{language}.json";
@@ -90,7 +95,7 @@ public static class Texts
     }
 
     public static string Reason(Reason? reason, string language)
-        => reason?.Code == null ? "" : T(language, "powod." + reason.Code, reason.Parameters);
+        => reason?.Code == null ? "" : T(language, "reason." + reason.Code, reason.Parameters);
 
     /// <summary>The name of a verdict, for the interface and the report.</summary>
     public static string Verdict(Verdict verdict, string language) => T(language, "verdict." + verdict.ToKey());

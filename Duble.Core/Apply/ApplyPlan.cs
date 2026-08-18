@@ -1,4 +1,3 @@
-#nullable enable
 // The plan an apply follows, and the log that lets it be undone.
 //
 // THE PROJECT'S RULE: an original is never lost. Rejected files are not deleted, they are MOVED to a bin

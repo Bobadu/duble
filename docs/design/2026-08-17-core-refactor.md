@@ -219,9 +219,10 @@ is no migration code: version 1.0.0 has no users with projects to carry over, an
 nobody is a translation layer nobody maintains. Should a future version need one, it will be written then,
 against a format that is already in English.
 
-**`katalog.json` and `duble.json`** live in `<project>.duble.cache`, which the README already documents as
-disposable. `Catalog.Version` goes 2 → 3; a catalog with a lower version or unreadable content loads as empty,
-which makes the app re-index once on first open. Nothing to migrate — indexing produces it.
+**The catalog and `duble.json`** live in `<project>.duble.cache`, which the README already documents as
+disposable, so the catalog is renamed `katalog.json` → `catalog.json` along with everything else.
+`Catalog.Version` goes 2 → 3; a catalog with a lower version or unreadable content loads as empty, which makes
+the app re-index once on first open. Nothing to migrate — indexing produces it.
 
 **Undo logs** (`<cache>/history/*.json`) describe files that physically moved, so they are the one thing worth
 reading back. They are rewritten with the rest of Apply, and the version written before that rewrite is not

@@ -32,7 +32,7 @@ public class I18nUiTests
             foreach (Match m in re.Matches(File.ReadAllText(f)))
             {
                 var k = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value;
-                if (!pl.ContainsKey(k) && !k.StartsWith("powod.") && !k.StartsWith("verdict.") && !k.StartsWith("slot.")) brak.Add(Path.GetFileName(f) + ": " + k);
+                if (!pl.ContainsKey(k) && !k.StartsWith("reason.") && !k.StartsWith("verdict.") && !k.StartsWith("slot.")) brak.Add(Path.GetFileName(f) + ": " + k);
             }
         Assert.Empty(brak);
     }

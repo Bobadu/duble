@@ -1,4 +1,3 @@
-#nullable enable
 using Duble.Core.Comparison;
 
 namespace Duble.Core.Projects;

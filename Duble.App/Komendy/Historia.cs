@@ -1,4 +1,4 @@
-// Komendy/Historia.cs — history.list/get/undo (dzienniki zastosowan = UndoLog w <cache>\historia\*.json), report.exportHtml/exportCsv.
+// Komendy/Historia.cs — history.list/get/undo (dzienniki zastosowan = UndoLog w <cache>\history\*.json), report.exportHtml/exportCsv.
 //
 // Cofniecie idzie przez JobRunner "cofnij": ApplyPlanner.Cofnij (calosc albo wybrane pozycje) -> zapis cofki -> ponowne
 // indeksowanie zrodel tych pozycji -> porownanie; zdarzenia undo.done + history.changed.
@@ -116,7 +116,8 @@ public static class Historia
             {
                 await Task.Yield();
                 postep(new ProgressReport("report", 0, 0, Path.GetFileName(plik)));
-                s.Raporty.Build(s.Catalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
+                s.Raporty.Build(s.Catalog, s.Wynik, plik,
+                    new ReportOptions { Language = jezyk, Title = tytul, Resolve = rozstrzygnij });
                 m.Zdarzenie("report.done", new { plik, typ = "html" });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");

@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -45,105 +44,135 @@ public sealed class GeometryFingerprinter : IGeometryFingerprinter
         }
     }
 
-    static GeometryFingerprint Compute(Drawable? d)
+    static GeometryFingerprint Compute(Drawable? drawable)
     {
-        var g = new GeometryFingerprint();
-        if (d == null) return g;
+        var fingerprint = new GeometryFingerprint();
+        if (drawable == null) return fingerprint;
 
-        var dm = d.DrawableModels;
-        if (dm != null)
+        var models = drawable.DrawableModels;
+        if (models != null)
+            foreach (var lod in new[] { models.High, models.Med, models.Low, models.VLow })
+                if (lod is { Length: > 0 }) fingerprint.LodLevels++;
+
+        fingerprint.Bones = drawable.Skeleton?.Bones?.Items?.Length ?? 0;
+        fingerprint.BoundingBox = new[]
         {
-            foreach (var arr in new[] { dm.High, dm.Med, dm.Low, dm.VLow })
-                if (arr != null && arr.Length > 0) g.LodLevels++;
-        }
-        g.Bones = d.Skeleton?.Bones?.Items?.Length ?? 0;
-        g.BoundingBox = new[]
-        {
-            d.BoundingBoxMax.X - d.BoundingBoxMin.X,
-            d.BoundingBoxMax.Y - d.BoundingBoxMin.Y,
-            d.BoundingBoxMax.Z - d.BoundingBoxMin.Z
+            drawable.BoundingBoxMax.X - drawable.BoundingBoxMin.X,
+            drawable.BoundingBoxMax.Y - drawable.BoundingBoxMin.Y,
+            drawable.BoundingBoxMax.Z - drawable.BoundingBoxMin.Z,
         };
 
-        // Odcisk liczymy WYLACZNIE z najwyzszego LOD — nizsze bywaja generowane
-        // automatycznie przez rozne narzedzia i roznia sie tam, gdzie ciuch jest ten sam.
-        var modele = dm?.High;
-        if (modele == null || modele.Length == 0) return g;
+        // The fingerprint comes from the HIGHEST LOD ONLY. Lower ones are often generated automatically by
+        // whichever tool the author used, so they differ between two copies of the same garment.
+        var highest = models?.High;
+        if (highest == null || highest.Length == 0) return fingerprint;
 
-        var poz = new List<(float x, float y, float z)>();
-        foreach (var m in modele)
+        var positions = ReadPositions(highest, fingerprint);
+        if (positions.Count == 0) return fingerprint;
+
+        fingerprint.ShapeHistogram = ShapeHistogram(positions);
+        fingerprint.PositionHash = PositionHash(positions);
+        return fingerprint;
+    }
+
+    /// <summary>
+    /// Every vertex position in the given models, counting meshes, triangles and vertices along the way. A
+    /// position is component 0 of the vertex layout — three floats at that component's offset.
+    /// </summary>
+    static List<(float X, float Y, float Z)> ReadPositions(DrawableModel[] models, GeometryFingerprint fingerprint)
+    {
+        var positions = new List<(float X, float Y, float Z)>();
+
+        foreach (var model in models)
         {
-            if (m?.Geometries == null) continue;
-            foreach (var geo in m.Geometries)
+            if (model?.Geometries == null) continue;
+            foreach (var geometry in model.Geometries)
             {
-                if (geo == null) continue;
-                g.Meshes++;
-                g.Triangles += (int)(geo.IndicesCount / 3);
-                var vd = geo.VertexBuffer?.Data1 ?? geo.VertexBuffer?.Data2;
-                if (vd?.VertexBytes == null || vd.Info == null) continue;
-                g.Stride = vd.Info.Stride;
-                int stride = vd.Info.Stride;
-                int off = vd.Info.GetComponentOffset(0);   // skladowa 0 = pozycja
-                int n = vd.VertexCount;
-                g.Vertices += n;
-                var b = vd.VertexBytes;
-                for (int v = 0; v < n; v++)
+                if (geometry == null) continue;
+                fingerprint.Meshes++;
+                fingerprint.Triangles += (int)(geometry.IndicesCount / 3);
+
+                var buffer = geometry.VertexBuffer?.Data1 ?? geometry.VertexBuffer?.Data2;
+                if (buffer?.VertexBytes == null || buffer.Info == null) continue;
+
+                fingerprint.Stride = buffer.Info.Stride;
+                int stride = buffer.Info.Stride;
+                int offset = buffer.Info.GetComponentOffset(0);
+                fingerprint.Vertices += buffer.VertexCount;
+
+                var bytes = buffer.VertexBytes;
+                for (int vertex = 0; vertex < buffer.VertexCount; vertex++)
                 {
-                    int o = v * stride + off;
-                    if (o + 12 > b.Length) break;
-                    poz.Add((BitConverter.ToSingle(b, o), BitConverter.ToSingle(b, o + 4), BitConverter.ToSingle(b, o + 8)));
+                    int at = vertex * stride + offset;
+                    if (at + 12 > bytes.Length) break;
+                    positions.Add((BitConverter.ToSingle(bytes, at),
+                                   BitConverter.ToSingle(bytes, at + 4),
+                                   BitConverter.ToSingle(bytes, at + 8)));
                 }
             }
         }
-        if (poz.Count == 0) return g;
 
-        // --- histogram odleglosci od srodka ciezkosci ---
-        double sx = 0, sy = 0, sz = 0;
-        foreach (var p in poz) { sx += p.x; sy += p.y; sz += p.z; }
-        double cx = sx / poz.Count, cy = sy / poz.Count, cz = sz / poz.Count;
-
-        var odl = new double[poz.Count];
-        double suma = 0;
-        for (int i = 0; i < poz.Count; i++)
-        {
-            double dx = poz[i].x - cx, dy = poz[i].y - cy, dz = poz[i].z - cz;
-            odl[i] = Math.Sqrt(dx * dx + dy * dy + dz * dz);
-            suma += odl[i];
-        }
-        double srednia = suma / poz.Count;
-        var hist = new float[GeometryFingerprint.HistogramBuckets];
-        if (srednia > 1e-9)
-        {
-            foreach (var o in odl)
-            {
-                int k = (int)(o / srednia / GeometryFingerprint.HistogramRange * GeometryFingerprint.HistogramBuckets);
-                if (k < 0) k = 0; else if (k >= GeometryFingerprint.HistogramBuckets) k = GeometryFingerprint.HistogramBuckets - 1;
-                hist[k]++;
-            }
-            for (int i = 0; i < GeometryFingerprint.HistogramBuckets; i++) hist[i] /= poz.Count;
-        }
-        g.ShapeHistogram = hist;
-
-        // --- hash z posortowanych pozycji zaokraglonych do 1 mm ---
-        // 1 mm, nie 0,1 mm: ponowny eksport przez Blendera/Maxa wnosi szum wiekszy niz
-        // 0,1 mm, a ciuch ma ~0,5 m, wiec 1 mm to nadal 0,2% rozmiaru — bardzo selektywne.
-        var klucze = new long[poz.Count];
-        for (int i = 0; i < poz.Count; i++)
-        {
-            long qx = ToMillimetreKey(poz[i].x), qy = ToMillimetreKey(poz[i].y), qz = ToMillimetreKey(poz[i].z);
-            klucze[i] = (qx << 32) | (qy << 16) | qz;
-        }
-        Array.Sort(klucze);
-        var bajty = new byte[klucze.Length * 8];
-        Buffer.BlockCopy(klucze, 0, bajty, 0, bajty.Length);
-        g.PositionHash = Convert.ToHexString(SHA256.HashData(bajty)).Substring(0, 32);
-        return g;
+        return positions;
     }
 
-    static long ToMillimetreKey(float v)
+    /// <summary>
+    /// How far the vertices sit from the centre of mass, as a histogram normalised by the mean distance. That
+    /// normalisation is what makes the histogram independent of scale and of where the model sits in space.
+    /// </summary>
+    static float[] ShapeHistogram(List<(float X, float Y, float Z)> positions)
     {
-        long mm = (long)Math.Round(v * 1000.0);
-        if (mm < -32768) mm = -32768; else if (mm > 32767) mm = 32767;
-        return mm + 32768;   // przesuniecie na zakres bez znaku, zeby zmiescic w 16 bitach
+        double sumX = 0, sumY = 0, sumZ = 0;
+        foreach (var position in positions) { sumX += position.X; sumY += position.Y; sumZ += position.Z; }
+        double centreX = sumX / positions.Count, centreY = sumY / positions.Count, centreZ = sumZ / positions.Count;
+
+        var distances = new double[positions.Count];
+        double total = 0;
+        for (int i = 0; i < positions.Count; i++)
+        {
+            double dx = positions[i].X - centreX, dy = positions[i].Y - centreY, dz = positions[i].Z - centreZ;
+            distances[i] = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+            total += distances[i];
+        }
+
+        var histogram = new float[GeometryFingerprint.HistogramBuckets];
+        double mean = total / positions.Count;
+        if (mean <= 1e-9) return histogram;   // every vertex in one place: nothing to describe
+
+        foreach (var distance in distances)
+        {
+            int bucket = (int)(distance / mean / GeometryFingerprint.HistogramRange * GeometryFingerprint.HistogramBuckets);
+            bucket = Math.Clamp(bucket, 0, GeometryFingerprint.HistogramBuckets - 1);
+            histogram[bucket]++;
+        }
+        for (int i = 0; i < histogram.Length; i++) histogram[i] /= positions.Count;
+
+        return histogram;
     }
 
+    /// <summary>
+    /// A hash over the sorted vertex positions, rounded to a millimetre. Equal hashes mean the same mesh,
+    /// whatever order the vertices were written in.
+    ///
+    /// A millimetre, not a tenth of one: re-exporting through Blender or Max introduces more noise than 0.1 mm.
+    /// A garment is about half a metre across, so a millimetre is still 0.2% of it — selective enough.
+    /// </summary>
+    static string PositionHash(List<(float X, float Y, float Z)> positions)
+    {
+        var keys = new long[positions.Count];
+        for (int i = 0; i < positions.Count; i++)
+            keys[i] = (ToMillimetreKey(positions[i].X) << 32)
+                    | (ToMillimetreKey(positions[i].Y) << 16)
+                    | ToMillimetreKey(positions[i].Z);
+
+        Array.Sort(keys);
+        var bytes = new byte[keys.Length * 8];
+        Buffer.BlockCopy(keys, 0, bytes, 0, bytes.Length);
+        return Convert.ToHexString(SHA256.HashData(bytes))[..32];
+    }
+
+    static long ToMillimetreKey(float value)
+    {
+        long millimetres = Math.Clamp((long)Math.Round(value * 1000.0), -32768, 32767);
+        return millimetres + 32768;   // shifted into an unsigned range so it fits in 16 bits
+    }
 }

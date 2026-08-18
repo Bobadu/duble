@@ -1,4 +1,3 @@
-#nullable enable
 // ==================== WHERE THE THRESHOLDS CAME FROM ====================
 // Calibration over 1132 garments and 9437 textures (15.08.2026, `duble kalibruj`):
 //
@@ -30,6 +29,7 @@ using System.Linq;
 using System.Threading;
 using Duble.Core.Fingerprints;
 using Duble.Core.Model;
+using Duble.Core.Time;
 using Microsoft.Extensions.Logging;
 
 namespace Duble.Core.Comparison;
@@ -45,11 +45,13 @@ public interface IDuplicateFinder
 public sealed class DuplicateFinder : IDuplicateFinder
 {
     readonly IQualityScorer scorer;
+    readonly IClock clock;
     readonly ILogger<DuplicateFinder> log;
 
-    public DuplicateFinder(IQualityScorer scorer, ILogger<DuplicateFinder> log)
+    public DuplicateFinder(IQualityScorer scorer, IClock clock, ILogger<DuplicateFinder> log)
     {
         this.scorer = scorer;
+        this.clock = clock;
         this.log = log;
     }
 
@@ -80,55 +82,63 @@ public sealed class DuplicateFinder : IDuplicateFinder
         }
         log.LogInformation("{Candidates} pairs passed the geometry filter, {Pairs} got a verdict", candidates, pairs.Count);
 
-        // ===== grupowanie =====
-        // Laczymy TYLKO po werdyktach duplikatu — gdybysmy laczyli po "do wgladu",
-        // wszystko zlalo by sie w jedna wielka grupe i raport bylby bezuzyteczny.
+        // ===== grouping =====
+        // Only DUPLICATE verdicts join garments together. Joining on "needs review" as well would run
+        // everything into one enormous group and leave the report useless.
         var byId = garments.ToDictionary(g => g.Id!);
         var parent = garments.ToDictionary(g => g.Id!, g => g.Id!);
-        string Find(string x) { while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
-        void Union(string x, string y) { var rx = Find(x); var ry = Find(y); if (rx != ry) parent[rx] = ry; }
-        foreach (var p in pairs.Where(p => p.Verdict == Verdict.Duplicate || p.Verdict == Verdict.Superset)) Union(p.A, p.B);
+        string Root(string id) { while (parent[id] != id) { parent[id] = parent[parent[id]]; id = parent[id]; } return id; }
+        void Join(string x, string y) { var rx = Root(x); var ry = Root(y); if (rx != ry) parent[rx] = ry; }
 
-        var result = new ComparisonResult { Built = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") };
-        var duplicateGroups = pairs.Where(p => p.Verdict == Verdict.Duplicate || p.Verdict == Verdict.Superset)
-                             .GroupBy(p => Find(p.A));
-        foreach (var g in duplicateGroups)
+        bool IsDuplicate(GarmentPair p) => p.Verdict == Verdict.Duplicate || p.Verdict == Verdict.Superset;
+        foreach (var pair in pairs.Where(IsDuplicate)) Join(pair.A, pair.B);
+
+        var result = new ComparisonResult { Built = clock.Stamp() };
+
+        foreach (var joined in pairs.Where(IsDuplicate).GroupBy(p => Root(p.A)))
         {
-            var ids = g.SelectMany(p => new[] { p.A, p.B }).Distinct().ToList();
+            var ids = joined.SelectMany(p => new[] { p.A, p.B }).Distinct().ToList();
             var group = new DuplicateGroup
             {
+                Id = DuplicateGroup.ComputeId(ids),
                 Members = ids,
-                Pairs = g.ToList(),
-                Verdict = g.Any(p => p.Verdict == Verdict.Superset) ? Verdict.Superset : Verdict.Duplicate
+                Pairs = joined.ToList(),
+                // one superset pair makes the whole group a superset: the sets are not equal after all
+                Verdict = joined.Any(p => p.Verdict == Verdict.Superset) ? Verdict.Superset : Verdict.Duplicate,
             };
-            group.Id = DuplicateGroup.ComputeId(ids);
-            foreach (var id in ids)
-            {
-                var score = scorer.Score(byId[id]);
-                group.Scores[id] = score.Total;
-                group.ScoreBreakdown[id] = score;
-            }
-            group.Winner = ids.OrderByDescending(x => group.Scores[x])
-                                 .ThenByDescending(x => byId[x].Textures.Count)
-                                 .ThenBy(x => x, StringComparer.Ordinal).First();
-            var losers = ids.Where(x => x != group.Winner).ToList();
+            Score(group, byId);
+
+            // the best copy stays; ties go to the one with more colour variants, then to the lower id so that
+            // two runs over the same catalog never disagree
+            group.Winner = ids.OrderByDescending(id => group.Scores[id])
+                              .ThenByDescending(id => byId[id].Textures.Count)
+                              .ThenBy(id => id, StringComparer.Ordinal)
+                              .First();
+            var losers = ids.Where(id => id != group.Winner).Select(id => Points(group.Scores[id]));
             group.Reason = new Reason("WINNER",
-                ("zw", group.Scores[group.Winner].ToString("F0", CultureInfo.InvariantCulture)),
-                ("przegrani", string.Join(", ", losers.Select(x => group.Scores[x].ToString("F0", CultureInfo.InvariantCulture)))));
+                ("winner", Points(group.Scores[group.Winner])),
+                ("losers", string.Join(", ", losers)));
+
             result.Groups.Add(group);
         }
 
-        // pairs do obejrzenia i przemalowania trafiaja jako grupy jednoparowe
-        foreach (var p in pairs.Where(p => p.Verdict == Verdict.NeedsReview || p.Verdict == Verdict.Retexture))
+        // pairs to look at and retextures stand alone: they say something about two garments, not about a set
+        foreach (var pair in pairs.Where(p => p.Verdict == Verdict.NeedsReview || p.Verdict == Verdict.Retexture))
         {
-            var group = new DuplicateGroup { Members = new List<string> { p.A, p.B }, Pairs = new List<GarmentPair> { p }, Verdict = p.Verdict, Reason = p.Reason };
-            group.Id = DuplicateGroup.ComputeId(group.Members);
-            foreach (var id in group.Members) { var score = scorer.Score(byId[id]); group.Scores[id] = score.Total; group.ScoreBreakdown[id] = score; }
-            group.Winner = group.Members.OrderByDescending(x => group.Scores[x]).First();
+            var group = new DuplicateGroup
+            {
+                Id = DuplicateGroup.ComputeId(new[] { pair.A, pair.B }),
+                Members = new List<string> { pair.A, pair.B },
+                Pairs = new List<GarmentPair> { pair },
+                Verdict = pair.Verdict,
+                Reason = pair.Reason,
+            };
+            Score(group, byId);
+            group.Winner = group.Members.OrderByDescending(id => group.Scores[id]).First();
             result.Groups.Add(group);
         }
 
-        foreach (var verdict in new[] { Verdict.Duplicate, Verdict.Superset, Verdict.NeedsReview, Verdict.Retexture })
+        foreach (var verdict in Verdicts.All)
         {
             int count = result.Groups.Count(g => g.Verdict == verdict);
             if (count > 0) result.Counts[verdict] = count;
@@ -143,7 +153,20 @@ public sealed class DuplicateFinder : IDuplicateFinder
         return result;
     }
 
-    /// <summary>"identyczna" / "podobna" / null gdy pair w ogole nie jest kandydatem.</summary>
+    /// <summary>Rates every member of a group and stores both the total and what it is made of.</summary>
+    void Score(DuplicateGroup group, Dictionary<string, Garment> byId)
+    {
+        foreach (var id in group.Members)
+        {
+            var score = scorer.Score(byId[id]);
+            group.Scores[id] = score.Total;
+            group.ScoreBreakdown[id] = score;
+        }
+    }
+
+    /// <summary>A quality score as it appears in a sentence: whole points, never a local decimal comma.</summary>
+    static string Points(double score) => score.ToString("F0", CultureInfo.InvariantCulture);
+
     /// <summary>How close two meshes are, as far as the geometry stage can tell.</summary>
     enum GeometryMatch
     {
@@ -178,110 +201,122 @@ public sealed class DuplicateFinder : IDuplicateFinder
             && a.Geometry.Vertices == b.Geometry.Vertices
             && a.Geometry.Triangles > 0) return GeometryMatch.Identical;
 
-        double maxTri = Math.Max(a.Geometry.Triangles, b.Geometry.Triangles);
-        if (maxTri < 1) return GeometryMatch.None;
-        double roznicaTri = Math.Abs(a.Geometry.Triangles - b.Geometry.Triangles) / maxTri;
-        if (roznicaTri > thresholds.GeometryTriangleTolerance) return GeometryMatch.None;
+        double maxTriangles = Math.Max(a.Geometry.Triangles, b.Geometry.Triangles);
+        if (maxTriangles < 1) return GeometryMatch.None;
+        double triangleDifference = Math.Abs(a.Geometry.Triangles - b.Geometry.Triangles) / maxTriangles;
+        if (triangleDifference > thresholds.GeometryTriangleTolerance) return GeometryMatch.None;
         if (Distance.BoundingBox(a.Geometry.BoundingBox, b.Geometry.BoundingBox) > thresholds.GeometryBoundsTolerance)
             return GeometryMatch.None;
         return GeometryMatch.Similar;
     }
 
-    /// <summary>Czy dwie tekstury to ta sama grafika (ten sam kolor, nie tylko ten sam wzor).</summary>
+    /// <summary>
+    /// Whether two textures are the same graphic — the same colour of it, not merely the same pattern. The
+    /// report uses this too, to line the textures of a group up next to each other.
+    /// </summary>
     public static bool SameGraphic(TextureInfo x, TextureInfo y, Thresholds? thresholds = null)
     {
         thresholds ??= Thresholds.Default;
         if (x.Sha256 == y.Sha256) return true;
         if (!x.IsDecoded || !y.IsDecoded) return false;
-        double kol = Distance.Color(x.ColorSignature, y.ColorSignature);
-        // Plaska tekstura (np. jednolity kolor) daje PHash z szumu — wtedy ufamy samemu
-        // kolorowi, ale wymagamy scislejszej zgodnosci.
+
+        double colour = Distance.Color(x.ColorSignature, y.ColorSignature);
+
+        // A flat texture — one solid colour, say — has a perceptual hash made of noise. Then only the colour
+        // can be trusted, and it has to agree more closely than it otherwise would.
         if (x.Variance < thresholds.FlatTextureVariance || y.Variance < thresholds.FlatTextureVariance)
-            return kol <= thresholds.FlatTextureColorDistance;
-        int ph = Distance.Hamming(x.PerceptualHash, y.PerceptualHash);
-        return ph >= 0 && ph <= thresholds.TextureHashDistance && kol <= thresholds.TextureColorDistance;
+            return colour <= thresholds.FlatTextureColorDistance;
+
+        int hash = Distance.Hamming(x.PerceptualHash, y.PerceptualHash);
+        return hash >= 0 && hash <= thresholds.TextureHashDistance && colour <= thresholds.TextureColorDistance;
     }
 
     GarmentPair? Judge(Garment a, Garment b, GeometryMatch match, double dist, Thresholds thresholds)
     {
-        var ta = a.Textures ?? new List<TextureInfo>();
-        var tb = b.Textures ?? new List<TextureInfo>();
+        var texturesA = a.Textures;
+        var texturesB = b.Textures;
         var pair = new GarmentPair { A = a.Id!, B = b.Id!, GeometryDistance = dist };
 
-        if (ta.Count == 0 || tb.Count == 0)
+        if (texturesA.Count == 0 || texturesB.Count == 0)
         {
             pair.Verdict = Verdict.NeedsReview;
-            pair.Reason = new Reason("NO_TEXTURES", ("geo", match == GeometryMatch.Identical ? "@geo.identyczna" : "@geo.podobna"));
+            pair.Reason = new Reason("NO_TEXTURES",
+                ("geo", match == GeometryMatch.Identical ? "@geo.identical" : "@geo.similar"));
             return pair;
         }
 
-        var uzyteB = new bool[tb.Count];
-        int dopasowaneA = 0;
-        foreach (var x in ta)
-        {
-            for (int k = 0; k < tb.Count; k++)
+        // Greedy matching, each texture on the B side claimed at most once: two garments that both repeat one
+        // texture must not have it counted twice.
+        var claimed = new bool[texturesB.Count];
+        int matchedA = 0;
+        foreach (var texture in texturesA)
+            for (int k = 0; k < texturesB.Count; k++)
             {
-                if (uzyteB[k]) continue;
-                if (SameGraphic(x, tb[k], thresholds)) { uzyteB[k] = true; dopasowaneA++; break; }
+                if (claimed[k]) continue;
+                if (SameGraphic(texture, texturesB[k], thresholds)) { claimed[k] = true; matchedA++; break; }
             }
-        }
-        int dopasowaneB = uzyteB.Count(v => v);
-        pair.SharedTextures = dopasowaneA;
-        pair.CoverageA = (double)dopasowaneA / ta.Count;
-        pair.CoverageB = (double)dopasowaneB / tb.Count;
-        double maxPokrycie = Math.Max(pair.CoverageA, pair.CoverageB);
-        bool pelneA = pair.CoverageA >= thresholds.FullCoverage;
-        bool pelneB = pair.CoverageB >= thresholds.FullCoverage;
+        int matchedB = claimed.Count(taken => taken);
 
-        // parametry wspolne wszystkich powodow: ile tekstur wspolnych po obu stronach ({a}/{na} i {b}/{nb})
-        (string, object)[] Tex(params (string, object)[] extra)
+        pair.SharedTextures = matchedA;
+        pair.CoverageA = (double)matchedA / texturesA.Count;
+        pair.CoverageB = (double)matchedB / texturesB.Count;
+
+        double bestCoverage = Math.Max(pair.CoverageA, pair.CoverageB);
+        bool coversA = pair.CoverageA >= thresholds.FullCoverage;
+        bool coversB = pair.CoverageB >= thresholds.FullCoverage;
+
+        // every reason carries the same counts: how many textures are shared, out of how many, on each side
+        (string, object)[] Shared(params (string, object)[] extra)
         {
-            var w = new List<(string, object)> { ("a", dopasowaneA), ("na", ta.Count), ("b", dopasowaneB), ("nb", tb.Count) };
-            w.AddRange(extra);
-            return w.ToArray();
+            var parameters = new List<(string, object)>
+            {
+                ("a", matchedA), ("na", texturesA.Count), ("b", matchedB), ("nb", texturesB.Count),
+            };
+            parameters.AddRange(extra);
+            return parameters.ToArray();
         }
-        string distTekst = dist.ToString("F3", CultureInfo.InvariantCulture);
+        string distance = dist.ToString("F3", CultureInfo.InvariantCulture);
 
         if (match == GeometryMatch.Identical)
         {
-            if (pelneA && pelneB)
+            if (coversA && coversB)
             {
                 pair.Verdict = Verdict.Duplicate;
-                pair.Reason = new Reason("SAME_MODEL_SAME_TEX", Tex());
+                pair.Reason = new Reason("SAME_MODEL_SAME_TEX", Shared());
             }
-            else if (pelneA || pelneB)
+            else if (coversA || coversB)
             {
                 pair.Verdict = Verdict.Superset;
-                pair.Reason = new Reason("SAME_MODEL_SUBSET", Tex());
+                pair.Reason = new Reason("SAME_MODEL_SUBSET", Shared());
             }
-            else if (maxPokrycie >= thresholds.PartialCoverage)
+            else if (bestCoverage >= thresholds.PartialCoverage)
             {
                 pair.Verdict = Verdict.NeedsReview;
-                pair.Reason = new Reason("SAME_MODEL_PARTIAL", Tex());
+                pair.Reason = new Reason("SAME_MODEL_PARTIAL", Shared());
             }
             else
             {
-                // TEN SAM MESH, INNE TEKSTURY = przemalowanie. To NIE jest duplikat —
-                // w paczkach do GTA to norma i skasowanie takiej pozycji zabiera ciuch.
+                // THE SAME MESH WITH DIFFERENT TEXTURES IS A RETEXTURE, not a duplicate. In GTA packs that is
+                // the norm, and rejecting one takes a garment away from the wardrobe.
                 pair.Verdict = Verdict.Retexture;
-                pair.Reason = new Reason("SAME_MODEL_OTHER_TEX", Tex());
+                pair.Reason = new Reason("SAME_MODEL_OTHER_TEX", Shared());
             }
         }
         else
         {
-            if (pelneA && pelneB)
+            if (coversA && coversB)
             {
                 pair.Verdict = Verdict.NeedsReview;
-                pair.Reason = new Reason("SIMILAR_MODEL_SAME_TEX", Tex(("dist", distTekst)));
+                pair.Reason = new Reason("SIMILAR_MODEL_SAME_TEX", Shared(("dist", distance)));
             }
-            else if (maxPokrycie >= thresholds.PartialCoverage)
+            else if (bestCoverage >= thresholds.PartialCoverage)
             {
                 pair.Verdict = Verdict.NeedsReview;
-                pair.Reason = new Reason("SIMILAR_MODEL_PARTIAL", Tex(("dist", distTekst)));
+                pair.Reason = new Reason("SIMILAR_MODEL_PARTIAL", Shared(("dist", distance)));
             }
-            else return null;    // podobny model + inne tekstury = po prostu inny ciuch
+            else return null;    // a similar model with different textures is simply a different garment
         }
+
         return pair;
     }
-
 }

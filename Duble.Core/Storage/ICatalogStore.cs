@@ -1,4 +1,3 @@
-#nullable enable
 using Duble.Core.Model;
 using Duble.Core.Results;
 

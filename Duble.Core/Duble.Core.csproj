@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- The engine names every namespace it uses at the top of each file: a reader on GitHub, without an IDE
+         to hover with, can see where a type comes from. -->
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Duble.Core</RootNamespace>
     <AssemblyName>Duble.Core</AssemblyName>
@@ -13,9 +15,12 @@
     <ProjectReference Include="..\external\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <!-- slowniki PL/EN: powody werdyktow, nazwy werdyktow, rozpiska jakosci (Powody.cs / Teksty) -->
+    <!-- The engine's own dictionaries: verdict names, reason sentences, the quality breakdown (Texts). -->
     <EmbeddedResource Include="i18n\pl.json" LogicalName="Duble.Core.i18n.pl.json" />
     <EmbeddedResource Include="i18n\en.json" LogicalName="Duble.Core.i18n.en.json" />
+    <!-- Inlined into every HTML report, so a report stays a single file that needs no network. -->
+    <EmbeddedResource Include="Reporting\report.css" LogicalName="Duble.Core.Reporting.report.css" />
+    <EmbeddedResource Include="Reporting\report.js" LogicalName="Duble.Core.Reporting.report.js" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BCnEncoder.Net" Version="2.3.0" />

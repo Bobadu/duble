@@ -7,36 +7,49 @@ using Xunit;
 
 namespace Duble.Tests;
 
+/// <summary>The RSC7 header Duble writes when it unpacks an archive, and what it reads back out of one.</summary>
 public class Rsc7HeaderTests
 {
     [Fact]
-    public void Stored_deflate_rozpakowuje_sie_do_tego_samego()
+    public void A_stored_deflate_stream_inflates_to_what_went_in()
     {
-        var rnd = new Random(7);
-        foreach (int n in new[] { 0, 1, 100, 65535, 65536, 200_000 })
+        var random = new Random(7);
+        foreach (int size in new[] { 0, 1, 100, 65535, 65536, 200_000 })
         {
-            var dane = new byte[n]; rnd.NextBytes(dane);
-            var st = Rsc7Header.StoredDeflate(dane);
-            using var ms = new MemoryStream(st); using var ds = new DeflateStream(ms, CompressionMode.Decompress); using var wy = new MemoryStream();
-            ds.CopyTo(wy);
-            Assert.Equal(dane, wy.ToArray());
+            var data = new byte[size];
+            random.NextBytes(data);
+
+            var stored = Rsc7Header.StoredDeflate(data);
+            using var input = new MemoryStream(stored);
+            using var inflate = new DeflateStream(input, CompressionMode.Decompress);
+            using var output = new MemoryStream();
+            inflate.CopyTo(output);
+
+            Assert.Equal(data, output.ToArray());
         }
     }
 
     [Fact]
-    public void Owin_daje_naglowek_z_wersja_i_flagami_wpisu()
+    public void Wrapping_an_entry_keeps_its_version_and_its_page_flags()
     {
-        // Version wpisu wynika z flag: (sys>>28)<<4 | (gfx>>28)  ->  0x9, 0xF = 159 (gen9 ydd)
-        var wpis = new RpfResourceFileEntry { SystemFlags = 0x92345678u, GraphicsFlags = 0xFABCDEF0u, Name = "x.ydd" };
-        Assert.Equal(159, wpis.Version);
-        var dane = new byte[] { 1, 2, 3, 4, 5 };
-        var owin = Rsc7Header.Wrap(wpis, dane);
-        Assert.True(Rsc7Header.IsRsc7(owin));
-        Assert.Equal(159, Rsc7Header.Version(owin));
-        Assert.Equal(0x92345678u, BitConverter.ToUInt32(owin, 8));
-        Assert.Equal(0xFABCDEF0u, BitConverter.ToUInt32(owin, 12));
-        Assert.True(Rsc7Header.IsEnhanced(owin, ".ydd") == true);
-        Assert.Equal(dane, ResourceBuilder.Decompress(owin.Skip(16).ToArray()));
+        // An entry's version comes from its flags: (sys >> 28) << 4 | (gfx >> 28) -> 0x9, 0xF = 159, a gen9 ydd
+        var entry = new RpfResourceFileEntry
+        {
+            SystemFlags = 0x92345678u,
+            GraphicsFlags = 0xFABCDEF0u,
+            Name = "x.ydd",
+        };
+        Assert.Equal(159, entry.Version);
+
+        var data = new byte[] { 1, 2, 3, 4, 5 };
+        var wrapped = Rsc7Header.Wrap(entry, data);
+
+        Assert.True(Rsc7Header.IsRsc7(wrapped));
+        Assert.Equal(159, Rsc7Header.Version(wrapped));
+        Assert.Equal(0x92345678u, BitConverter.ToUInt32(wrapped, 8));
+        Assert.Equal(0xFABCDEF0u, BitConverter.ToUInt32(wrapped, 12));
+        Assert.True(Rsc7Header.IsEnhanced(wrapped, ".ydd"));
+        Assert.Equal(data, ResourceBuilder.Decompress(wrapped.Skip(16).ToArray()));
     }
 
     [Theory]
@@ -44,11 +57,14 @@ public class Rsc7HeaderTests
     [InlineData(159, ".ydd", true)]
     [InlineData(13, ".ytd", false)]
     [InlineData(5, ".ytd", true)]
-    [InlineData(99, ".ydd", null)]
-    public void Gen9_z_wersji_naglowka(int wersja, string ext, bool? oczekiwane)
+    [InlineData(99, ".ydd", null)]        // a version neither game writes: Duble does not guess
+    public void The_header_version_says_which_game_the_file_is_for(int version, string extension, bool? expected)
     {
-        var b = new byte[24]; BitConverter.GetBytes(0x37435352u).CopyTo(b, 0); BitConverter.GetBytes(wersja).CopyTo(b, 4);
-        Assert.Equal(oczekiwane, Rsc7Header.IsEnhanced(b, ext));
-        Assert.Null(Rsc7Header.IsEnhanced(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }, ext));
+        var header = new byte[24];
+        BitConverter.GetBytes(0x37435352u).CopyTo(header, 0);
+        BitConverter.GetBytes(version).CopyTo(header, 4);
+
+        Assert.Equal(expected, Rsc7Header.IsEnhanced(header, extension));
+        Assert.Null(Rsc7Header.IsEnhanced(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }, extension));   // too short to be a header
     }
 }

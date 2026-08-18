@@ -1,4 +1,3 @@
-#nullable enable
 namespace Duble.Core.Projects;
 
 /// <summary>What a source actually is on disk.</summary>

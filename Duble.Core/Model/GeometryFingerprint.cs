@@ -1,4 +1,3 @@
-#nullable enable
 namespace Duble.Core.Model;
 
 /// <summary>Numbers describing a model's shape — the ones that survive a re-export.</summary>

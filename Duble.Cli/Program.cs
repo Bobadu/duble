@@ -374,7 +374,7 @@ switch (cmd)
             if (katalog.Garments.Count == 0) { Console.Error.WriteLine("[blad] pusty katalog — najpierw `duble indeks`"); return 1; }
             var wynik = szukaczDupli.Find(katalog);
             porownania.Save(wynik, sciezkaDubli);
-            ApplyPlanner.WriteDecisions(wynik, katalog, sciezkaDecyzji);
+            ApplyCommands.WriteDecisions(wynik, sciezkaDecyzji);
             Log($"duble:   {sciezkaDubli}");
             Log($"decyzje: {sciezkaDecyzji}  (mozesz poprawic TAK/NIE przed `zastosuj`)");
             return 0;
@@ -393,7 +393,7 @@ switch (cmd)
             var wynik = porownania.Load(sciezkaDubli);
             if (wynik.Groups.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");
-            raporty.Build(katalog, wynik, plik, Log, jezyk);
+            raporty.Build(katalog, wynik, plik, new ReportOptions { Language = jezyk, Log = Log });
             Log($"raport: {plik}");
             return 0;
         }

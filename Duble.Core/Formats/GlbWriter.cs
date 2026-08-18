@@ -1,4 +1,3 @@
-#nullable enable
 // Writing a mesh (the highest LOD) with its textures as glTF-Binary 2.0, for the 3D preview in the app
 // (three.js).
 //

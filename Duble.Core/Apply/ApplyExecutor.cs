@@ -1,9 +1,9 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Duble.Core.Time;
 
 namespace Duble.Core.Apply;
 
@@ -30,12 +30,16 @@ public interface IApplyExecutor
 /// <inheritdoc />
 public sealed class ApplyExecutor : IApplyExecutor
 {
+    readonly IClock clock;
+
+    public ApplyExecutor(IClock clock) => this.clock = clock;
+
     public UndoLog Execute(ApplyPlan plan, string description,
                            IProgress<ProgressReport>? progress = null, CancellationToken ct = default)
     {
         var log = new UndoLog
         {
-            When = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+            When = clock.Stamp(),
             Description = description,
             SharedCount = plan.SharedCount,
             InArchiveCount = plan.InArchiveCount,
@@ -124,7 +128,7 @@ public sealed class ApplyExecutor : IApplyExecutor
         }
 
         if (log.Moves.Count > 0 && log.Moves.All(m => m.Undone))
-            log.UndoneAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            log.UndoneAt = clock.Stamp();
 
         return (restored, skipped);
     }
