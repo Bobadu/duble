@@ -45,6 +45,7 @@ var wykonawca = uslugi.GetRequiredService<IApplyExecutor>();
 var cofki = uslugi.GetRequiredService<IUndoStore>();
 var raporty = uslugi.GetRequiredService<IHtmlReportBuilder>();
 var kalibrator = uslugi.GetRequiredService<ICalibrator>();
+var podglady = uslugi.GetRequiredService<IMeshPreviewBuilder>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -339,7 +340,9 @@ switch (cmd)
         {
             // model + tekstura do glTF-Binary 2.0 (podglad 3D w aplikacji / Blenderze / three.js)
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble glb <plik.ydd> [--ytd plik.ytd] [--out plik.glb]"); return 2; }
-            var glb = Podglad3D.Glb(File.ReadAllBytes(argv[0]), ytdOpc != null ? File.ReadAllBytes(ytdOpc) : null, Log);
+            var podglad = podglady.Build(File.ReadAllBytes(argv[0]), ytdOpc != null ? File.ReadAllBytes(ytdOpc) : null, Log);
+            if (podglad.IsFailure) { Console.Error.WriteLine("[blad] " + podglad.Error); return 1; }
+            var glb = podglad.Value;
             var glbOut = wyjscie ?? Path.ChangeExtension(argv[0], ".glb");
             File.WriteAllBytes(glbOut, glb);
             Log($"GLB: {glbOut} ({glb.Length} B)");

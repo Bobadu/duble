@@ -59,6 +59,7 @@ public static class CoreServiceCollectionExtensions
 
         services.AddSingleton<IGeometryFingerprinter, GeometryFingerprinter>();
         services.AddSingleton<ITextureFingerprinter, TextureFingerprinter>();
+        services.AddSingleton<IMeshPreviewBuilder, MeshPreviewBuilder>();
         services.AddSingleton<IGarmentIndexer, GarmentIndexer>();
 
         // An application that wants Core's log lines adds its own logging; without one they go nowhere.

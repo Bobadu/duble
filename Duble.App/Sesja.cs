@@ -22,7 +22,7 @@ public sealed class Sesja
     public Sesja(ICatalogStore katalogi, IProjectStore projekty, IResolutionService rozstrzygniecia,
                  IGarmentIndexer indeksator, IArchiveCache archiwa, IComparisonStore porownania,
                  IDuplicateFinder szukaczDupli, IApplyPlanner planista, IApplyExecutor wykonawca,
-                 IUndoStore cofki, IHtmlReportBuilder raporty, ICsvExporter csv, ICalibrator kalibrator, IArchiveExtractor rozpakowywacz, IClock zegar)
+                 IUndoStore cofki, IHtmlReportBuilder raporty, ICsvExporter csv, ICalibrator kalibrator, IArchiveExtractor rozpakowywacz, IMeshPreviewBuilder podglady, IClock zegar)
     {
         this.katalogi = katalogi;
         this.projekty = projekty;
@@ -36,6 +36,7 @@ public sealed class Sesja
         Raporty = raporty;
         Kalibrator = kalibrator;
         Rozpakowywacz = rozpakowywacz;
+        Podglady = podglady;
         Csv = csv;
         Indeksator = indeksator;
         Archiwa = archiwa;
@@ -46,6 +47,9 @@ public sealed class Sesja
 
     /// <summary>Ponowny odczyt zaindeksowanych plikow (miniatury, podglady) — trzyma otwarte archiwa.</summary>
     public IArchiveCache Archiwa { get; }
+
+    /// <summary>Podglad 3D pozycji (GLB dla three.js).</summary>
+    public IMeshPreviewBuilder Podglady { get; }
 
     /// <summary>Rozpakowanie zrodla z archiwow do zwyklego folderu.</summary>
     public IArchiveExtractor Rozpakowywacz { get; }
@@ -354,7 +358,9 @@ public sealed class Sesja
             string Krotki(string sha) => string.IsNullOrEmpty(sha) ? "brak" : sha.Length > 16 ? sha.Substring(0, 16) : sha;
             var plik = Path.Combine(Project.MeshFolder, $"{Krotki(poz.ModelSha256)}_{Krotki(tex?.Sha256)}.glb");
             if (File.Exists(plik)) return plik;
-            var glb = Podglad3D.Glb(Archiwa, poz, tex != null ? ClothingFileName.ParseTexture(tex.FileName)?.Letter : null);
+            var podglad = Podglady.Build(poz, tex != null ? ClothingFileName.ParseTexture(tex.FileName)?.Letter : null);
+            if (podglad.IsFailure) throw new IOException(podglad.Error.Message);
+            var glb = podglad.Value;
             Directory.CreateDirectory(Project.MeshFolder);
             var tmp = plik + "." + Guid.NewGuid().ToString("N").Substring(0, 6) + ".tmp";
             File.WriteAllBytes(tmp, glb);
