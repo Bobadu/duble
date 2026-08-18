@@ -20,9 +20,7 @@ public class I18nUiTests
         => JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(Ui, "i18n", language + ".json")));
 
     static IEnumerable<string> InterfaceFiles(params string[] extensions)
-        => Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories)
-            .Where(file => extensions.Any(file.EndsWith)
-                           && !file.Contains(Path.DirectorySeparatorChar + "vendor" + Path.DirectorySeparatorChar));
+        => Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories).Where(file => extensions.Any(file.EndsWith));
 
     [Fact]
     public void Both_languages_have_the_same_keys_and_none_of_them_is_empty()
@@ -36,18 +34,23 @@ public class I18nUiTests
         Assert.All(en.Values, value => Assert.False(string.IsNullOrWhiteSpace(value)));
     }
 
+    /// <summary>
+    /// TypeScript catches a mistyped key at build time — t() takes the keys of pl.json — but only where the
+    /// key is written out. This finds the ones that are not in the dictionary at all, whichever way they got
+    /// there, and it is also what keeps the engine's own keys (reason., verdict., slot.) from being expected
+    /// here: those come from Duble.Core over the bridge.
+    /// </summary>
     [Fact]
     public void Every_key_the_interface_asks_for_exists()
     {
         var pl = Translations("pl");
-        // t('key') or t('key', {...}); keys built at run time (t('nav.' + id)) are covered by the tests below
-        var pattern = new Regex(@"(?:\bt\(\s*'([a-zA-Z0-9_.]+)'\s*[,)]|data-i18n(?:-title|-placeholder|-aria)?=""([a-zA-Z0-9_.]+)"")");
+        var pattern = new Regex(@"\bt\(\s*'([a-zA-Z0-9_.]+)'\s*[,)]");
 
         var missing = new List<string>();
-        foreach (var file in InterfaceFiles(".js", ".html"))
+        foreach (var file in InterfaceFiles(".ts", ".tsx"))
             foreach (Match match in pattern.Matches(File.ReadAllText(file)))
             {
-                var key = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                var key = match.Groups[1].Value;
                 if (!pl.ContainsKey(key) && !key.StartsWith("reason.") && !key.StartsWith("verdict.") && !key.StartsWith("slot."))
                     missing.Add(Path.GetFileName(file) + ": " + key);
             }
@@ -105,7 +108,7 @@ public class I18nUiTests
         }
 
         var stale = new List<string>();
-        foreach (var file in InterfaceFiles(".js", ".html", ".json"))
+        foreach (var file in InterfaceFiles(".ts", ".tsx", ".json"))
         {
             var text = File.ReadAllText(file);
             // any underscore-prefixed folder that looks like a bin but is not the one Core writes

@@ -3,7 +3,7 @@
 //
 // The list comes from one command and is asked for again whenever the host says something changed. Nothing
 // here keeps a copy of the groups: the engine is the only thing that knows them.
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppState';
 import { navigate } from '../../app/router';
 import { bridge, ErrorCode, errorCodeOf, messageOf } from '../../bridge/bridge';
@@ -13,6 +13,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { Switch } from '../../components/Switch';
 import { useToast } from '../../components/Toast';
 import { useI18n, useTranslate } from '../../i18n';
+import { ApplyDialog } from '../apply/ApplyDialog';
 import { DecisionBar } from './DecisionBar';
 import { GroupCard } from './GroupCard';
 import { GroupFilters } from './GroupFilters';
@@ -24,6 +25,7 @@ export function Duplicates() {
   const { project, busy } = useApp();
   const toast = useToast();
   const filters = useGroupFilters();
+  const [applying, setApplying] = useState(false);
 
   const groups = useCommand('groups.list', filters.filters, {
     enabled: !!project,
@@ -127,9 +129,9 @@ export function Duplicates() {
         )}
       </div>
 
-      {compared && (
-        <DecisionBar plan={summary.doOdrzucenia} busy={busy} onApply={() => toast.info(t('apply.title'))} />
-      )}
+      {compared && <DecisionBar plan={summary.doOdrzucenia} busy={busy} onApply={() => setApplying(true)} />}
+
+      {applying && <ApplyDialog onClose={() => setApplying(false)} />}
     </>
   );
 }

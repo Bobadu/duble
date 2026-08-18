@@ -348,9 +348,30 @@ Two things this document expected did not happen, and deliberately:
   names and rewritten under the new ones. (The project file needs no such thing: its keys were already English
   after stage 1.)
 
-**Stage 3 — interface.** `Duble.App/ui`: module and function names, `data-` attributes, session-storage keys,
-CSS class names, and with them the bridge vocabulary above. i18n keys are already English; the Polish
-user-facing text stays in `pl.json` where it belongs.
+**Stage 3 — interface.** *Rewritten rather than renamed.* This document assumed the interface would be
+translated in place: module names, `data-` attributes, session-storage keys, CSS class names. It was rebuilt
+instead, as React and TypeScript in `Duble.App/web`, because the thing worth fixing was never the language of
+the identifiers:
+
+- Every screen built HTML by concatenating template literals, with `esc()` remembered by hand at each
+  interpolation and three-way ternaries nested inside markup. It could not be read, and therefore could not be
+  changed safely.
+- Any change redrew the whole screen, which is why the Duplicates filter bar had a hand-written trick to put
+  the caret back into the search box after every keystroke.
+- View state lived in module-level `let`s cleared by an `unmount()` that had to be remembered.
+
+What the rewrite buys beyond readable components is `web/src/bridge/contract.ts`: every command, its arguments,
+its result and every event, written down once. A field renamed in C# now fails the interface's build at each
+use site — the failure mode that removed the project name from the start screen, and that took a hand-written
+test to catch. It found one on its first day: the calibration charts had been reading `od`, `do` and `kubelki`
+while the engine sent `from`, `to` and `buckets`, so every chart in 1.0.0 drew nothing.
+
+The bridge vocabulary is still the Polish one, now declared in that single file. Renaming it is a mechanical
+pass over the contract and the matching payloads in `Duble.App/Commands`, with the compiler pointing at every
+use on both sides; it is deliberately a step of its own rather than part of a rewrite.
+
+i18n is now split the way the writing is: the interface bundles its own dictionary, typed from `pl.json`, and
+reads the engine's over the bridge.
 
 **Stage 4 — CLI and user-visible names.** *Done.* Verbs `indeks / porownaj / raport / zastosuj / cofnij /
 kalibruj` became `index / compare / report / apply / undo / calibrate`, and the bin folder `_odrzucone` became

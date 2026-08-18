@@ -14,9 +14,10 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
     emptyOutDir: true,
-    // the bundle ships inside a 64 MB executable and is never downloaded, so readable stack traces in a bug
-    // report are worth more than the bytes
-    sourcemap: true,
+    // no source maps in the shipped bundle: they are four megabytes, they go inside the executable, and the
+    // only place they could be read is the developer build, which runs from the dev server anyway
+    sourcemap: false,
+    // three.js is the large chunk, and it is deliberately one: it loads when a 3D tab is opened, not before
     chunkSizeWarningLimit: 1500,
   },
   server: {

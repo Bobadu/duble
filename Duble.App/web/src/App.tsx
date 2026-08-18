@@ -11,10 +11,11 @@ import { useToast } from './components/Toast';
 import { About } from './views/About';
 import { Catalog } from './views/catalog/Catalog';
 import { Duplicates } from './views/duplicates/Duplicates';
+import { Group } from './views/group/Group';
 import { History } from './views/history/History';
+import { Item } from './views/item/Item';
 import { Settings } from './views/settings/Settings';
 import { Sources } from './views/sources/Sources';
-import { NotPortedYet } from './views/NotPortedYet';
 import { Start } from './views/start/Start';
 
 export function App() {
@@ -53,17 +54,15 @@ function Screen({ view, param }: { view: ViewName; param?: string }) {
     case 'sources':
       return <Sources />;
     case 'catalog':
-      return param ? <NotPortedYet view="item" /> : <Catalog />;
+      return param ? <Item id={param} /> : <Catalog />;
     case 'duplicates':
-      return param ? <NotPortedYet view="group" /> : <Duplicates />;
+      return param ? <Group id={param} /> : <Duplicates />;
     case 'history':
       return <History />;
     case 'settings':
       return <Settings />;
     case 'about':
       return <About />;
-    default:
-      return <NotPortedYet view={view} />;
   }
 }
 

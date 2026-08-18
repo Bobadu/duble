@@ -7,6 +7,11 @@
       "commandName": "Project",
       "commandLineArgs": "--dev",
       "nativeDebugging": false
+    },
+    "Duble (interface dev server)": {
+      "commandName": "Project",
+      "commandLineArgs": "--dev --ui-url http://localhost:5173",
+      "nativeDebugging": false
     }
   }
 }

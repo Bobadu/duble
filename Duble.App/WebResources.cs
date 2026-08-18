@@ -82,18 +82,14 @@ public sealed class WebResources
         return content == null ? null : new WebResource(content, Mime(parts[1]));
     }
 
-    /// <summary>Core's dictionary merged with the interface's, the interface winning where both have a key.</summary>
-    public string Translations(string language)
-    {
-        var merged = new Dictionary<string, string>(Duble.Core.Comparison.Texts.Dictionary(language));
-        if (Resolve($"https://duble.app/i18n/{language}.json") is { } file)
-            using (file.Content)
-            {
-                var ui = JsonSerializer.Deserialize<Dictionary<string, string>>(file.Content) ?? new Dictionary<string, string>();
-                foreach (var entry in ui) merged[entry.Key] = entry.Value;
-            }
-        return JsonSerializer.Serialize(merged, new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-    }
+    /// <summary>
+    /// The engine's dictionary: verdicts, reasons and the quality breakdown, which are written by Duble.Core
+    /// and travel as keys. The interface's own words are bundled with the interface, so each side owns the
+    /// sentences it writes and neither can quietly overwrite the other's.
+    /// </summary>
+    public static string Translations(string language)
+        => JsonSerializer.Serialize(Duble.Core.Comparison.Texts.Dictionary(language),
+            new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
 
     public static string Mime(string path) => (Path.GetExtension(path) ?? "").ToLowerInvariant() switch
     {

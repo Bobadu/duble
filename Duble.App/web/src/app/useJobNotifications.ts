@@ -7,6 +7,7 @@ import type { JobEvent } from '../bridge/contract';
 import { useBridgeEvent } from '../bridge/hooks';
 import { useToast } from '../components/Toast';
 import { shortenPath, useI18n, useTranslate } from '../i18n';
+import { shouldOpenBinAfterApply } from '../views/apply/ApplyDialog';
 import { navigate } from './router';
 
 /** The jobs whose failure is worth a message of its own, and what to call it. */
@@ -39,6 +40,11 @@ export function useJobNotifications(): void {
         },
       },
     });
+
+    // the bin folder, if that is the habit — the files are there and usually want looking at
+    const bin = done.kosze[0];
+    if (shouldOpenBinAfterApply() && bin && done.przeniesione > 0)
+      void bridge.call('shell.openFolder', { sciezka: bin }).catch(() => undefined);
   });
 
   useBridgeEvent('undo.done', (done) => {

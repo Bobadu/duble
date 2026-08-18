@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Duble by Bobadu: dwa nachodzace kafelki ("duble"), przedni z wycieciem D -->
-  <rect x="8" y="8" width="34" height="34" rx="9" fill="currentColor" opacity="0.55"/>
-  <rect x="22" y="22" width="34" height="34" rx="9" fill="currentColor"/>
-  <path d="M33 31h7.5a8 8 0 0 1 0 16H33z" fill="#1B1A1F" opacity="0.9"/>
-</svg>

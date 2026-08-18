@@ -8,6 +8,9 @@ All notable changes to Duble are documented here. The format follows
 
 ### Changed
 
+- **The interface is a React and TypeScript application**, built into the executable as before. Nothing about
+  using Duble changes; the screens are the ones you know. What changes is for anyone building it: Node 20 or
+  newer is now needed, alongside the .NET SDK.
 - **The desktop application is in English throughout its C# code**, as the engine and the command line already
   were: `Sesja` → `Session`, `Mostek` → `Bridge`, `Komendy` → `Commands`, and one class per group of commands
   instead of one long registration method. The interface (`Duble.App/ui`) is unchanged and so is the vocabulary
@@ -30,6 +33,9 @@ All notable changes to Duble are documented here. The format follows
 
 ### Fixed
 
+- **The calibration charts show the measurements again.** They had been reading three fields the engine
+  stopped sending when it was renamed, so every chart in 1.0.0 says "not enough data" whatever was measured.
+- **The search boxes no longer lose the caret** while typing in Duplicates and in the catalog.
 - **An apply whose undo log cannot be written says so.** The files had already moved and the failure was
   swallowed, leaving an operation with no way back and nothing on screen to say why.
 - **A project that cannot be saved reports it** instead of leaving the change in memory only.
