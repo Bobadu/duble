@@ -60,7 +60,8 @@ public sealed class GarmentIndexer : IGarmentIndexer
         if (entries.Count == 0)
         {
             log.LogWarning("{Source}: no .ydd or .ytd files found", sourcePath);
-            return Result<IndexReport>.Ok(new IndexReport(Array.Empty<Garment>(), Array.Empty<string>(), 0, 0));
+            return Result<IndexReport>.Ok(new IndexReport(Array.Empty<Garment>(), Array.Empty<string>(),
+                                                         Array.Empty<string>(), 0, 0));
         }
 
         // Incremental: a file whose logical path and change stamp are both unchanged is taken from the
@@ -82,6 +83,10 @@ public sealed class GarmentIndexer : IGarmentIndexer
         // leftovers of an export, and a leftover is exactly what a duplicate finder is looking for.
         var skipped = new ConcurrentBag<string>();
 
+        // Files that ARE clothing and would not read. Kept apart from the ones above because they mean the
+        // catalog is incomplete, not that the folder had something else in it.
+        var unreadable = new ConcurrentBag<string>();
+
         // --- models ---
         var garments = new ConcurrentBag<Garment>();
         var modelFiles = entries.Where(e => e.Name.EndsWith(".ydd", StringComparison.OrdinalIgnoreCase)).ToList();
@@ -97,7 +102,7 @@ public sealed class GarmentIndexer : IGarmentIndexer
                     garment = ModelFromCatalog(entry, pack, known);
                     Interlocked.Increment(ref reusedModels);
                 }
-                else garment = ReadModel(entry, pack);
+                else garment = ReadModel(entry, pack, unreadable);
 
                 if (garment != null) garments.Add(garment); else skipped.Add(entry.Name);
                 Interlocked.Increment(ref done);
@@ -128,11 +133,10 @@ public sealed class GarmentIndexer : IGarmentIndexer
                     texture = known;
                     Interlocked.Increment(ref reusedTextures);
                 }
-                else texture = ReadTexture(entry, options);
+                else texture = ReadTexture(entry, options, unreadable);
 
                 if (texture != null)
                     texturesByGarment.GetOrAdd(key, _ => new ConcurrentBag<(TextureInfo, string)>()).Add((texture, name.Race));
-                else skipped.Add(entry.Name);
 
                 Interlocked.Increment(ref done);
             });
@@ -148,11 +152,16 @@ public sealed class GarmentIndexer : IGarmentIndexer
 
         var skippedFiles = skipped.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
         if (skippedFiles.Count > 0)
-            log.LogWarning("{Pack}: {Count} files skipped, outside the naming convention: {Examples}",
+            log.LogInformation("{Pack}: {Count} files skipped, outside the naming convention: {Examples}",
                 pack, skippedFiles.Count, string.Join(", ", skippedFiles.Take(6)));
 
+        var unreadableFiles = unreadable.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        if (unreadableFiles.Count > 0)
+            log.LogWarning("{Pack}: {Count} clothing files COULD NOT BE READ, so this catalog is incomplete: {Examples}",
+                pack, unreadableFiles.Count, string.Join(", ", unreadableFiles.Take(6)));
+
         var ordered = found.OrderBy(g => g.Slot).ThenBy(g => g.Number).ToList();
-        return Result<IndexReport>.Ok(new IndexReport(ordered, skippedFiles, reusedModels, reusedTextures));
+        return Result<IndexReport>.Ok(new IndexReport(ordered, skippedFiles, unreadableFiles, reusedModels, reusedTextures));
     }
 
     /// <summary>
@@ -184,16 +193,21 @@ public sealed class GarmentIndexer : IGarmentIndexer
         }
     }
 
-    Garment? ReadModel(SourceEntry entry, string pack)
+    Garment? ReadModel(SourceEntry entry, string pack, ConcurrentBag<string> unreadable)
     {
         var name = ClothingFileName.ParseModel(entry.Name);
-        if (name == null) return null;
+        if (name == null) return null;   // not a clothing model: skipped, not a failure
 
         var container = !string.IsNullOrEmpty(entry.Container) ? entry.Container : name.Container ?? "";
 
         byte[] bytes;
         try { bytes = entry.Read(); }
-        catch (Exception e) { log.LogWarning("{File}: {Message}", entry.LogicalPath, e.Message); return null; }
+        catch (Exception e)
+        {
+            log.LogWarning("{File}: {Message}", entry.LogicalPath, e.Message);
+            unreadable.Add(entry.Name);
+            return null;
+        }
 
         var garment = new Garment
         {
@@ -242,11 +256,18 @@ public sealed class GarmentIndexer : IGarmentIndexer
         };
     }
 
-    TextureInfo? ReadTexture(SourceEntry entry, IndexOptions options)
+    TextureInfo? ReadTexture(SourceEntry entry, IndexOptions options, ConcurrentBag<string> unreadable)
     {
         byte[] bytes;
         try { bytes = entry.Read(); }
-        catch (Exception e) { log.LogWarning("{File}: {Message}", entry.LogicalPath, e.Message); return null; }
+        catch (Exception e)
+        {
+            // The name said this is a clothing texture, so losing it makes the garment score lower than it
+            // should — that is a wrong answer, not a missing file, and it has to be reported as one.
+            log.LogWarning("{File}: {Message}", entry.LogicalPath, e.Message);
+            unreadable.Add(entry.Name);
+            return null;
+        }
 
         var sha = Convert.ToHexString(SHA256.HashData(bytes));
         Action<byte[], int, int>? onPixels = options.ThumbnailFolder == null

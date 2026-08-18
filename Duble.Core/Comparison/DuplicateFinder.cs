@@ -108,12 +108,7 @@ public sealed class DuplicateFinder : IDuplicateFinder
             };
             Score(group, byId);
 
-            // the best copy stays; ties go to the one with more colour variants, then to the lower id so that
-            // two runs over the same catalog never disagree
-            group.Winner = ids.OrderByDescending(id => group.Scores[id])
-                              .ThenByDescending(id => byId[id].Textures.Count)
-                              .ThenBy(id => id, StringComparer.Ordinal)
-                              .First();
+            group.Winner = BestOf(ids, group, byId);
             var losers = ids.Where(id => id != group.Winner).Select(id => Points(group.Scores[id]));
             group.Reason = new Reason("WINNER",
                 ("winner", Points(group.Scores[group.Winner])),
@@ -134,7 +129,7 @@ public sealed class DuplicateFinder : IDuplicateFinder
                 Reason = pair.Reason,
             };
             Score(group, byId);
-            group.Winner = group.Members.OrderByDescending(id => group.Scores[id]).First();
+            group.Winner = BestOf(group.Members, group, byId);
             result.Groups.Add(group);
         }
 
@@ -152,6 +147,18 @@ public sealed class DuplicateFinder : IDuplicateFinder
 
         return result;
     }
+
+    /// <summary>
+    /// The copy that stays: the best score, ties going to the one with more colour variants and then to the
+    /// lower id. That last key is what makes the answer depend on the garments alone — whole packs of identical
+    /// boots score the same to the last decimal, and without it the winner would follow whatever order the
+    /// catalog happened to be in.
+    /// </summary>
+    static string BestOf(IEnumerable<string> ids, DuplicateGroup group, Dictionary<string, Garment> byId)
+        => ids.OrderByDescending(id => group.Scores[id])
+              .ThenByDescending(id => byId[id].Textures.Count)
+              .ThenBy(id => id, StringComparer.Ordinal)
+              .First();
 
     /// <summary>Rates every member of a group and stores both the total and what it is made of.</summary>
     void Score(DuplicateGroup group, Dictionary<string, Garment> byId)
