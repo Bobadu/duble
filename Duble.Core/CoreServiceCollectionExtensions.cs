@@ -1,10 +1,12 @@
 #nullable enable
 using Duble.Core.Apply;
+using Duble.Core.Calibration;
 using Duble.Core.Comparison;
 using Duble.Core.Decisions;
 using Duble.Core.Fingerprints;
 using Duble.Core.Formats;
 using Duble.Core.Indexing;
+using Duble.Core.Reporting;
 using Duble.Core.Sources;
 using Duble.Core.Storage;
 using Duble.Core.Time;
@@ -42,6 +44,12 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IApplyPlanner, ApplyPlanner>();
         services.AddSingleton<IApplyExecutor, ApplyExecutor>();
         services.AddSingleton<IUndoStore, JsonUndoStore>();
+
+        services.AddSingleton<ICalibrator, Calibrator>();
+
+        services.AddSingleton<HtmlReportBuilder>();
+        services.AddSingleton<IHtmlReportBuilder>(sp => sp.GetRequiredService<HtmlReportBuilder>());
+        services.AddSingleton<ICsvExporter>(sp => sp.GetRequiredService<HtmlReportBuilder>());
 
         services.AddSingleton<ArchiveSourceReader>();
         services.AddSingleton<FolderSourceReader>();

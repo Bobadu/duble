@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using CodeWalker.Utils;
 using CodeWalker.GameFiles;
 
 namespace Duble.Core.Fingerprints;
@@ -8,57 +7,81 @@ namespace Duble.Core.Fingerprints;
 /// <summary>Small RGB previews of a texture, for the report and the catalog grid.</summary>
 public static class Thumbnail
 {
-    public static byte[]? Render(Texture? t, int bok)
+    /// <summary>Decodes the texture and renders a square preview of the given side; null when it will not decode.</summary>
+    public static byte[]? Render(Texture? texture, int side)
     {
-        var px = TextureFingerprinter.DecodePixels(t, out int w, out int h);
-        return px == null ? null : FromPixels(px, w, h, bok);
+        var pixels = TextureFingerprinter.DecodePixels(texture, out int width, out int height);
+        return pixels == null ? null : FromPixels(pixels, width, height, side);
     }
 
-    /// <summary>Jak Render, ale z gotowych pikseli BGRA (uzywane przy indeksowaniu — dekodujemy raz).</summary>
-    public static byte[] FromPixels(byte[] px, int w, int h, int bok)
+    /// <summary>
+    /// The same preview from pixels already decoded — indexing decodes once and fingerprints and renders from
+    /// that one pass.
+    ///
+    /// ALPHA IS COMPOSITED ONTO A CHEQUERBOARD. Without it half the clothing textures come out black: a
+    /// clothing atlas has large transparent areas, and what lies under them is usually black. Fingerprints go
+    /// on being computed from the raw RGB, which is what they were calibrated on; the compositing is for the
+    /// preview and nothing else.
+    /// </summary>
+    public static byte[] FromPixels(byte[] pixels, int width, int height, int side)
     {
-        var rgba = ScaleToRgba(px, w, h, bok, bok);
-        var wy = new byte[bok * bok * 3];
-        for (int y = 0; y < bok; y++)
-            for (int x = 0; x < bok; x++)
+        var rgba = ScaleToRgba(pixels, width, height, side, side);
+        var output = new byte[side * side * 3];
+
+        for (int y = 0; y < side; y++)
+            for (int x = 0; x < side; x++)
             {
-                int o = (y * bok + x) * 4;
-                double a = rgba[o + 3] / 255.0;
-                // szachownica 8 px, w ciepłej szarosci — zgodna z paleta raportu
-                bool jasne = ((x >> 3) + (y >> 3)) % 2 == 0;
-                byte t1 = (byte)(jasne ? 0xD6 : 0xB4), t2 = (byte)(jasne ? 0xD2 : 0xB0), t3 = (byte)(jasne ? 0xCA : 0xA8);
-                int c = (y * bok + x) * 3;
-                wy[c] = (byte)(rgba[o] * a + t1 * (1 - a));
-                wy[c + 1] = (byte)(rgba[o + 1] * a + t2 * (1 - a));
-                wy[c + 2] = (byte)(rgba[o + 2] * a + t3 * (1 - a));
-            }
-        return wy;
-    }
+                int source = (y * side + x) * 4;
+                double alpha = rgba[source + 3] / 255.0;
 
-    /// <summary>Usrednianie po prostokatach z BGRA do RGBA (z zachowaniem alfy).</summary>
+                // an 8 px chequerboard in a warm grey, matching the report's palette
+                bool light = ((x >> 3) + (y >> 3)) % 2 == 0;
+                byte backR = (byte)(light ? 0xD6 : 0xB4);
+                byte backG = (byte)(light ? 0xD2 : 0xB0);
+                byte backB = (byte)(light ? 0xCA : 0xA8);
+
+                int target = (y * side + x) * 3;
+                output[target] = (byte)(rgba[source] * alpha + backR * (1 - alpha));
+                output[target + 1] = (byte)(rgba[source + 1] * alpha + backG * (1 - alpha));
+                output[target + 2] = (byte)(rgba[source + 2] * alpha + backB * (1 - alpha));
+            }
+
+        return output;
+    }
 
     /// <summary>Box-averaging from BGRA down to RGBA, alpha kept.</summary>
-    static byte[] ScaleToRgba(byte[] px, int w, int h, int tw, int th)
+    static byte[] ScaleToRgba(byte[] pixels, int width, int height, int targetWidth, int targetHeight)
     {
-        var wy = new byte[tw * th * 4];
-        for (int y = 0; y < th; y++)
+        var output = new byte[targetWidth * targetHeight * 4];
+
+        for (int y = 0; y < targetHeight; y++)
         {
-            int y0 = y * h / th, y1 = Math.Max(y0 + 1, (y + 1) * h / th);
-            for (int x = 0; x < tw; x++)
+            int fromY = y * height / targetHeight, toY = Math.Max(fromY + 1, (y + 1) * height / targetHeight);
+            for (int x = 0; x < targetWidth; x++)
             {
-                int x0 = x * w / tw, x1 = Math.Max(x0 + 1, (x + 1) * w / tw);
-                long r = 0, g = 0, b = 0, a = 0; int n = 0;
-                for (int yy = y0; yy < y1; yy++)
-                    for (int xx = x0; xx < x1; xx++)
+                int fromX = x * width / targetWidth, toX = Math.Max(fromX + 1, (x + 1) * width / targetWidth);
+
+                long r = 0, g = 0, b = 0, a = 0;
+                int count = 0;
+                for (int sy = fromY; sy < toY; sy++)
+                    for (int sx = fromX; sx < toX; sx++)
                     {
-                        int o = (yy * w + xx) * 4;
-                        b += px[o]; g += px[o + 1]; r += px[o + 2]; a += px[o + 3];
-                        n++;
+                        int source = (sy * width + sx) * 4;
+                        b += pixels[source];
+                        g += pixels[source + 1];
+                        r += pixels[source + 2];
+                        a += pixels[source + 3];
+                        count++;
                     }
-                int c = (y * tw + x) * 4;
-                wy[c] = (byte)(r / n); wy[c + 1] = (byte)(g / n); wy[c + 2] = (byte)(b / n); wy[c + 3] = (byte)(a / n);
+
+                int target = (y * targetWidth + x) * 4;
+                output[target] = (byte)(r / count);
+                output[target + 1] = (byte)(g / count);
+                output[target + 2] = (byte)(b / count);
+                output[target + 3] = (byte)(a / count);
             }
         }
-        return wy;
+
+        return output;
     }
 }

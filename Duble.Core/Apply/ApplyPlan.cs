@@ -77,17 +77,17 @@ public sealed class BinTarget
 
 public sealed class ApplyPlan
 {
-    public List<PlannedGarment> Pozycje { get; } = new();
+    public List<PlannedGarment> Garments { get; } = new();
     /// <summary>Nazwy zrodel, ktorych nie ma na dysku (pozycje z nich maja pliki w stanie Brak).</summary>
     public List<string> MissingSources { get; } = new();
-    public int Files => Pozycje.Sum(p => p.MoveCount);
-    public long Bytes => Pozycje.Sum(p => p.Bytes);
-    public int SharedCount => Pozycje.Sum(p => p.SharedCount);
-    public int InArchiveCount => Pozycje.Sum(p => p.InArchiveCount);
-    public int MissingCount => Pozycje.Sum(p => p.MissingCount);
+    public int Files => Garments.Sum(p => p.MoveCount);
+    public long Bytes => Garments.Sum(p => p.Bytes);
+    public int SharedCount => Garments.Sum(p => p.SharedCount);
+    public int InArchiveCount => Garments.Sum(p => p.InArchiveCount);
+    public int MissingCount => Garments.Sum(p => p.MissingCount);
 
     public IEnumerable<(string kosz, int pliki, long bajty)> BinTotals()
-        => Pozycje.Where(p => p.BinFolder != null).GroupBy(p => p.BinFolder, StringComparer.OrdinalIgnoreCase)
+        => Garments.Where(p => p.BinFolder != null).GroupBy(p => p.BinFolder, StringComparer.OrdinalIgnoreCase)
                   .Select(g => (g.Key, g.Sum(p => p.MoveCount), g.Sum(p => p.Bytes)))
                   .Where(x => x.Item2 > 0);
 }

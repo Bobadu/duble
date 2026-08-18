@@ -18,7 +18,7 @@ public class GlbTests
     static SiatkaGeo Kwadrat() => new SiatkaGeo
     {
         Name = "kwadrat", TextureInfo = "diff", Przezroczysta = false,
-        Pozycje = new float[] { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 },
+        Garments = new float[] { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 },
         Normalne = new float[] { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
         Uv = new float[] { 0, 1, 1, 1, 1, 0, 0, 0 },
         Indeksy = new uint[] { 0, 1, 2, 0, 2, 3 },

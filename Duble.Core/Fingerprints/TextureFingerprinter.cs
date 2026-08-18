@@ -153,13 +153,6 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
         return ScaleToRgb(px, w, h, bokMiniatury, bokMiniatury);
     }
 
-    /// <summary>
-    /// Render do raportu: RGB z ALFA ZLOZONA NA SZACHOWNICE.
-    ///
-    /// Bez tego polowa tekstur ubran wychodzi czarna — atlas ma wielkie obszary
-    /// przezroczyste, a pod nimi zwykle leza czarne piksele. Odciski licza sie dalej
-    /// z surowego RGB (sa juz skalibrowane), skladanie dotyczy WYLACZNIE podgladu.
-    /// </summary>
     /// <summary>Pixels of the largest mip at least 128 px on a side, stepping up on a decode error; null when no decoder fits.</summary>
     internal static byte[]? DecodePixels(Texture? t, out int w, out int h)
     {

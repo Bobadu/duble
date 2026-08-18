@@ -53,7 +53,7 @@ public static class Zrodla
     /// <summary>Porownanie + zapis projektu/katalogu/wyniku + zdarzenia (widok Duplikaty ma byc zawsze aktualny).</summary>
     public static void PorownajIZapisz(Sesja s, Mostek m, CancellationToken ct, Action<ProgressReport> postep)
     {
-        postep(new ProgressReport("porownaj", 0, 0, null));
+        postep(new ProgressReport("compare", 0, 0, null));
         s.Porownaj(ct, postep);
         s.Zapisz();
         m.Zdarzenie("sources.changed", new { id = (string)null });
@@ -104,7 +104,7 @@ public static class Zrodla
         m.Rejestruj("sources.pickRpf", _ => { Wymag(); var f = m.Dialogi.WybierzPliki(null, "rpf", true, null); return f == null || f.Length == 0 ? new { dodane = new List<object>(), pominiete = new List<string>() } : Dodaj(f); });
         m.Rejestruj("sources.remove", a =>
         {
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var z = Wymag().Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
             s.Project.Sources.Remove(z);
             s.ZmienKatalog(k => { k.Garments.RemoveAll(p => p.SourceId == id); k.Sources.Remove(z.Name); });
@@ -114,7 +114,7 @@ public static class Zrodla
         });
         m.Rejestruj("sources.toggle", a =>
         {
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var z = Wymag().Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
             z.Enabled = Mostek.Flaga(a, "wlaczone", !z.Enabled);
             s.ZapiszProjekt();
@@ -148,8 +148,8 @@ public static class Zrodla
         m.Rejestruj("sources.unpack", a =>
         {
             Wymag();
-            var id = Mostek.Tekst(a, "id", true);
-            var folder = Mostek.Tekst(a, "folder", true);
+            var id = Mostek.Text(a, "id", true);
+            var folder = Mostek.Text(a, "folder", true);
             bool dodaj = Mostek.Flaga(a, "dodajZrodlo", true);
             var z = s.Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
             if (!Directory.Exists(z.Path) && !File.Exists(z.Path)) throw new BladMostka("not_found", z.Path);

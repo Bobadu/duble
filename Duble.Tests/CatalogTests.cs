@@ -85,7 +85,7 @@ public class CatalogTests
         var path = Path.Combine(folder, "catalog.json");
         try
         {
-            File.WriteAllText(path, """{"Wersja":2,"Pozycje":[{"Id":"pack|k.rpf|jbib|1|u"}]}""");
+            File.WriteAllText(path, """{"Wersja":2,"Garments":[{"Id":"pack|k.rpf|jbib|1|u"}]}""");
             var store = new JsonCatalogStore(new FixedClock(System.DateTimeOffset.Now));
             Assert.Empty(store.Load(path).Garments);
 

@@ -43,6 +43,8 @@ var porownania = uslugi.GetRequiredService<IComparisonStore>();
 var planista = uslugi.GetRequiredService<IApplyPlanner>();
 var wykonawca = uslugi.GetRequiredService<IApplyExecutor>();
 var cofki = uslugi.GetRequiredService<IUndoStore>();
+var raporty = uslugi.GetRequiredService<IHtmlReportBuilder>();
+var kalibrator = uslugi.GetRequiredService<ICalibrator>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -137,7 +139,7 @@ switch (cmd)
         }
 
     case "kalibruj":
-        return Kalibracja.Uruchom(katalogi.Load(sciezkaKatalogu), Log);
+        return CalibrationReportPrinter.Run(kalibrator, katalogi.Load(sciezkaKatalogu), Log);
 
     case "obj":
         {
@@ -369,7 +371,7 @@ switch (cmd)
             if (katalog.Garments.Count == 0) { Console.Error.WriteLine("[blad] pusty katalog — najpierw `duble indeks`"); return 1; }
             var wynik = szukaczDupli.Find(katalog);
             porownania.Save(wynik, sciezkaDubli);
-            ApplyPlanner.ZapiszDecyzje(wynik, katalog, sciezkaDecyzji);
+            ApplyPlanner.WriteDecisions(wynik, katalog, sciezkaDecyzji);
             Log($"duble:   {sciezkaDubli}");
             Log($"decyzje: {sciezkaDecyzji}  (mozesz poprawic TAK/NIE przed `zastosuj`)");
             return 0;
@@ -388,7 +390,7 @@ switch (cmd)
             var wynik = porownania.Load(sciezkaDubli);
             if (wynik.Groups.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");
-            Raport.Zbuduj(archiwa, katalog, wynik, plik, Log, jezyk);
+            raporty.Build(katalog, wynik, plik, Log, jezyk);
             Log($"raport: {plik}");
             return 0;
         }

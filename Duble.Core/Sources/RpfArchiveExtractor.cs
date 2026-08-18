@@ -59,7 +59,7 @@ public static class RpfArchiveExtractor
         {
             ct.ThrowIfCancellationRequested();
             var wzgl = Path.GetRelativePath(sciezka, f);
-            postep?.Invoke(new ProgressReport("rozpakuj", i++, pliki.Count, wzgl));
+            postep?.Invoke(new ProgressReport("unpack", i++, pliki.Count, wzgl));
             var cel = Path.Combine(folder, wzgl);
             try
             {
@@ -78,7 +78,7 @@ public static class RpfArchiveExtractor
             catch (OperationCanceledException) { throw; }
             catch (Exception e) { wynik.Bledy.Add($"{wzgl}: {e.Message}"); }
         }
-        postep?.Invoke(new ProgressReport("rozpakuj", pliki.Count, pliki.Count, null));
+        postep?.Invoke(new ProgressReport("unpack", pliki.Count, pliki.Count, null));
         return wynik;
     }
 
@@ -106,7 +106,7 @@ public static class RpfArchiveExtractor
             var sciezka = e.Path ?? e.Name;
             if (sciezka.StartsWith(korzen + "\\", StringComparison.OrdinalIgnoreCase)) sciezka = sciezka.Substring(korzen.Length + 1);
             else if (sciezka.Equals(korzen, StringComparison.OrdinalIgnoreCase)) sciezka = e.Name;
-            postep?.Invoke(new ProgressReport("rozpakuj", i++, wszystkie.Count, sciezka));
+            postep?.Invoke(new ProgressReport("unpack", i++, wszystkie.Count, sciezka));
             try
             {
                 var dane = f.ExtractFile(e);
@@ -122,6 +122,6 @@ public static class RpfArchiveExtractor
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { wynik.Bledy.Add($"{sciezka}: {ex.Message}"); }
         }
-        postep?.Invoke(new ProgressReport("rozpakuj", wszystkie.Count, wszystkie.Count, null));
+        postep?.Invoke(new ProgressReport("unpack", wszystkie.Count, wszystkie.Count, null));
     }
 }

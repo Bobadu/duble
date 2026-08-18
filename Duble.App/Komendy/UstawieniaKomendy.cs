@@ -2,7 +2,7 @@
 //
 // project.settings.get/set/resetProgi: kosz (null = _odrzucone obok zrodla) i progi (czesciowe: podane pola nadpisuja biezace;
 // walidacja Thresholds.Sprawdz -> bad_args z lista pol). Zmiana progow = ponowne porownanie w tle (decyzje zostaja, PrzeniesDecyzje).
-// cache.clear: tylko tex\ i mesh\ (odtwarzane na zadanie). calibrate.run: JobRunner "kalibracja" -> Kalibracja.Policz na
+// cache.clear: tylko tex\ i mesh\ (odtwarzane na zadanie). calibrate.run: JobRunner "kalibracja" -> Calibrator.Policz na
 // pozycjach wlaczonych zrodel -> zdarzenie calibrate.done {wynik} (rozklady z kubelkami do wykresow, propozycja progow).
 using System;
 using System.Collections.Generic;
@@ -132,8 +132,8 @@ public static class UstawieniaKomendy
             bool ok = jr.SprobujUruchom("kalibracja", s.Project.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                postep(new ProgressReport("kalibracja", 0, 0, null));
-                var w = Kalibracja.Policz(katalog, progi, ct);
+                postep(new ProgressReport("calibration", 0, 0, null));
+                var w = s.Kalibrator.Run(katalog, progi, ct);
                 m.Zdarzenie("calibrate.done", new { wynik = w });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");

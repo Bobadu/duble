@@ -28,7 +28,7 @@ public class ZlotyWzorzecTests
 
     // ---- ksztalt zlotego pliku (dzisiejszy ComparisonResult z tekstowymi powodami) ----
     public class ZPara { public string A { get; set; } public string B { get; set; } public string Werdykt { get; set; } public string Reason { get; set; } public double DistGeo { get; set; } public double PokrycieA { get; set; } public double PokrycieB { get; set; } public int WspolnychTekstur { get; set; } }
-    public class ZGrupa { public List<string> Pozycje { get; set; } public string Werdykt { get; set; } public string Zwyciezca { get; set; } public string Reason { get; set; } public List<ZPara> Pairs { get; set; } = new(); public Dictionary<string, double> Scores { get; set; } = new(); public Dictionary<string, string> ScoreBreakdown { get; set; } = new(); }
+    public class ZGrupa { public List<string> Garments { get; set; } public string Werdykt { get; set; } public string Zwyciezca { get; set; } public string Reason { get; set; } public List<ZPara> Pairs { get; set; } = new(); public Dictionary<string, double> Scores { get; set; } = new(); public Dictionary<string, string> ScoreBreakdown { get; set; } = new(); }
     public class ZWynik { public List<ZGrupa> Groups { get; set; } = new(); public List<string> Podsumowanie { get; set; } = new(); }
 
     /// <summary>The names the golden files were written with, before verdicts became an enum.</summary>
@@ -58,7 +58,7 @@ public class ZlotyWzorzecTests
         Podsumowanie = Podsumowanie(w),
         Groups = w.Groups.Select(g => new ZGrupa
         {
-            Pozycje = g.Members, Werdykt = Napis(g.Verdict), Zwyciezca = g.Winner,
+            Garments = g.Members, Werdykt = Napis(g.Verdict), Zwyciezca = g.Winner,
             Reason = TekstPowodu(g),
             Pairs = g.Pairs.Select(p => new ZPara { A = p.A, B = p.B, Werdykt = Napis(p.Verdict), Reason = TekstPowodu(p), DistGeo = p.GeometryDistance, PokrycieA = p.CoverageA, PokrycieB = p.CoverageB, WspolnychTekstur = p.SharedTextures }).ToList(),
             Scores = g.Scores,
@@ -73,8 +73,8 @@ public class ZlotyWzorzecTests
     void Porownaj(ZWynik zloty, ZWynik nowy)
     {
         Assert.Equal(zloty.Podsumowanie, nowy.Podsumowanie);
-        var zg = zloty.Groups.ToDictionary(g => KluczGrupy(g.Pozycje));
-        var ng = nowy.Groups.ToDictionary(g => KluczGrupy(g.Pozycje));
+        var zg = zloty.Groups.ToDictionary(g => KluczGrupy(g.Garments));
+        var ng = nowy.Groups.ToDictionary(g => KluczGrupy(g.Garments));
         var brak = zg.Keys.Except(ng.Keys).ToList(); var nadmiar = ng.Keys.Except(zg.Keys).ToList();
         foreach (var b in brak) wyj.WriteLine("BRAK GRUPY: " + b.Replace("\n", " = "));
         foreach (var n in nadmiar) wyj.WriteLine("NOWA GRUPA: " + n.Replace("\n", " = "));
@@ -106,7 +106,7 @@ public class ZlotyWzorzecTests
     {
         using var doc = JsonDocument.Parse(File.ReadAllText(Sciezki.Golden(plik)));
         var root = doc.RootElement;
-        string Tekst(JsonElement e)
+        string Text(JsonElement e)
         {
             if (e.ValueKind == JsonValueKind.String) return e.GetString();
             if (e.ValueKind == JsonValueKind.Null || e.ValueKind == JsonValueKind.Undefined) return null;
@@ -140,20 +140,20 @@ public class ZlotyWzorzecTests
         {
             var zg = new ZGrupa
             {
-                Pozycje = Pole(g, "Pozycje").EnumerateArray().Select(x => x.GetString()).ToList(),
+                Garments = Pole(g, "Pozycje").EnumerateArray().Select(x => x.GetString()).ToList(),
                 Werdykt = Pole(g, "Werdykt").GetString(), Zwyciezca = Pole(g, "Zwyciezca").GetString(),
-                Reason = Tekst(Pole(g, "Powod")),
+                Reason = Text(Pole(g, "Powod")),
             };
             foreach (var p in Pole(g, "Pary").EnumerateArray())
                 zg.Pairs.Add(new ZPara
                 {
                     A = Pole(p, "A").GetString(), B = Pole(p, "B").GetString(), Werdykt = Pole(p, "Werdykt").GetString(),
-                    Reason = Tekst(Pole(p, "Powod")), DistGeo = Pole(p, "DistGeo").GetDouble(),
+                    Reason = Text(Pole(p, "Powod")), DistGeo = Pole(p, "DistGeo").GetDouble(),
                     PokrycieA = Pole(p, "PokrycieA").GetDouble(), PokrycieB = Pole(p, "PokrycieB").GetDouble(),
                     WspolnychTekstur = Pole(p, "WspolnychTekstur").GetInt32(),
                 });
             foreach (var kv in Pole(g, "Punkty").EnumerateObject()) zg.Scores[kv.Name] = kv.Value.GetDouble();
-            foreach (var kv in Pole(g, "Rozpiska").EnumerateObject()) zg.ScoreBreakdown[kv.Name] = Tekst(kv.Value);
+            foreach (var kv in Pole(g, "Rozpiska").EnumerateObject()) zg.ScoreBreakdown[kv.Name] = Text(kv.Value);
             wynik.Groups.Add(zg);
         }
         return wynik;

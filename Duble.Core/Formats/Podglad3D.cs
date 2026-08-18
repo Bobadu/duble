@@ -64,7 +64,7 @@ public static class Podglad3D
             }
             catch (Exception e) { log("[uwaga] nie odczytalam ytd: " + e.Message); }
         }
-        log($"geometrii {geos.Count}, wierzcholkow {geos.Sum(g => g.Pozycje.Length / 3)}, trojkatow {geos.Sum(g => g.Indeksy.Length / 3)}, tekstur {pngi.Count}");
+        log($"geometrii {geos.Count}, wierzcholkow {geos.Sum(g => g.Garments.Length / 3)}, trojkatow {geos.Sum(g => g.Indeksy.Length / 3)}, tekstur {pngi.Count}");
         return Duble.Core.Formats.Glb.Zapisz(geos, pngi);
     }
 

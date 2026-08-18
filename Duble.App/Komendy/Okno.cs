@@ -32,7 +32,7 @@ public static class Okno
         m.Rejestruj("settings.get", _ => new { jezyk = m.Ustawienia.JezykEfektywny, jezykUstawiony = m.Ustawienia.Jezyk, motyw = m.Ustawienia.Motyw, ostatnie = m.Ustawienia.Ostatnie });
         m.Rejestruj("settings.set", a =>
         {
-            var j = Mostek.Tekst(a, "jezyk"); var t = Mostek.Tekst(a, "motyw");
+            var j = Mostek.Text(a, "jezyk"); var t = Mostek.Text(a, "motyw");
             if (j != null) m.Ustawienia.Jezyk = j == "" || j == "system" ? null : j;
             if (t != null) m.Ustawienia.Motyw = t;
             try { m.Ustawienia.Zapisz(m.PlikUstawien); } catch (Exception e) { throw new BladMostka("io", e.Message); }
@@ -40,28 +40,28 @@ public static class Okno
         });
         m.Rejestruj("shell.openFolder", a =>
         {
-            var s = Mostek.Tekst(a, "sciezka", true);
+            var s = Mostek.Text(a, "sciezka", true);
             if (!Directory.Exists(s) && !File.Exists(s)) throw new BladMostka("not_found", s);
             Process.Start(new ProcessStartInfo("explorer.exe", $"\"{s}\"") { UseShellExecute = true });
             return new { };
         });
         m.Rejestruj("shell.showInExplorer", a =>
         {
-            var s = Mostek.Tekst(a, "sciezka", true);
+            var s = Mostek.Text(a, "sciezka", true);
             if (!File.Exists(s) && !Directory.Exists(s)) throw new BladMostka("not_found", s);
             Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{s}\"") { UseShellExecute = true });
             return new { };
         });
         m.Rejestruj("shell.openUrl", a =>
         {
-            var u = Mostek.Tekst(a, "url", true);
+            var u = Mostek.Text(a, "url", true);
             if (!u.StartsWith("http://") && !u.StartsWith("https://")) throw new BladMostka("bad_args", "tylko http(s)");
             Process.Start(new ProcessStartInfo(u) { UseShellExecute = true });
             return new { };
         });
-        m.Rejestruj("dialogs.pickFolder", a => new { sciezka = m.Dialogi.WybierzFolder(Mostek.Tekst(a, "tytul"), Mostek.Tekst(a, "start")) });
-        m.Rejestruj("dialogs.pickFiles", a => new { sciezki = m.Dialogi.WybierzPliki(Mostek.Tekst(a, "tytul"), Mostek.Tekst(a, "filtr"), Mostek.Flaga(a, "wiele", true), Mostek.Tekst(a, "start")) ?? Array.Empty<string>() });
-        m.Rejestruj("dialogs.saveFile", a => new { sciezka = m.Dialogi.ZapiszPlik(Mostek.Tekst(a, "tytul"), Mostek.Tekst(a, "filtr"), Mostek.Tekst(a, "nazwa"), Mostek.Tekst(a, "start")) });
+        m.Rejestruj("dialogs.pickFolder", a => new { sciezka = m.Dialogi.WybierzFolder(Mostek.Text(a, "tytul"), Mostek.Text(a, "start")) });
+        m.Rejestruj("dialogs.pickFiles", a => new { sciezki = m.Dialogi.WybierzPliki(Mostek.Text(a, "tytul"), Mostek.Text(a, "filtr"), Mostek.Flaga(a, "wiele", true), Mostek.Text(a, "start")) ?? Array.Empty<string>() });
+        m.Rejestruj("dialogs.saveFile", a => new { sciezka = m.Dialogi.ZapiszPlik(Mostek.Text(a, "tytul"), Mostek.Text(a, "filtr"), Mostek.Text(a, "nazwa"), Mostek.Text(a, "start")) });
     }
 
     public static string Wersja()

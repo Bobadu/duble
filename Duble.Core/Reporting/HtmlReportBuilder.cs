@@ -1,8 +1,8 @@
-// Raport.cs — viewer porownan: zwykly, samowystarczalny plik HTML.
+// A comparison viewer as one plain, self-contained HTML file.
 //
-// Miniatury sa wpisane w plik jako data:image/png;base64, wiec raport dziala po
-// skopiowaniu gdziekolwiek i bez internetu. TextureDecoder dekodujemy PONOWNIE ze zrodel
-// (katalog trzyma tylko odciski, nie obrazy) — dlatego kazda tekstura zna swoja sciezke.
+// Thumbnails are written into the file as data:image/png;base64, so the report works after being copied
+// anywhere, with no network. The textures are decoded AGAIN from their sources — the catalog keeps
+// fingerprints, not images — which is why every texture remembers the path it came from.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,11 +20,35 @@ using Duble.Core.Sources;
 
 namespace Duble.Core.Reporting;
 
-public static class Raport
+/// <summary>Builds the HTML report: every group with its thumbnails, verdict and reason.</summary>
+public interface IHtmlReportBuilder
 {
-    // Raport is still a static class; it becomes HtmlReportBuilder with its dependencies injected in a later
-    // pull request. Until then it keeps one instance of the default resolution rules.
-    static readonly IResolutionService Rozstrzygniecia = new ResolutionService();
+    /// <summary>
+    /// Writes the report to a file. The resolve callback says who stays in each group; without one the
+    /// comparison's own proposal is used.
+    /// </summary>
+    void Build(Catalog catalog, ComparisonResult result, string path, Action<string> log = null,
+               string language = "pl", Func<DuplicateGroup, Resolution> resolve = null, string title = null);
+}
+
+/// <summary>Writes the same decisions as a CSV, one row per rejected garment.</summary>
+public interface ICsvExporter
+{
+    string Export(Catalog catalog, ComparisonResult result,
+                  Func<DuplicateGroup, Resolution> resolve = null, string language = "pl");
+}
+
+/// <inheritdoc cref="IHtmlReportBuilder" />
+public sealed class HtmlReportBuilder : IHtmlReportBuilder, ICsvExporter
+{
+    readonly IArchiveCache archiwa;
+    readonly IResolutionService reguly;
+
+    public HtmlReportBuilder(IArchiveCache archiwa, IResolutionService reguly)
+    {
+        this.archiwa = archiwa;
+        this.reguly = reguly;
+    }
 
     const int Bok = 96;              // bok miniatury w pikselach
     const int MaxWierszy = 12;       // ile par tekstur pokazujemy na grupe
@@ -44,11 +68,11 @@ public static class Raport
 
     /// <summary>Samowystarczalny raport HTML. `rozstrzygnij` (aplikacja: decyzje uzytkownika) mowi, kto zostaje / jest odrzucony /
     /// zignorowany; brak = domyslne z porownania. `tytul` = nazwa projektu (naglowek strony).</summary>
-    public static void Zbuduj(IArchiveCache archiwa, Catalog katalog, ComparisonResult wynik, string plik, Action<string> log, string jezyk = "pl",
+    public void Build(Catalog katalog, ComparisonResult wynik, string plik, Action<string> log = null, string jezyk = "pl",
                               Func<DuplicateGroup, Resolution> rozstrzygnij = null, string tytul = null)
     {
         log ??= _ => { };
-        rozstrzygnij ??= g => Rozstrzygniecia.Resolve(g, null);
+        rozstrzygnij ??= new Func<DuplicateGroup, Resolution>(g => reguly.Resolve(g, null));
         var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var kolejnosc = new Dictionary<Verdict, int>
         {
@@ -80,7 +104,7 @@ public static class Raport
         int zrobione = 0;
         foreach (var g in grupy)
         {
-            sb.Append(Karta(archiwa, g, wgId, jezyk, rozstrzygniecia[g]));
+            sb.Append(Karta(g, wgId, jezyk, rozstrzygniecia[g]));
             if (++zrobione % 10 == 0) log($"  grup: {zrobione}/{grupy.Count}");
         }
 
@@ -138,7 +162,7 @@ public static class Raport
 
     // ===================== miniatury =====================
 
-    static string Miniatura(IArchiveCache archiwa, TextureInfo t)
+    string Miniatura(TextureInfo t)
     {
         if (t?.Path == null) { bezPliku++; return null; }
         if (CacheMiniatur.TryGetValue(t.Sha256, out var gotowa)) return gotowa;
@@ -159,11 +183,11 @@ public static class Raport
         catch { bezPodgladu++; return null; }
     }
 
-    static string Kafelek(IArchiveCache archiwa, TextureInfo t, string jezyk, string etykieta = null)
+    string Kafelek(TextureInfo t, string jezyk, string etykieta = null)
     {
         if (t == null)
             return $"<div class=\"kafelek pusty\"><div class=\"placeholder\">{E(Tx(jezyk, "raport.brakOdpowiednika")).Replace(" ", "<br>")}</div></div>";
-        var uri = Miniatura(archiwa, t);
+        var uri = Miniatura(t);
         var obraz = uri != null
             ? $"<img src=\"{uri}\" alt=\"{E(t.FileName)}\" loading=\"lazy\" width=\"{Bok}\" height=\"{Bok}\">"
             : $"<div class=\"placeholder\">{E(t.Format)}<br>{E(Tx(jezyk, "raport.bezPodgladu"))}</div>";
@@ -181,9 +205,9 @@ public static class Raport
 
     // ===================== karta grupy =====================
 
-    static string Karta(IArchiveCache archiwa, DuplicateGroup g, Dictionary<string, Garment> wgId, string jezyk, Resolution roz)
+    string Karta(DuplicateGroup g, Dictionary<string, Garment> wgId, string jezyk, Resolution roz)
     {
-        roz ??= Rozstrzygniecia.Resolve(g, null);
+        roz ??= reguly.Resolve(g, null);
         var zwyciezca = roz.Winner ?? g.Winner;
         var czlonkowie = g.Members.OrderByDescending(id => id == zwyciezca ? 1 : 0)
                                    .ThenByDescending(id => g.Scores.TryGetValue(id, out var p) ? p : 0)
@@ -268,11 +292,11 @@ public static class Raport
             if (wierszy >= MaxWierszy) { pominietych++; continue; }
             wierszy++;
             sb.Append("<div class=\"wiersz\">");
-            sb.Append(Kafelek(archiwa, wz, jezyk));
+            sb.Append(Kafelek(wz, jezyk));
             for (int i = 1; i < czlonkowie.Count; i++)
             {
                 var inny = wgId[czlonkowie[i]];
-                sb.Append(Kafelek(archiwa, trafienia[i] >= 0 ? inny.Textures[trafienia[i]] : null, jezyk));
+                sb.Append(Kafelek(trafienia[i] >= 0 ? inny.Textures[trafienia[i]] : null, jezyk));
             }
             sb.Append("</div>");
         }
@@ -289,7 +313,7 @@ public static class Raport
             bool stracisz = !roz.Ignored && roz.Rejected.Contains(id);
             sb.Append($"<h4>{E(Tx(jezyk, "raport.tylkoW"))} <em>{E(p.Label)}</em> — {E(Tx(jezyk, "raport.tekstur", ("n", unikalne.Count)))}{(stracisz ? $" <span class=\"zle\">{E(Tx(jezyk, "raport.stracisz"))}</span>" : "")}</h4>");
             sb.Append("<div class=\"pasek\">");
-            foreach (var k in unikalne.Take(MaxUnikalnych)) sb.Append(Kafelek(archiwa, p.Textures[k], jezyk));
+            foreach (var k in unikalne.Take(MaxUnikalnych)) sb.Append(Kafelek(p.Textures[k], jezyk));
             sb.Append("</div>");
             if (unikalne.Count > MaxUnikalnych)
                 sb.Append($"<p class=\"uwaga\">{E(Tx(jezyk, "raport.dalszych", ("n", unikalne.Count - MaxUnikalnych)))}</p>");
@@ -301,9 +325,9 @@ public static class Raport
     // ===================== CSV =====================
 
     /// <summary>Tabela grup i decyzji: jeden wiersz na czlonka grupy. Separator `;` dla PL (Excel PL), `,` dla EN; UTF-8 z BOM.</summary>
-    public static string Csv(Catalog katalog, ComparisonResult wynik, Func<DuplicateGroup, Resolution> rozstrzygnij = null, string jezyk = "pl")
+    public string Export(Catalog katalog, ComparisonResult wynik, Func<DuplicateGroup, Resolution> rozstrzygnij = null, string jezyk = "pl")
     {
-        rozstrzygnij ??= g => Rozstrzygniecia.Resolve(g, null);
+        rozstrzygnij ??= new Func<DuplicateGroup, Resolution>(g => reguly.Resolve(g, null));
         var wgId = katalog.Garments.ToDictionary(p => p.Id);
         var sep = Texts.T(jezyk, "raport.csv.separator");
         if (sep.Length != 1) sep = ";";

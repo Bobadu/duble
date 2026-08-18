@@ -32,7 +32,7 @@ public class ArchiveExtractorTests
             foreach (var b in w.Bledy.Take(5)) wyj.WriteLine("  " + b);
             Assert.Empty(w.Bledy);
             Assert.True(w.Archiwa >= 2);                                   // dlc.rpf + zagniezdzone body.rpf
-            Assert.Contains(postepy, p => p.Stage == "rozpakuj" && p.Total > 0);
+            Assert.Contains(postepy, p => p.Stage == "unpack" && p.Total > 0);
             var ydd = Directory.GetFiles(tmp, "*.ydd", SearchOption.AllDirectories);
             foreach (var f in ydd.Take(3)) wyj.WriteLine("  " + Path.GetRelativePath(tmp, f));
             Assert.NotEmpty(ydd);

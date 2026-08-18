@@ -27,9 +27,9 @@ public static class Projekty
         m.Rejestruj("project.get", _ => new { projekt = s.Podsumowanie() });
         m.Rejestruj("project.new", a =>
         {
-            var nazwa = (Mostek.Tekst(a, "nazwa", true) ?? "").Trim();
+            var nazwa = (Mostek.Text(a, "nazwa", true) ?? "").Trim();
             if (nazwa.Length == 0) throw new BladMostka("bad_args", "pusta nazwa");
-            var folder = Mostek.Tekst(a, "folder");
+            var folder = Mostek.Text(a, "folder");
             if (string.IsNullOrWhiteSpace(folder)) folder = Ustawienia.FolderProjektow;
             var plikNazwa = Regex.Replace(Niedozwolone.Replace(nazwa, " "), @"\s+", " ").Trim();
             if (plikNazwa.Length == 0) plikNazwa = "Project";
@@ -43,7 +43,7 @@ public static class Projekty
         });
         m.Rejestruj("project.open", a =>
         {
-            var sciezka = Mostek.Tekst(a, "sciezka", true);
+            var sciezka = Mostek.Text(a, "sciezka", true);
             if (!File.Exists(sciezka)) throw new BladMostka("not_found", sciezka);
             try { s.Otworz(sciezka); }
             catch (Exception e) { throw new BladMostka("io", e.Message); }
@@ -64,7 +64,7 @@ public static class Projekty
         m.Rejestruj("project.close", _ => { s.Zamknij(); m.Zdarzenie("project.closed", new { }); return new { }; });
         m.Rejestruj("project.forget", a =>
         {
-            var sciezka = Mostek.Tekst(a, "sciezka", true);
+            var sciezka = Mostek.Text(a, "sciezka", true);
             m.Ustawienia.Ostatnie.RemoveAll(o => string.Equals(o.Sciezka, sciezka, StringComparison.OrdinalIgnoreCase));
             try { m.Ustawienia.Zapisz(m.PlikUstawien); } catch { }
             return new { };

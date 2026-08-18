@@ -54,24 +54,24 @@ public class ApplyTests
         try
         {
             var plan = Planner.Plan(kat, new[] { "z1|k.rpf|jbib|7|u", "z1|k.rpf|feet|50|u_1", "z1|x.rpf|hair|3|u", "z1|k.rpf|lowr|9|u", "nie-ma" }, cel);
-            Assert.Equal(4, plan.Pozycje.Count);
-            var b = plan.Pozycje.Single(p => p.Id == "z1|k.rpf|jbib|7|u");
+            Assert.Equal(4, plan.Garments.Count);
+            var b = plan.Garments.Single(p => p.Id == "z1|k.rpf|jbib|7|u");
             Assert.Equal(2, b.MoveCount); Assert.Equal(150, b.Bytes);
             Assert.All(b.Files, r => Assert.StartsWith(Path.Combine(kosz, "k.rpf"), r.To));
-            var f2 = plan.Pozycje.Single(p => p.Id == "z1|k.rpf|feet|50|u_1");
+            var f2 = plan.Garments.Single(p => p.Id == "z1|k.rpf|feet|50|u_1");
             Assert.Equal(1, f2.MoveCount); Assert.Equal(1, f2.SharedCount);          // ydd idzie, tekstura feet_050 zostaje
-            var arch = plan.Pozycje.Single(p => p.Id == "z1|x.rpf|hair|3|u");
+            var arch = plan.Garments.Single(p => p.Id == "z1|x.rpf|hair|3|u");
             Assert.Equal(1, arch.InArchiveCount); Assert.Equal(0, arch.MoveCount);
-            var brak = plan.Pozycje.Single(p => p.Id == "z1|k.rpf|lowr|9|u");
+            var brak = plan.Garments.Single(p => p.Id == "z1|k.rpf|lowr|9|u");
             Assert.Equal(1, brak.MissingCount); Assert.Equal(1, brak.MoveCount);          // ydd brak, tekstura jest
             Assert.Equal(4, plan.Files); Assert.Equal(1, plan.SharedCount); Assert.Equal(1, plan.InArchiveCount); Assert.Equal(1, plan.MissingCount);
             var kosze = plan.BinTotals().ToList();
             Assert.Single(kosze); Assert.Equal(kosz, kosze[0].kosz); Assert.Equal(4, kosze[0].pliki);
             // brak zrodla -> wszystko Brak, zrodlo w BrakujaceZrodla
             var plan2 = Planner.Plan(kat, new[] { "z1|k.rpf|jbib|7|u" }, p => null);
-            Assert.Equal(2, plan2.Pozycje[0].MissingCount); Assert.Equal(new[] { "z1" }, plan2.MissingSources);
+            Assert.Equal(2, plan2.Garments[0].MissingCount); Assert.Equal(new[] { "z1" }, plan2.MissingSources);
             // pusta lista -> pusty plan
-            Assert.Empty(Planner.Plan(kat, Array.Empty<string>(), cel).Pozycje);
+            Assert.Empty(Planner.Plan(kat, Array.Empty<string>(), cel).Garments);
         }
         finally { Directory.Delete(tmp, true); }
     }
@@ -93,7 +93,7 @@ public class ApplyTests
             Assert.False(File.Exists(Path.Combine(src, "k.rpf", "jbib_007_u.ydd")));
             Assert.True(File.Exists(Path.Combine(src, "k.rpf", "feet_diff_050_a_uni.ytd")));   // wspoldzielona zostala
             Assert.True(File.Exists(Path.Combine(src, "k.rpf", "feet_050_u.ydd")));
-            Assert.Contains(postepy, p => p.Stage == "zastosuj" && p.Total == 3);
+            Assert.Contains(postepy, p => p.Stage == "apply" && p.Total == 3);
             Assert.True(cofka.CanUndo); Assert.True(cofka.CanRestoreGarment("z1|k.rpf|jbib|7|u"));
 
             var plik = Path.Combine(tmp, "historia", "c.json");

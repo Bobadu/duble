@@ -16,7 +16,7 @@ namespace Duble.Core.Formats;
 public sealed class SiatkaGeo
 {
     public string Name { get; set; }
-    public float[] Pozycje { get; set; }    // 3 na wierzcholek (juz w ukladzie glTF)
+    public float[] Garments { get; set; }    // 3 na wierzcholek (juz w ukladzie glTF)
     public float[] Normalne { get; set; }   // 3 na wierzcholek albo null
     public float[] Uv { get; set; }         // 2 na wierzcholek albo null
     public uint[] Indeksy { get; set; }     // trojkaty
@@ -79,10 +79,10 @@ public static class Glb
 
         foreach (var g in geos)
         {
-            if (g?.Pozycje == null || g.Indeksy == null || g.Pozycje.Length < 9) continue;
-            var attrs = new Dictionary<string, object> { ["POSITION"] = DodajFloaty(g.Pozycje, 3, true) };
-            if (g.Normalne != null && g.Normalne.Length == g.Pozycje.Length) attrs["NORMAL"] = DodajFloaty(g.Normalne, 3, false);
-            if (g.Uv != null && g.Uv.Length / 2 == g.Pozycje.Length / 3) attrs["TEXCOORD_0"] = DodajFloaty(g.Uv, 2, false);
+            if (g?.Garments == null || g.Indeksy == null || g.Garments.Length < 9) continue;
+            var attrs = new Dictionary<string, object> { ["POSITION"] = DodajFloaty(g.Garments, 3, true) };
+            if (g.Normalne != null && g.Normalne.Length == g.Garments.Length) attrs["NORMAL"] = DodajFloaty(g.Normalne, 3, false);
+            if (g.Uv != null && g.Uv.Length / 2 == g.Garments.Length / 3) attrs["TEXCOORD_0"] = DodajFloaty(g.Uv, 2, false);
             var pbr = new Dictionary<string, object> { ["metallicFactor"] = 0.0, ["roughnessFactor"] = 0.9, ["baseColorFactor"] = new[] { 1.0, 1.0, 1.0, 1.0 } };
             var tex = Obraz(g.TextureInfo);
             if (tex != null) pbr["baseColorTexture"] = new Dictionary<string, object> { ["index"] = tex.Value };
@@ -142,12 +142,12 @@ public static class Glb
                 bool maNorm = ((info.Flags >> 3) & 1) == 1, maUv = ((info.Flags >> 6) & 1) == 1;
                 int offP = info.GetComponentOffset(0), offN = info.GetComponentOffset(3), offT = info.GetComponentOffset(6);
                 var typT = info.GetComponentType(6);
-                var s = new SiatkaGeo { Name = "geo_" + gi, Pozycje = new float[n * 3], Normalne = maNorm ? new float[n * 3] : null, Uv = maUv ? new float[n * 2] : null };
+                var s = new SiatkaGeo { Name = "geo_" + gi, Garments = new float[n * 3], Normalne = maNorm ? new float[n * 3] : null, Uv = maUv ? new float[n * 2] : null };
                 for (int v = 0; v < n; v++)
                 {
                     int o = v * stride;
                     float x = BitConverter.ToSingle(b, o + offP), y = BitConverter.ToSingle(b, o + offP + 4), z = BitConverter.ToSingle(b, o + offP + 8);
-                    s.Pozycje[v * 3] = x; s.Pozycje[v * 3 + 1] = z; s.Pozycje[v * 3 + 2] = -y;
+                    s.Garments[v * 3] = x; s.Garments[v * 3 + 1] = z; s.Garments[v * 3 + 2] = -y;
                     if (maNorm)
                     {
                         float nx = BitConverter.ToSingle(b, o + offN), ny = BitConverter.ToSingle(b, o + offN + 4), nz = BitConverter.ToSingle(b, o + offN + 8);
