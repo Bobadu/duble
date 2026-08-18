@@ -4,6 +4,10 @@ obj/
 publish/
 TestResults/
 
+# the interface: dependencies and the bundle built from them
+node_modules/
+Duble.App/web/dist/
+
 # IDE / editor
 .vs/
 .vscode/

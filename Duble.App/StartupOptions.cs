@@ -1,8 +1,8 @@
 // StartupOptions.cs — the command line of the desktop application.
 //
-//   Duble.exe [file.duble] [--dev] [--ui-folder <folder>] [--project <file.duble>] [--view <view>]
-//             [--lang pl|en] [--theme dark|light|system] [--screenshot <file.png>] [--screenshot-delay <ms>]
-//             [--exec <js>] [--dev-icon <file.ico>]
+//   Duble.exe [file.duble] [--dev] [--ui-folder <folder>] [--ui-url <address>] [--project <file.duble>]
+//             [--view <view>] [--lang pl|en] [--theme dark|light|system] [--screenshot <file.png>]
+//             [--screenshot-delay <ms>] [--exec <js>] [--dev-icon <file.ico>]
 //
 // Everything past --lang is for the screenshot runs that produce the pictures in the README: they drive the
 // interface from outside and must not touch the user's own settings.
@@ -18,6 +18,13 @@ public sealed class StartupOptions
 
     /// <summary>Where to read the interface from in developer mode; without it the folder is searched for.</summary>
     public string? UiFolder { get; init; }
+
+    /// <summary>
+    /// Load the interface from this address instead of from the executable: `npm run dev` in Duble.App\web
+    /// serves it at http://localhost:5173, which is what makes an edit appear without a rebuild. Data still
+    /// comes from the application over https://duble.data, whatever the page was loaded from.
+    /// </summary>
+    public string? UiUrl { get; init; }
 
     /// <summary>A project to open once the interface is up (--project, or a .duble file double clicked in Explorer).</summary>
     public string? ProjectFile { get; init; }
@@ -58,6 +65,7 @@ public sealed class StartupOptions
 
         bool dev = rest.Remove("--dev");
         var uiFolder = Value("--ui-folder");
+        var uiUrl = Value("--ui-url");
         var project = Value("--project");
         var view = Value("--view");
         var language = Value("--lang");
@@ -74,6 +82,7 @@ public sealed class StartupOptions
         {
             Dev = dev,
             UiFolder = uiFolder,
+            UiUrl = uiUrl,
             ProjectFile = project,
             View = view,
             Language = language,

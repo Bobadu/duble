@@ -135,14 +135,19 @@ public partial class MainWindow : Window, IHostWindow, IFileDialogs
         }
     }
 
-    /// <summary>--view, --lang and --theme reach the interface as query parameters, for this run only.</summary>
+    /// <summary>
+    /// Where the interface is loaded from — the copy inside the executable, or the development server named by
+    /// --ui-url. --view, --lang and --theme go along as query parameters, for this run only.
+    /// </summary>
     static string StartUrl(StartupOptions options)
     {
+        var address = string.IsNullOrWhiteSpace(options.UiUrl) ? "https://duble.app/index.html" : options.UiUrl.TrimEnd('/');
+
         var query = new List<string>();
         if (!string.IsNullOrEmpty(options.View)) query.Add("view=" + Uri.EscapeDataString(options.View));
         if (!string.IsNullOrEmpty(options.Language)) query.Add("lang=" + Uri.EscapeDataString(options.Language));
         if (!string.IsNullOrEmpty(options.Theme)) query.Add("theme=" + Uri.EscapeDataString(options.Theme));
-        return "https://duble.app/index.html" + (query.Count > 0 ? "?" + string.Join("&", query) : "");
+        return query.Count > 0 ? $"{address}?{string.Join("&", query)}" : address;
     }
 
     // ---------------- serving the interface and its data ----------------
