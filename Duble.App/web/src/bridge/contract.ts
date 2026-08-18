@@ -163,6 +163,43 @@ export interface SourceFilter {
   n: number;
 }
 
+/**
+ * A garment as the catalog grid lists it — deliberately lighter than <see cref="Garment"/>, because the grid
+ * sends every indexed garment at once and draws only the tiles on screen.
+ */
+export interface CatalogGarment {
+  id: string;
+  zrodloId?: string;
+  zrodlo: string;
+  kontener?: string;
+  typ: string;
+  numer: number;
+  sufiks?: string;
+  gen9: boolean;
+  props: boolean;
+  thumb?: string;
+  tekstur: number;
+  bajty: number;
+  wArchiwum: boolean;
+  bezMipow: boolean;
+  bc1Alfa: boolean;
+  bc7: boolean;
+  /** The sharpest verdict of the live groups this garment is in, or absent when it is in none. */
+  grupa?: Verdict;
+}
+
+/** Where a garment stands in one of the groups it belongs to, as the badge on its card reads it. */
+export type GarmentStanding = 'ignoruj' | 'zostaje' | 'odrzucona' | 'neutral';
+
+export interface GarmentGroupRef {
+  id: string;
+  werdykt: Verdict;
+  ignoruj: boolean;
+  powod?: Reason;
+  inni: { id: string; nazwa: string; sufiks?: string; zrodlo: string }[];
+  stan: GarmentStanding;
+}
+
 export interface PlannedGarment {
   id: string;
   nazwa: string;
@@ -376,6 +413,18 @@ export interface Commands {
     result: { rozstrzygniecie: Resolution };
   };
   'groups.reset': { args: { id: string }; result: { rozstrzygniecie: Resolution } };
+
+  'catalog.list': {
+    args: { zrodla?: string[]; sloty?: string[]; formaty?: string[]; problemy?: boolean; wGrupie?: boolean; szukaj?: string };
+    result: {
+      razem: number;
+      tekstury: number;
+      pokazane: number;
+      filtry: { sloty: SlotFilter[]; zrodla: SourceFilter[]; formaty: { legacy: number; gen9: number } };
+      pozycje: CatalogGarment[];
+    };
+  };
+  'catalog.item': { args: { id: string }; result: { pozycja: Garment & { zrodloSciezka?: string }; grupy: GarmentGroupRef[] } };
 
   'apply.preview': { args: { kosz?: string | null; ustawKosz?: boolean } | null; result: ApplyPlan };
   'apply.run': { args: { kosz?: string | null; ustawKosz?: boolean } | null; result: Started & { plan: ApplyPlan } };

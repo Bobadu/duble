@@ -151,6 +151,12 @@ p { margin: 0; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .btn-row.centred { justify-content: center; }
 
+/* the reminder under the list of sources that a folder can simply be dragged in */
+.dropzone.hint { margin-top: 14px; padding: 10px 14px; border: 1px dashed var(--border-2); border-radius: 10px; text-align: center; }
+/* the games that were found, and the folders offered from each */
+.detected-game { margin-top: 14px; }
+.detected-folder { display: flex; margin: 6px 0; padding: 8px 12px; cursor: default; }
+
 /* ---------- karty ---------- */
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: none; transition: transform .12s, box-shadow .12s, border-color .12s; }
 .card.clickable { cursor: default; }

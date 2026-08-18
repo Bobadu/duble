@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { AppProvider } from './app/AppState';
 import { applyStartupView } from './app/router';
+import { ConfirmProvider } from './components/Confirm';
 import { ToastProvider } from './components/Toast';
 import './styles/app.css';
 
@@ -17,7 +18,9 @@ createRoot(root).render(
   <StrictMode>
     <AppProvider>
       <ToastProvider>
-        <App />
+        <ConfirmProvider>
+          <App />
+        </ConfirmProvider>
       </ToastProvider>
     </AppProvider>
   </StrictMode>,

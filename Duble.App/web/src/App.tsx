@@ -4,16 +4,22 @@ import { useEffect } from 'react';
 import { useAnnounceReady, useApp } from './app/AppState';
 import { Rail, StatusBar, TitleBar } from './app/Shell';
 import { navigate, useRoute, type ViewName } from './app/router';
+import { useJobNotifications } from './app/useJobNotifications';
 import { bridge, messageOf } from './bridge/bridge';
 import { useBridgeEvent } from './bridge/hooks';
 import { useToast } from './components/Toast';
+import { Catalog } from './views/catalog/Catalog';
 import { Duplicates } from './views/duplicates/Duplicates';
+import { History } from './views/history/History';
+import { Sources } from './views/sources/Sources';
 import { NotPortedYet } from './views/NotPortedYet';
+import { Start } from './views/start/Start';
 
 export function App() {
   const route = useRoute();
 
   useAnnounceReady();
+  useJobNotifications();
   useDroppedFiles();
   useShortcuts();
 
@@ -40,8 +46,16 @@ function detailViewOf(view: ViewName): string {
 
 function Screen({ view, param }: { view: ViewName; param?: string }) {
   switch (view) {
+    case 'start':
+      return <Start />;
+    case 'sources':
+      return <Sources />;
+    case 'catalog':
+      return param ? <NotPortedYet view="item" /> : <Catalog />;
     case 'duplicates':
       return param ? <NotPortedYet view="group" /> : <Duplicates />;
+    case 'history':
+      return <History />;
     default:
       return <NotPortedYet view={view} />;
   }
@@ -53,9 +67,12 @@ function Screen({ view, param }: { view: ViewName; param?: string }) {
  */
 function useDroppedFiles(): void {
   const toast = useToast();
+  const route = useRoute();
 
   useBridgeEvent('files.dropped', (data) => {
-    // the Sources screen is where a source is added, so that is where a drop lands
+    // a source is added on the Sources screen, so that is where a drop goes; when it is already up, the screen
+    // hears the same event itself and this leaves it alone
+    if (route.view === 'sources') return;
     sessionStorage.setItem('dropped', JSON.stringify(data.sciezki));
     navigate('sources');
   });
