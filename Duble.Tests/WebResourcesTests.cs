@@ -46,16 +46,20 @@ public class WebResourcesTests
         Assert.Contains("Duble", new StreamReader(page.Content).ReadToEnd());
     }
 
+    /// <summary>
+    /// The dictionary served here is the engine's alone: verdicts, reasons and the quality breakdown, which
+    /// Duble.Core writes. The interface's own words are bundled with the interface and never come this way.
+    /// </summary>
     [Fact]
-    public void Data_goes_through_the_delegate_and_i18n_merges_Core_with_the_interface()
+    public void The_engine_dictionary_is_served_and_the_interface_keeps_its_own()
     {
         var resources = new WebResources(null);
 
         var dictionary = resources.Resolve("https://duble.data/i18n/pl.json");
         Assert.NotNull(dictionary);
         var json = new StreamReader(dictionary.Content).ReadToEnd();
-        Assert.Contains("\"reason.SAME_MODEL_SAME_TEX\"", json);   // from Core
-        Assert.Contains("\"app.name\"", json);                     // from ui\i18n\pl.json
+        Assert.Contains("\"reason.SAME_MODEL_SAME_TEX\"", json);
+        Assert.DoesNotContain("\"app.name\"", json);
 
         string lastQuery = null;
         resources.Data = (category, key, query) =>

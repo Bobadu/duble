@@ -37,6 +37,20 @@ public class StartupOptionsTests
         Assert.Equal(700, options.ScreenshotDelayMs);
     }
 
+    /// <summary>
+    /// The interface can be loaded from the development server instead of from the executable, which is what
+    /// makes an edit to it visible without a rebuild.
+    /// </summary>
+    [Fact]
+    public void The_interface_can_be_pointed_at_a_development_server()
+    {
+        var options = StartupOptions.Parse(new[] { "--dev", "--ui-url", "http://localhost:5173" });
+
+        Assert.True(options.Dev);
+        Assert.Equal("http://localhost:5173", options.UiUrl);
+        Assert.Null(options.UiFolder);
+    }
+
     [Fact]
     public void A_duble_file_on_its_own_is_the_project_to_open()
     {

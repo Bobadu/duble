@@ -12,15 +12,41 @@
     <ApplicationIcon>assets\duble.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <ProjectReference Include="..\Duble.Core\Duble.Core.csproj" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
   </ItemGroup>
+
   <ItemGroup>
-    <!-- The interface is embedded in the executable; in developer mode it is read from ui\ instead, so that
-         editing an HTML, CSS or JS file is one page reload away from being visible. -->
-    <EmbeddedResource Include="ui\**\*" Exclude="ui\_dev-*.js" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
     <Resource Include="assets\duble.ico" />
   </ItemGroup>
+
+  <!--
+    The interface is a React application in web\, built by Vite into web\dist\ and embedded here. Building it
+    needs Node; CONTRIBUTING.md says so, and running `npm run dev` alongside the application in developer mode
+    is the loop that avoids a rebuild for every edit.
+  -->
+  <ItemGroup>
+    <InterfaceSource Include="web\src\**\*" />
+    <InterfaceSource Include="web\index.html;web\package.json;web\package-lock.json;web\vite.config.ts;web\tsconfig.json" />
+  </ItemGroup>
+
+  <Target Name="BuildInterface" BeforeTargets="PrepareForBuild" Inputs="@(InterfaceSource)" Outputs="web\dist\index.html">
+    <Exec Command="npm ci" WorkingDirectory="web" Condition="!Exists('web\node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="web" />
+  </Target>
+
+  <!--
+    Added inside a target rather than in a plain ItemGroup: the files do not exist until BuildInterface has run,
+    and an ItemGroup at the top of the file is evaluated long before that.
+  -->
+  <Target Name="EmbedInterface" AfterTargets="BuildInterface" BeforeTargets="PrepareForBuild">
+    <ItemGroup>
+      <InterfaceBundle Include="web\dist\**\*" />
+      <EmbeddedResource Include="@(InterfaceBundle)"
+                        LogicalName="ui/%(InterfaceBundle.RecursiveDir)%(InterfaceBundle.Filename)%(InterfaceBundle.Extension)" />
+    </ItemGroup>
+  </Target>
 </Project>

@@ -21,7 +21,8 @@ public static class TestPaths
     /// <summary>The folder holding the test packs, or null when there is none.</summary>
     public static string? TestData { get; } = FindTestData();
 
-    public static string Ui => Path.Combine(Root, "Duble.App", "ui");
+    /// <summary>The interface's source: React and TypeScript, built into web\dist by Vite.</summary>
+    public static string Ui => Path.Combine(Root, "Duble.App", "web", "src");
 
     public static string Golden(string file) => Path.Combine(Root, "Duble.Tests", "golden", file);
 

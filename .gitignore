@@ -4,6 +4,10 @@ obj/
 publish/
 TestResults/
 
+# the interface: dependencies and the bundle built from them
+node_modules/
+Duble.App/web/dist/
+
 # IDE / editor
 .vs/
 .vscode/
@@ -11,8 +15,8 @@ TestResults/
 *.user
 *.suo
 
-# local UI check scripts (Duble.exe --dev --exec "import('./_dev-*.js')")
-Duble.App/ui/_dev-*.js
+# local interface check scripts (Duble.exe --dev --exec "…"), never part of the build
+Duble.App/web/src/_dev-*.ts
 
 # local implementation plans (working notes, not project documentation)
 .plans/

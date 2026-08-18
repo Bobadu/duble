@@ -122,17 +122,24 @@ made with.
 git clone --recurse-submodules https://github.com/Bobadu/duble
 ```
 
-Open `Duble.sln` in Visual Studio or Rider and build. The only external dependency,
-[CodeWalker](https://github.com/dexyfex/CodeWalker), is a git submodule in `external/CodeWalker` pinned to one
-commit. Run `Duble.App` with the *Duble (developer mode)* profile to load the interface from `Duble.App/ui`,
-which puts HTML, CSS and JS changes one page reload away.
+You need the .NET 10 SDK and [Node](https://nodejs.org) 20 or newer: the engine and the shell are C#, the
+interface is React and TypeScript, and `Duble.App` builds it with Vite and embeds the result. CodeWalker, the
+only external C# dependency, is a git submodule in `external/CodeWalker` pinned to one commit.
 
-The same from a terminal:
+Open `Duble.sln` in Visual Studio or Rider and build, or from a terminal:
 
 ```powershell
 dotnet build Duble.sln -c Release
 dotnet test Duble.Tests -c Release
 dotnet publish Duble.App -p:PublishProfile=win-x64   # -> publish\Duble.exe
+```
+
+While working on the interface, run its dev server and point the application at it — an edit then shows up
+without rebuilding anything:
+
+```powershell
+cd Duble.App\web ; npm install ; npm run dev       # http://localhost:5173
+dotnet run --project Duble.App -- --dev --ui-url http://localhost:5173
 ```
 
 The same work is available from a terminal. `duble help` lists the commands and `duble help <command>` says
@@ -151,7 +158,7 @@ itself as a command: `dotnet pack Duble.Cli` then `dotnet tool install --global 
 | Project | Contents |
 |---|---|
 | `Duble.Core` | Engine: indexing, fingerprints, comparison, decisions, apply and undo, report, unpacking |
-| `Duble.App` | WPF and WebView2 shell; the interface lives in `Duble.App/ui` (HTML, CSS, JS, three.js) |
+| `Duble.App` | WPF and WebView2 shell; the interface is a React application in `Duble.App/web`, embedded in the executable |
 | `Duble.Cli` | Command line: `duble index / compare / report / apply / undo / calibrate`, and tools for one file |
 | `Duble.Tests` | xunit tests; the ones that need real packs skip themselves when the data is absent |
 
@@ -162,7 +169,8 @@ records what changed when, and [SECURITY.md](SECURITY.md) explains how to report
 
 [CodeWalker.Core](https://github.com/dexyfex/CodeWalker) by dexyfex reads `.rpf`, `.ydd` and `.ytd` files.
 [BCnEncoder.Net](https://github.com/Nominom/BCnEncoder.NET) decodes BC7 textures.
-[three.js](https://threejs.org) draws the 3D preview.
+[three.js](https://threejs.org) draws the 3D preview, and the interface is built with
+[React](https://react.dev) and [Vite](https://vite.dev).
 
 ## License
 

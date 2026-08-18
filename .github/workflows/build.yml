@@ -33,6 +33,22 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # the interface is a React application; Duble.App builds it with Vite and embeds the result
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+          cache: npm
+          cache-dependency-path: Duble.App/web/package-lock.json
+
+      - name: Install interface dependencies
+        run: npm ci
+        working-directory: Duble.App/web
+
+      - name: Check the interface types
+        run: npm run typecheck
+        working-directory: Duble.App/web
+
       - name: Cache NuGet
         uses: actions/cache@v6
         with:
