@@ -215,7 +215,7 @@ public sealed class Sesja
         return pr.Sources.Find(z => z.Id == p.SourceId) ?? pr.Sources.Find(z => string.Equals(z.Name, p.PackName, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Folder kosza dla zrodla: `Ustawienia.BinFolder` (wskazany folder) albo `_odrzucone` obok zrodla — w obu przypadkach z podfolderem o nazwie zrodla.</summary>
+    /// <summary>Folder kosza dla zrodla: `Ustawienia.BinFolder` (wskazany folder) albo `_rejected` obok zrodla — w obu przypadkach z podfolderem o nazwie zrodla.</summary>
     public string KoszDla(ProjectSource z)
     {
         var pr = Project; if (pr == null || z == null) return null;

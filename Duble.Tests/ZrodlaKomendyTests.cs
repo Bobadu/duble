@@ -78,7 +78,7 @@ public class ZrodlaKomendyTests
             Assert.Equal("studio_body", z.Name);
             Assert.Equal("studio_body", Duble.App.Komendy.Zrodla.NazwaFolderuKopii(z));
             var lista = Odp(await m.Obsluz("{\"id\":\"1\",\"cmd\":\"sources.list\"}")).GetProperty("result").GetProperty("zrodla");
-            Assert.EndsWith(Path.Combine("_odrzucone", "studio_body"), lista[0].GetProperty("kosz").GetString());
+            Assert.EndsWith(Path.Combine("_rejected", "studio_body"), lista[0].GetProperty("kosz").GetString());
             var folder = Path.Combine(tmp, "kopie").Replace("\\", "\\\\");
             var o = Odp(await m.Obsluz("{\"id\":\"2\",\"cmd\":\"sources.unpack\",\"args\":{\"id\":\"" + z.Id + "\",\"folder\":\"" + folder + "\",\"dodajZrodlo\":true}}"));
             Assert.True(o.GetProperty("ok").GetBoolean(), o.ToString());

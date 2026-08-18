@@ -337,10 +337,16 @@ change in the interface.
 **Stage 3 — interface.** `Duble.App/ui`: module and function names, `data-` attributes, session-storage keys,
 CSS class names. i18n keys are already English; the Polish user-facing text stays in `pl.json` where it belongs.
 
-**Stage 4 — CLI and user-visible names.** Verbs `indeks / porownaj / raport / zastosuj / cofnij / kalibruj`
-become `index / compare / report / apply / undo / calibrate`, and the bin folder `_odrzucone` becomes
-`_rejected` (with the old name still recognised when scanning, so existing bins keep being skipped by the
-indexer).
+**Stage 4 — CLI and user-visible names.** *Done.* Verbs `indeks / porownaj / raport / zastosuj / cofnij /
+kalibruj` became `index / compare / report / apply / undo / calibrate`, and the bin folder `_odrzucone` became
+`_rejected`.
+
+This document said the old bin name would still be recognised when scanning, so that existing bins kept being
+skipped by the indexer. It is not, and deliberately: there was no `_odrzucone` folder anywhere on the only
+machine that has run Duble, and 1.0.0 has no users with one either. Recognising a name nothing writes any more
+is migration code kept for nobody — the same reason this refactor carries no project-file migration. Should a
+bin from an older build ever turn up, the indexer would read it as a pack of its own; that is visible, and the
+answer is to rename the folder.
 
 ## Risks
 

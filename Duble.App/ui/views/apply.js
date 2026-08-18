@@ -69,7 +69,7 @@ function wyborKosza(plan, ctx, zmien) {
   const w = el(`
     <div class="apply-where">
       <div class="apply-label">${t('apply.where')}</div>
-      <label class="radio-row"><input type="radio" name="kosz" value="obok" ${wlasny ? '' : 'checked'}><span>${t('apply.besideSource')}</span><span class="faint mono">${esc(!wlasny && plan.kosze?.[0]?.kosz ? fmt.sciezkaKrotka(plan.kosze[0].kosz, 70) : '…\\_odrzucone\\<' + t('dup.sourcesFilter').toLowerCase() + '>')}</span></label>
+      <label class="radio-row"><input type="radio" name="kosz" value="obok" ${wlasny ? '' : 'checked'}><span>${t('apply.besideSource')}</span><span class="faint mono">${esc(!wlasny && plan.kosze?.[0]?.kosz ? fmt.sciezkaKrotka(plan.kosze[0].kosz, 70) : '…\\_rejected\\<' + t('dup.sourcesFilter').toLowerCase() + '>')}</span></label>
       <label class="radio-row"><input type="radio" name="kosz" value="wlasny" ${wlasny ? 'checked' : ''}><span>${t('apply.customFolder')}</span><span class="faint mono" id="kosz-sciezka">${esc(plan.kosz ? fmt.sciezkaKrotka(plan.kosz, 70) : '')}</span><button class="btn sm" id="kosz-pick">${icon('folder')}${t('apply.pick')}</button></label>
     </div>`);
   const wybierz = async () => {

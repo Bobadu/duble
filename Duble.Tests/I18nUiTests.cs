@@ -69,6 +69,36 @@ public class I18nUiTests
         }
     }
 
+    /// <summary>
+    /// The bin folder's name belongs to Core, but the interface tells the user what it is — in two i18n values
+    /// per language and in two placeholder paths in the JS. Nothing makes those follow the constant, so this
+    /// does: renaming it in Core without the interface would leave the settings screen promising a folder that
+    /// is never created.
+    /// </summary>
+    [Fact]
+    public void Wherever_the_interface_names_the_bin_folder_it_names_the_current_one()
+    {
+        foreach (var language in new[] { "pl", "en" })
+        {
+            var dictionary = Slownik(language);
+            foreach (var key in new[] { "apply.besideSource", "settings.binBeside" })
+                Assert.Contains(BinFolder.Name, dictionary[key]);
+        }
+
+        var stale = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories)
+                     .Where(f => (f.EndsWith(".js") || f.EndsWith(".html") || f.EndsWith(".json"))
+                                 && !f.Contains(Path.DirectorySeparatorChar + "vendor" + Path.DirectorySeparatorChar)))
+        {
+            var text = File.ReadAllText(file);
+            // any underscore-prefixed folder that looks like a bin but is not the one Core writes
+            foreach (Match match in Regex.Matches(text, @"_[a-z]{6,12}(?=\\\\|\\\\<|\s|\)|<)"))
+                if (match.Value is "_odrzucone" or "_rejected" && match.Value != BinFolder.Name)
+                    stale.Add($"{Path.GetFileName(file)}: {match.Value}");
+        }
+        Assert.Empty(stale);
+    }
+
     [Fact]
     public void Sloty_maja_tlumaczenia()
     {

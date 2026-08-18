@@ -135,7 +135,7 @@ public sealed class ApplyExecutor : IApplyExecutor
 
     /// <summary>
     /// Tidies empty bin folders after an undo, up to eight levels up, so undoing does not leave an empty
-    /// _odrzucone skeleton behind.
+    /// _rejected skeleton behind.
     /// </summary>
     static void RemoveEmptyFolders(string folder)
     {

@@ -1,7 +1,7 @@
 // The plan an apply follows, and the log that lets it be undone.
 //
 // THE PROJECT'S RULE: an original is never lost. Rejected files are not deleted, they are MOVED to a bin
-// (_odrzucone next to the source, or a folder the user picked) keeping their layout relative to the source,
+// (_rejected next to the source, or a folder the user picked) keeping their layout relative to the source,
 // and the list of moves lands in an undo log — one command and it all comes back, whole or one garment at a
 // time.
 //
