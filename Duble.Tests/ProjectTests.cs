@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using Duble.Core.Comparison;
 using Duble.Core.Decisions;
+using Duble.Core.Model;
 using Duble.Core.Projects;
 using Duble.Core.Storage;
 using Xunit;
@@ -121,5 +122,57 @@ public class ProjectTests
             Assert.Equal(ErrorCodes.ProjectUnsupportedVersion, store.Load(older).Error.Code);
         }
         finally { Directory.Delete(tmp, true); }
+    }
+
+    /// <summary>
+    /// The decisions in a .duble file are the one thing re-indexing cannot reproduce, so saving must never
+    /// leave the file half-written — it goes to a temporary beside it and is moved into place.
+    /// </summary>
+    [Fact]
+    public void Saving_a_project_leaves_no_temporary_behind_and_a_failed_save_leaves_the_old_file_whole()
+    {
+        var tmp = Sciezki.Tymczasowy("project-save");
+        try
+        {
+            var file = Path.Combine(tmp, "Studio.duble");
+            var store = new JsonProjectStore();
+            var project = Project.Create("Studio", file, When);
+            project.Decisions["abc123"] = new Decision { Note = "keep this" };
+
+            Assert.True(store.Save(project).IsSuccess);
+            Assert.False(File.Exists(file + ".tmp"));
+
+            // a directory sitting where the temporary would go makes the write fail
+            Directory.CreateDirectory(file + ".tmp");
+            var failed = store.Save(project);
+            Assert.True(failed.IsFailure);
+            Assert.Equal(ErrorCodes.ProjectUnwritable, failed.Error.Code);
+
+            Directory.Delete(file + ".tmp");
+            Assert.Equal("keep this", store.Load(file).Value.Decisions["abc123"].Note);
+        }
+        finally { Directory.Delete(tmp, true); }
+    }
+
+    [Theory]
+    [InlineData(new GameFormat[0], SourceFormat.Unknown)]
+    [InlineData(new[] { GameFormat.Legacy, GameFormat.Legacy }, SourceFormat.Legacy)]
+    [InlineData(new[] { GameFormat.Enhanced }, SourceFormat.Enhanced)]
+    [InlineData(new[] { GameFormat.Legacy, GameFormat.Enhanced }, SourceFormat.Mixed)]
+    public void A_sources_format_follows_the_garments_indexing_found_in_it(GameFormat[] formats, SourceFormat expected)
+    {
+        var garments = Array.ConvertAll(formats, format => new Garment { GameFormat = format });
+        Assert.Equal(expected, SourceFormats.Of(garments));
+    }
+
+    /// <summary>The label is a key the interface looks up, so it stays in English like every other one.</summary>
+    [Theory]
+    [InlineData(SourceFormat.Legacy, "legacy")]
+    [InlineData(SourceFormat.Enhanced, "gen9")]
+    [InlineData(SourceFormat.Mixed, "mixed")]
+    [InlineData(SourceFormat.Unknown, null)]
+    public void A_format_label_is_a_key_not_a_sentence(SourceFormat format, string? expected)
+    {
+        Assert.Equal(expected, format.ToLabel());
     }
 }

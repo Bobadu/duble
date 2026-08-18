@@ -1,12 +1,17 @@
 namespace Duble.Core.Results;
 
 /// <summary>
-/// Every failure code Core can return. The app maps them to bridge error codes and i18n keys, the CLI prints
-/// them. The codes are part of the contract: rename one and the app stops recognising the failure.
+/// Every failure code Core can return, alongside the message. They are part of the engine's contract: an
+/// application is meant to be able to tell "this project is from a newer Duble" from "this file is corrupt"
+/// without reading the sentence.
+///
+/// Duble's own app does not yet — it shows the message and its own bridge code. That is a gap in the app, not
+/// a reason for the engine to stop saying which failure it was.
 /// </summary>
 public static class ErrorCodes
 {
     public const string ProjectUnreadable = "project.unreadable";
+    public const string ProjectUnwritable = "project.unwritable";
     public const string ProjectUnsupportedVersion = "project.unsupported_version";
     public const string SourceMissing = "source.missing";
     public const string SourceUnreadable = "source.unreadable";

@@ -41,10 +41,8 @@ public static class Zrodla
             var pozycje = raport.Value.Garments;
             foreach (var p in pozycje) p.SourceId = z.Id;
             s.ZmienKatalog(k => { k.RemovePack(z.Name); k.Upsert(pozycje); k.Sources[z.Name] = z.Path; });
-            z.IndexedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            z.Format = pozycje.Count == 0 ? SourceFormat.Unknown
-                : pozycje.All(p => p.GameFormat == GameFormat.Enhanced) ? SourceFormat.Enhanced
-                : pozycje.All(p => p.GameFormat == GameFormat.Legacy) ? SourceFormat.Legacy : SourceFormat.Mixed;
+            z.IndexedAt = s.Zegar.Stamp();
+            z.Format = SourceFormats.Of(pozycje);
             m.Zdarzenie("sources.changed", new { id = z.Id });
             m.Zdarzenie("project.changed", new { projekt = s.Podsumowanie() });
         }

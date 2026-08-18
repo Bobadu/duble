@@ -75,6 +75,9 @@ public sealed class Sesja
     /// <summary>Reguly "kto zostaje" — komendy licza je dla grup, ktore pokazuja.</summary>
     public IResolutionService Rozstrzygniecia { get; }
 
+    /// <summary>Zegar — znaczniki czasu wpisywane przez komendy (np. kiedy zrodlo bylo indeksowane).</summary>
+    public IClock Zegar => zegar;
+
     /// <summary>Zapisuje sam plik projektu (decyzje, zrodla, ustawienia) bez katalogu i wyniku.</summary>
     public void ZapiszProjekt()
     {
@@ -288,7 +291,7 @@ public sealed class Sesja
             var perSlot = poz.GroupBy(p => p.Slot).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.Count());
             int tekstury = poz.Sum(p => p.Textures.Count);
             int bc7 = poz.Sum(p => p.Textures.Count(t => t.Format == "BC7"));
-            string format = poz.Count == 0 ? null : poz.All(p => p.GameFormat == GameFormat.Enhanced) ? "gen9" : poz.All(p => p.GameFormat == GameFormat.Legacy) ? "legacy" : "mieszany";
+            string format = SourceFormats.Of(poz).ToLabel();
             int wArchiwum = poz.Count(p => p.ModelPath != null && p.ModelPath.Contains('|'));
             return (poz.Count, tekstury, perSlot, bc7, format, wArchiwum);
         }
