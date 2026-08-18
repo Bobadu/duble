@@ -55,7 +55,7 @@ public class ApplyTests
         var temp = Sciezki.Tymczasowy("apply");
         var source = Path.Combine(temp, "z1");
         Directory.CreateDirectory(source);
-        var bin = Path.Combine(temp, "_odrzucone", "z1");
+        var bin = Path.Combine(temp, "_rejected", "z1");
 
         var stays = Make(source, "k.rpf", "jbib", 1, "a", "b");
         var rejected = Make(source, "k.rpf", "jbib", 7, "a");

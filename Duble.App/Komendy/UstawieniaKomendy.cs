@@ -1,6 +1,6 @@
 // Komendy/UstawieniaKomendy.cs — ustawienia PROJEKTU (kosz, progi porownania), cache projektu, kalibracja.
 //
-// project.settings.get/set/resetProgi: kosz (null = _odrzucone obok zrodla) i progi (czesciowe: podane pola nadpisuja biezace;
+// project.settings.get/set/resetProgi: kosz (null = _rejected obok zrodla) i progi (czesciowe: podane pola nadpisuja biezace;
 // walidacja Thresholds.Sprawdz -> bad_args z lista pol). Zmiana progow = ponowne porownanie w tle (decyzje zostaja, PrzeniesDecyzje).
 // cache.clear: tylko tex\ i mesh\ (odtwarzane na zadanie). calibrate.run: JobRunner "kalibracja" -> Calibrator.Policz na
 // pozycjach wlaczonych zrodel -> zdarzenie calibrate.done {wynik} (rozklady z kubelkami do wykresow, propozycja progow).

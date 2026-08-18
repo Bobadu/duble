@@ -6,6 +6,35 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **The bin folder is `_rejected`**, not `_odrzucone`. A bin written by 1.0.0 is not recognised: the indexer
+  would read it as a pack of its own, so rename it by hand if you have one.
+- **Command line in English.** `indeks / porownaj / raport / zastosuj / cofnij / kalibruj` are now
+  `index / compare / report / apply / undo / calibrate`, alongside `refresh / list / preview / textures /
+  ytd / glb / hollow / obj`. `duble help` lists them and `duble help <command>` explains one. An unknown
+  option is now an error rather than something silently ignored.
+- **Working files** default to a `duble` folder in the current directory, or `DUBLE_HOME`, instead of paths
+  guessed relative to the executable.
+- The catalog cache file is `catalog.json` and the apply history lives in `history\`, both inside
+  `<project>.duble.cache`. An existing project re-indexes itself once on first open.
+
+### Fixed
+
+- **The same catalog compares the same way twice.** Garments sharing a slot and number but differing in suffix
+  were ordered by a dictionary's enumeration, which .NET randomises per process, so `comparison.json` differed
+  between runs over identical input — pairs came out with their two sides swapped, and their coverages with
+  them. The winner of a single-pair group had no tie-break and followed the same order.
+- **A texture caption no longer bursts out of its tile.** The variant letter of a prop texture
+  (`p_ears_diff_017_a.ytd`, with no race after the letter) failed to parse, so the whole file name was printed
+  into a 96 px tile; the 3D variant buttons came out empty for the same reason.
+- The start screen shows a project's name again.
+- Indexing reports files that are clothing and would not read separately from files that are not clothing: the
+  first kind means the catalog is quietly incomplete.
+- Report thumbnails no longer accumulate for the life of the process, and the "no preview" counters no longer
+  carry from one report into the next.
+- `duble` and the desktop application no longer claim the same assembly file name.
+
 ## [1.0.0] — 2026-08-17
 
 First public release.

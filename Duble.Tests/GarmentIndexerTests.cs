@@ -123,13 +123,13 @@ public class GarmentIndexerTests
         var temp = Sciezki.Tymczasowy("bin");
         try
         {
-            Assert.True(BinFolder.Contains(temp, Path.Combine(temp, "_odrzucone", "p", "k.rpf", "jbib_001_u.ydd")));
-            Assert.True(BinFolder.Contains(temp, Path.Combine(temp, "p", "_ODRZUCONE", "jbib_001_u.ydd")));
+            Assert.True(BinFolder.Contains(temp, Path.Combine(temp, "_rejected", "p", "k.rpf", "jbib_001_u.ydd")));
+            Assert.True(BinFolder.Contains(temp, Path.Combine(temp, "p", "_REJECTED", "jbib_001_u.ydd")));
             Assert.False(BinFolder.Contains(temp, Path.Combine(temp, "p", "k.rpf", "jbib_001_u.ydd")));
-            Assert.False(BinFolder.Contains(temp, Path.Combine(temp, "p", "_odrzucone.ydd")));   // a FOLDER, not a file name
+            Assert.False(BinFolder.Contains(temp, Path.Combine(temp, "p", "_rejected.ydd")));   // a FOLDER, not a file name
 
-            Directory.CreateDirectory(Path.Combine(temp, "_odrzucone", "k.rpf"));
-            File.WriteAllBytes(Path.Combine(temp, "_odrzucone", "k.rpf", "jbib_001_u.ydd"), new byte[16]);
+            Directory.CreateDirectory(Path.Combine(temp, "_rejected", "k.rpf"));
+            File.WriteAllBytes(Path.Combine(temp, "_rejected", "k.rpf", "jbib_001_u.ydd"), new byte[16]);
             Assert.Empty(Index(temp, "t"));
         }
         finally { Directory.Delete(temp, true); }

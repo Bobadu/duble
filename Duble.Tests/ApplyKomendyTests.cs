@@ -48,7 +48,7 @@ public class ApplyKomendyTests
             Assert.Equal(3, prev.GetProperty("lista").GetArrayLength());
             var kosze = prev.GetProperty("kosze").EnumerateArray().Select(k => k.GetProperty("kosz").GetString()).ToList();
             Assert.Equal(2, kosze.Count);
-            Assert.Contains(Path.Combine(tmp, "_odrzucone", "p2"), kosze); Assert.Contains(Path.Combine(tmp, "_odrzucone", "p3"), kosze);
+            Assert.Contains(Path.Combine(tmp, "_rejected", "p2"), kosze); Assert.Contains(Path.Combine(tmp, "_rejected", "p3"), kosze);
             Assert.False(prev.TryGetProperty("kosz", out var kz) && kz.ValueKind != JsonValueKind.Null);   // null -> pominiete (WhenWritingNull)
 
             // wlasny kosz zapisany w projekcie

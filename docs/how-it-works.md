@@ -97,7 +97,7 @@ The score only *proposes*. The decision is yours, it is stored in the project, a
 
 ## 6. Applying decisions
 
-Apply never deletes. It **moves** rejected files to a bin — `_odrzucone` next to the source or a folder you pick —
+Apply never deletes. It **moves** rejected files to a bin — `_rejected` next to the source or a folder you pick —
 keeping the relative path, and writes an undo journal. Two rules are enforced while planning:
 
 - a file shared with a garment that stays is left alone,

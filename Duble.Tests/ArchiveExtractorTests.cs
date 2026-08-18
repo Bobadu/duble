@@ -84,15 +84,15 @@ public class ArchiveExtractorTests
             File.Copy(Sciezki.Dlc("studio_body"), Path.Combine(source, "paczka.rpf"));
             File.WriteAllText(Path.Combine(source, "x.meta"), "<meta/>");
 
-            Directory.CreateDirectory(Path.Combine(temp, "src", "_odrzucone"));
-            File.WriteAllText(Path.Combine(temp, "src", "_odrzucone", "a.ydd"), "x");
+            Directory.CreateDirectory(Path.Combine(temp, "src", "_rejected"));
+            File.WriteAllText(Path.Combine(temp, "src", "_rejected", "a.ydd"), "x");
 
             var result = Extractor.ExtractSource(Path.Combine(temp, "src"), Path.Combine(temp, "copy"));
 
             Assert.Empty(result.Errors);
             Assert.True(File.Exists(Path.Combine(temp, "copy", "stream", "x.meta")));
             Assert.True(Directory.Exists(Path.Combine(temp, "copy", "stream", "paczka.rpf")));
-            Assert.False(Directory.Exists(Path.Combine(temp, "copy", "_odrzucone")));
+            Assert.False(Directory.Exists(Path.Combine(temp, "copy", "_rejected")));
         }
         finally { Directory.Delete(temp, true); }
     }

@@ -100,7 +100,7 @@ problems worth fixing such as textures without mipmaps and BC1 with alpha.
 
 ![The apply dialog listing which files move to which folder](docs/screenshots/apply.png)
 
-Applying moves files to a bin, either `_odrzucone` next to the source or a folder you pick. Files shared with a
+Applying moves files to a bin, either `_rejected` next to the source or a folder you pick. Files shared with a
 garment that stays are left alone, and files inside `.rpf` archives are skipped because archives are read-only.
 *Sources → Unpack to folder* produces a writable copy of an archived pack.
 

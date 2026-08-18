@@ -110,7 +110,7 @@ function kartaKosz(st, ctx) {
     <div class="card setting"><div class="card-body">
       <div class="label">${icon('trash')} ${t('settings.bin')}</div>
       <p class="help">${t('settings.binHelp')}</p>
-      <label class="radio-row"><input type="radio" name="s-kosz" value="obok" ${wlasny ? '' : 'checked'}><span>${t('settings.binBeside')}</span><span class="faint mono">…\\_odrzucone\\&lt;${esc(t('dup.sourcesFilter').toLowerCase())}&gt;\\</span></label>
+      <label class="radio-row"><input type="radio" name="s-kosz" value="obok" ${wlasny ? '' : 'checked'}><span>${t('settings.binBeside')}</span><span class="faint mono">…\\_rejected\\&lt;${esc(t('dup.sourcesFilter').toLowerCase())}&gt;\\</span></label>
       <label class="radio-row"><input type="radio" name="s-kosz" value="wlasny" ${wlasny ? 'checked' : ''}><span>${t('settings.binCustom')}</span><span class="faint mono" id="s-kosz-sciezka">${esc(st.kosz ? fmt.sciezkaKrotka(st.kosz, 70) : '')}</span><button class="btn sm" id="s-kosz-pick">${icon('folder')}${t('settings.binPick')}</button></label>
     </div></div>`);
   const ustaw = async (kosz) => {
