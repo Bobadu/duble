@@ -12,8 +12,8 @@ namespace Duble.App;
 
 public static class Gry
 {
-    public sealed record Propozycja(string Nazwa, string Sciezka, string Typ);
-    public sealed record Wykryta(string Gra, string Sciezka, List<Propozycja> Propozycje);
+    public sealed record Proposal(string Nazwa, string Sciezka, string Typ);
+    public sealed record Wykryta(string Gra, string Sciezka, List<Proposal> Propozycje);
 
     static readonly Regex RePath = new("\"path\"\\s+\"([^\"]+)\"", RegexOptions.Compiled);
 
@@ -80,9 +80,9 @@ public static class Gry
     }
 
     /// <summary>Foldery z modami warte zaindeksowania — tylko istniejace. Waniliowych archiwow gry nie proponujemy (zaszyfrowane, bez duplikatow do usuwania).</summary>
-    public static List<Propozycja> PropozycjeDla(string folderGry, string gra)
+    public static List<Proposal> PropozycjeDla(string folderGry, string gra)
     {
-        var wy = new List<Propozycja>();
+        var wy = new List<Proposal>();
         var kandydaci = gra == "enhanced"
             ? new[] { ("onigiri\\dlcpacks", "onigiri (NVE) dlcpacks"), ("mods\\update\\x64\\dlcpacks", "mods dlcpacks"), ("mods", "mods") }
             : new[] { ("mods\\update\\x64\\dlcpacks", "mods dlcpacks"), ("mods", "mods") };
@@ -92,7 +92,7 @@ public static class Gry
             if (!Directory.Exists(p)) continue;
             // "mods" tylko gdy nie ma juz precyzyjniejszego dlcpacks w srodku
             if (rel == "mods" && wy.Any(x => x.Sciezka.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
-            wy.Add(new Propozycja(nazwa, p, "folder"));
+            wy.Add(new Proposal(nazwa, p, "folder"));
         }
         return wy;
     }

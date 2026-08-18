@@ -30,12 +30,12 @@ public class Rsc7HeaderTests
         var wpis = new RpfResourceFileEntry { SystemFlags = 0x92345678u, GraphicsFlags = 0xFABCDEF0u, Name = "x.ydd" };
         Assert.Equal(159, wpis.Version);
         var dane = new byte[] { 1, 2, 3, 4, 5 };
-        var owin = Rsc7Header.Owin(wpis, dane);
-        Assert.True(Rsc7Header.JestRsc7(owin));
-        Assert.Equal(159, Rsc7Header.Wersja(owin));
+        var owin = Rsc7Header.Wrap(wpis, dane);
+        Assert.True(Rsc7Header.IsRsc7(owin));
+        Assert.Equal(159, Rsc7Header.Version(owin));
         Assert.Equal(0x92345678u, BitConverter.ToUInt32(owin, 8));
         Assert.Equal(0xFABCDEF0u, BitConverter.ToUInt32(owin, 12));
-        Assert.True(Rsc7Header.Gen9(owin, ".ydd") == true);
+        Assert.True(Rsc7Header.IsEnhanced(owin, ".ydd") == true);
         Assert.Equal(dane, ResourceBuilder.Decompress(owin.Skip(16).ToArray()));
     }
 
@@ -48,7 +48,7 @@ public class Rsc7HeaderTests
     public void Gen9_z_wersji_naglowka(int wersja, string ext, bool? oczekiwane)
     {
         var b = new byte[24]; BitConverter.GetBytes(0x37435352u).CopyTo(b, 0); BitConverter.GetBytes(wersja).CopyTo(b, 4);
-        Assert.Equal(oczekiwane, Rsc7Header.Gen9(b, ext));
-        Assert.Null(Rsc7Header.Gen9(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }, ext));
+        Assert.Equal(oczekiwane, Rsc7Header.IsEnhanced(b, ext));
+        Assert.Null(Rsc7Header.IsEnhanced(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }, ext));
     }
 }

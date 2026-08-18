@@ -53,7 +53,7 @@ public static class Zrodla
     /// <summary>Porownanie + zapis projektu/katalogu/wyniku + zdarzenia (widok Duplikaty ma byc zawsze aktualny).</summary>
     public static void PorownajIZapisz(Sesja s, Mostek m, CancellationToken ct, Action<ProgressReport> postep)
     {
-        postep(new ProgressReport("porownaj", 0, 0, null));
+        postep(new ProgressReport("compare", 0, 0, null));
         s.Porownaj(ct, postep);
         s.Zapisz();
         m.Zdarzenie("sources.changed", new { id = (string)null });
@@ -104,7 +104,7 @@ public static class Zrodla
         m.Rejestruj("sources.pickRpf", _ => { Wymag(); var f = m.Dialogi.WybierzPliki(null, "rpf", true, null); return f == null || f.Length == 0 ? new { dodane = new List<object>(), pominiete = new List<string>() } : Dodaj(f); });
         m.Rejestruj("sources.remove", a =>
         {
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var z = Wymag().Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
             s.Project.Sources.Remove(z);
             s.ZmienKatalog(k => { k.Garments.RemoveAll(p => p.SourceId == id); k.Sources.Remove(z.Name); });
@@ -114,7 +114,7 @@ public static class Zrodla
         });
         m.Rejestruj("sources.toggle", a =>
         {
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var z = Wymag().Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
             z.Enabled = Mostek.Flaga(a, "wlaczone", !z.Enabled);
             s.ZapiszProjekt();
@@ -148,8 +148,8 @@ public static class Zrodla
         m.Rejestruj("sources.unpack", a =>
         {
             Wymag();
-            var id = Mostek.Tekst(a, "id", true);
-            var folder = Mostek.Tekst(a, "folder", true);
+            var id = Mostek.Text(a, "id", true);
+            var folder = Mostek.Text(a, "folder", true);
             bool dodaj = Mostek.Flaga(a, "dodajZrodlo", true);
             var z = s.Project.Sources.Find(x => x.Id == id) ?? throw new BladMostka("not_found", id);
             if (!Directory.Exists(z.Path) && !File.Exists(z.Path)) throw new BladMostka("not_found", z.Path);
@@ -158,7 +158,7 @@ public static class Zrodla
             bool ok = jr.SprobujUruchom("rozpakuj", z.Name, async (ct, postep) =>
             {
                 await Task.Yield();
-                var w = RpfArchiveExtractor.SourceName(z.Path, cel, postep, ct);
+                var w = s.Rozpakowywacz.ExtractSource(z.Path, cel, new Progress<ProgressReport>(postep), ct);
                 string dodano = null;
                 if (dodaj && w.Files > 0)
                 {
@@ -170,7 +170,7 @@ public static class Zrodla
                     Indeksuj(s, m, new[] { nowe }, false, ct, postep);
                     PorownajIZapisz(s, m, ct, postep);
                 }
-                m.Zdarzenie("unpack.done", new { id, folder = cel, pliki = w.Files, archiwa = w.Archiwa, bajty = w.Bytes, bledy = w.Bledy.Take(20).ToList(), dodano });
+                m.Zdarzenie("unpack.done", new { id, folder = cel, pliki = w.Files, archiwa = w.Archives, bajty = w.Bytes, bledy = w.Errors.Take(20).ToList(), dodano });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
             return new { uruchomiono = true, folder = cel };

@@ -43,6 +43,9 @@ var porownania = uslugi.GetRequiredService<IComparisonStore>();
 var planista = uslugi.GetRequiredService<IApplyPlanner>();
 var wykonawca = uslugi.GetRequiredService<IApplyExecutor>();
 var cofki = uslugi.GetRequiredService<IUndoStore>();
+var raporty = uslugi.GetRequiredService<IHtmlReportBuilder>();
+var kalibrator = uslugi.GetRequiredService<ICalibrator>();
+var podglady = uslugi.GetRequiredService<IMeshPreviewBuilder>();
 
 string Opcja(string nazwa, string domyslnie)
 {
@@ -137,7 +140,7 @@ switch (cmd)
         }
 
     case "kalibruj":
-        return Kalibracja.Uruchom(katalogi.Load(sciezkaKatalogu), Log);
+        return CalibrationReportPrinter.Run(kalibrator, katalogi.Load(sciezkaKatalogu), Log);
 
     case "obj":
         {
@@ -146,7 +149,7 @@ switch (cmd)
             // waniliowe vs Killstore). Format (legacy/gen9) z naglowka RSC7; tryb gen9 czyta oba (Format.cs).
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble obj <plik.ydd> [--out plik.obj]"); return 2; }
             var bajty = File.ReadAllBytes(argv[0]);
-            YddFile ydd = null; string fmt = Rsc7Header.Gen9(bajty, ".ydd") is bool g9 ? GameFormats.FromHeader(g9).ToLabel() : "?";
+            YddFile ydd = null; string fmt = Rsc7Header.IsEnhanced(bajty, ".ydd") is bool g9 ? GameFormats.FromHeader(g9).ToLabel() : "?";
             try
             {
                 var y = new YddFile();
@@ -297,7 +300,7 @@ switch (cmd)
             Directory.CreateDirectory(folder);
             foreach (var t in ytdT.TextureDict.Textures.data_items)
             {
-                var px = TextureDecoder.Piksele(t, 0, out int tw, out int th);   // DDSIO + BC7
+                var px = TextureDecoder.Pixels(t, 0, out int tw, out int th);   // DDSIO + BC7
                 if (px == null) { Log($"{t.Name}: nie zdekodowano ({TextureFingerprinter.FormatName(t)})"); continue; }
                 var rgb = new byte[tw * th * 3];
                 for (int i = 0, j = 0; i < px.Length; i += 4, j += 3) { rgb[j] = px[i + 2]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i]; }
@@ -337,7 +340,9 @@ switch (cmd)
         {
             // model + tekstura do glTF-Binary 2.0 (podglad 3D w aplikacji / Blenderze / three.js)
             if (argv.Count < 1) { Console.Error.WriteLine("uzycie: duble glb <plik.ydd> [--ytd plik.ytd] [--out plik.glb]"); return 2; }
-            var glb = Podglad3D.Glb(File.ReadAllBytes(argv[0]), ytdOpc != null ? File.ReadAllBytes(ytdOpc) : null, Log);
+            var podglad = podglady.Build(File.ReadAllBytes(argv[0]), ytdOpc != null ? File.ReadAllBytes(ytdOpc) : null, Log);
+            if (podglad.IsFailure) { Console.Error.WriteLine("[blad] " + podglad.Error); return 1; }
+            var glb = podglad.Value;
             var glbOut = wyjscie ?? Path.ChangeExtension(argv[0], ".glb");
             File.WriteAllBytes(glbOut, glb);
             Log($"GLB: {glbOut} ({glb.Length} B)");
@@ -369,7 +374,7 @@ switch (cmd)
             if (katalog.Garments.Count == 0) { Console.Error.WriteLine("[blad] pusty katalog — najpierw `duble indeks`"); return 1; }
             var wynik = szukaczDupli.Find(katalog);
             porownania.Save(wynik, sciezkaDubli);
-            ApplyPlanner.ZapiszDecyzje(wynik, katalog, sciezkaDecyzji);
+            ApplyPlanner.WriteDecisions(wynik, katalog, sciezkaDecyzji);
             Log($"duble:   {sciezkaDubli}");
             Log($"decyzje: {sciezkaDecyzji}  (mozesz poprawic TAK/NIE przed `zastosuj`)");
             return 0;
@@ -388,7 +393,7 @@ switch (cmd)
             var wynik = porownania.Load(sciezkaDubli);
             if (wynik.Groups.Count == 0) { Console.Error.WriteLine("[uwaga] brak grup — najpierw `duble porownaj`"); }
             var plik = wyjscie ?? Path.Combine(korzenProjektu, "docs", "duble-raport.html");
-            Raport.Zbuduj(archiwa, katalog, wynik, plik, Log, jezyk);
+            raporty.Build(katalog, wynik, plik, Log, jezyk);
             Log($"raport: {plik}");
             return 0;
         }

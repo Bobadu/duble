@@ -42,7 +42,7 @@ public static class KatalogPozycji
             Wymag();
             var zrodla = Mostek.Lista(a, "zrodla"); var sloty = Mostek.Lista(a, "sloty"); var formaty = Mostek.Lista(a, "formaty");
             bool problemy = Mostek.Flaga(a, "problemy"), wGrupie = Mostek.Flaga(a, "wGrupie");
-            var szukaj = (Mostek.Tekst(a, "szukaj") ?? "").Trim().ToLowerInvariant();
+            var szukaj = (Mostek.Text(a, "szukaj") ?? "").Trim().ToLowerInvariant();
             var grupy = GrupyPozycji();
             var wszystkie = s.Catalog.Garments;
             var filtrySloty = wszystkie.GroupBy(p => p.Slot).Select(g => new { typ = g.Key, n = g.Count() }).OrderBy(x => x.typ).ToList();
@@ -77,7 +77,7 @@ public static class KatalogPozycji
         m.Rejestruj("catalog.item", a =>
         {
             Wymag();
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var p = s.ZnajdzPozycje(id) ?? throw new BladMostka("not_found", id);
             var poz = Widoki.Czlonek(p, null, true, Zrodlo);
             var z = s.ZrodloPozycji(p);

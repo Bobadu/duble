@@ -205,7 +205,7 @@ public sealed class GarmentIndexer : IGarmentIndexer
             Number = name.Number,
             Suffix = name.Suffix,
             IsProp = name.IsProp,
-            GameFormat = GameFormats.FromHeader(Rsc7Header.Gen9(bytes, ".ydd")),
+            GameFormat = GameFormats.FromHeader(Rsc7Header.IsEnhanced(bytes, ".ydd")),
             ModelPath = entry.LogicalPath,
             ChangeStamp = entry.ChangeStamp,
             ModelSize = bytes.Length,

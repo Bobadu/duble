@@ -52,6 +52,23 @@ public class I18nUiTests
             }
     }
 
+    /// <summary>
+    /// A long job reports its stage as a key — "models", "textures", "apply" — and the status bar shows
+    /// t('stage.' + key). A stage without a label would put an English word in the middle of a Polish
+    /// sentence, which is exactly what happened before these keys existed.
+    /// </summary>
+    [Fact]
+    public void Every_progress_stage_has_a_label_in_both_languages()
+    {
+        var pl = Slownik("pl");
+        var en = Slownik("en");
+        foreach (var stage in new[] { "start", "models", "textures", "compare", "apply", "undo", "unpack", "report", "calibration" })
+        {
+            Assert.True(pl.ContainsKey("stage." + stage), "pl stage." + stage);
+            Assert.True(en.ContainsKey("stage." + stage), "en stage." + stage);
+        }
+    }
+
     [Fact]
     public void Sloty_maja_tlumaczenia()
     {

@@ -1,8 +1,11 @@
-// TextureDecoder.cs — dekodowanie pikseli tekstury: CodeWalker (BC1-BC5, nieskompresowane) + BCnEncoder.Net (BC7).
+#nullable enable
+// Decoding a texture's pixels: CodeWalker handles BC1–BC5 and the uncompressed formats, BCnEncoder.Net handles
+// BC7.
 //
-// CodeWalker.DDSIO.GetPixels ma `case BC7: //TODO` i zwraca null; u nas BC7 to ~5 % tekstur, ktore
-// dotad nie mialy odcisku ani podgladu. BC7 dekodujemy z surowych blokow (16 B na blok 4x4) lezacych
-// w Texture.Data.FullData kolejno od mipa 0. Wynik zawsze BGRA (jak DDSIO), zeby reszta nie rozroznia.
+// CodeWalker's DDSIO.GetPixels has `case BC7: //TODO` and returns null, and BC7 is about 5% of the textures in
+// the packs we measured — until this, those had neither a fingerprint nor a preview. BC7 is decoded straight
+// from the raw blocks (16 bytes per 4x4 block) that sit in Texture.Data.FullData, mip 0 first. The result is
+// always BGRA, the same as DDSIO returns, so nothing downstream has to know which decoder ran.
 using System;
 using BCnEncoder.Decoder;
 using BCnEncoder.Shared;
@@ -11,59 +14,89 @@ using CodeWalker.Utils;
 
 namespace Duble.Core.Formats;
 
+/// <summary>Gets pixels out of a GTA texture, whatever it is compressed with.</summary>
 public static class TextureDecoder
 {
-    static readonly BcDecoder Bc = new();
+    static readonly BcDecoder Decoder = new();
 
-    /// <summary>Piksele BGRA danego mipa; null gdy nie da sie zdekodowac.</summary>
-    public static byte[] Piksele(Texture t, int mip, out int w, out int h)
+    /// <summary>BGRA pixels of one mip level; null when nothing can decode it.</summary>
+    public static byte[]? Pixels(Texture? texture, int mip, out int width, out int height)
     {
-        w = h = 0;
-        if (t == null || t.Width <= 0 || t.Height <= 0) return null;
-        mip = Math.Clamp(mip, 0, Math.Max(0, t.Levels - 1));
-        w = Math.Max(1, t.Width >> mip); h = Math.Max(1, t.Height >> mip);
-        byte[] px = null;
-        try { px = DDSIO.GetPixels(t, mip); } catch { px = null; }
-        if (px != null && px.Length == w * h * 4) return px;
-        if (t.Format == TextureFormat.D3DFMT_BC7) return Bc7(t, mip, w, h);
-        return null;
+        width = height = 0;
+        if (texture == null || texture.Width <= 0 || texture.Height <= 0) return null;
+
+        mip = Math.Clamp(mip, 0, Math.Max(0, texture.Levels - 1));
+        width = Math.Max(1, texture.Width >> mip);
+        height = Math.Max(1, texture.Height >> mip);
+
+        byte[]? pixels = null;
+        try { pixels = DDSIO.GetPixels(texture, mip); }
+        catch (Exception) { pixels = null; }
+
+        if (pixels != null && pixels.Length == width * height * 4) return pixels;
+        return texture.Format == TextureFormat.D3DFMT_BC7 ? DecodeBc7(texture, mip, width, height) : null;
     }
 
-    /// <summary>PNG RGBA z najwiekszego mipa o boku &lt;= maksBok (podglad w aplikacji, tekstura do GLB); null gdy nie do zdekodowania.</summary>
-    public static byte[] PngRgba(Texture t, int maksBok = 1024)
+    /// <summary>
+    /// An RGBA PNG of the largest mip whose side is at most maxSide — the app's preview and the texture the
+    /// GLB carries. Null when the texture will not decode.
+    /// </summary>
+    public static byte[]? PngRgba(Texture? texture, int maxSide = 1024)
     {
-        if (t == null || t.Width <= 0 || t.Height <= 0) return null;
+        if (texture == null || texture.Width <= 0 || texture.Height <= 0) return null;
+
         int mip = 0;
-        while ((t.Width >> mip) > maksBok && (t.Height >> mip) > maksBok && mip < t.Levels - 1) mip++;
-        var px = Piksele(t, mip, out int w, out int h);
-        if (px == null) return null;
-        var rgba = new byte[px.Length];
-        for (int i = 0; i < px.Length; i += 4) { rgba[i] = px[i + 2]; rgba[i + 1] = px[i + 1]; rgba[i + 2] = px[i]; rgba[i + 3] = px[i + 3]; }
-        return PngWriter.Rgba(rgba, w, h);
+        while ((texture.Width >> mip) > maxSide && (texture.Height >> mip) > maxSide && mip < texture.Levels - 1) mip++;
+
+        var pixels = Pixels(texture, mip, out int width, out int height);
+        if (pixels == null) return null;
+
+        // BGRA out of the decoder, RGBA into the PNG
+        var rgba = new byte[pixels.Length];
+        for (int i = 0; i < pixels.Length; i += 4)
+        {
+            rgba[i] = pixels[i + 2];
+            rgba[i + 1] = pixels[i + 1];
+            rgba[i + 2] = pixels[i];
+            rgba[i + 3] = pixels[i + 3];
+        }
+        return PngWriter.Rgba(rgba, width, height);
     }
 
-    static byte[] Bc7(Texture t, int mip, int w, int h)
+    static byte[]? DecodeBc7(Texture texture, int mip, int width, int height)
     {
-        var dane = t.Data?.FullData;
-        if (dane == null) return null;
-        long off = 0;
-        for (int m = 0; m < mip; m++)
+        var data = texture.Data?.FullData;
+        if (data == null) return null;
+
+        // mips follow one another from level 0; skip over the ones before the one asked for
+        long offset = 0;
+        for (int level = 0; level < mip; level++)
         {
-            int mw = Math.Max(1, t.Width >> m), mh = Math.Max(1, t.Height >> m);
-            off += (long)((mw + 3) / 4) * ((mh + 3) / 4) * 16;
+            int levelWidth = Math.Max(1, texture.Width >> level);
+            int levelHeight = Math.Max(1, texture.Height >> level);
+            offset += (long)((levelWidth + 3) / 4) * ((levelHeight + 3) / 4) * 16;
         }
-        int dl = ((w + 3) / 4) * ((h + 3) / 4) * 16;
-        if (off + dl > dane.Length) return null;
-        var blok = new byte[dl];
-        Buffer.BlockCopy(dane, (int)off, blok, 0, dl);
-        ColorRgba32[] kol;
-        try { kol = Bc.DecodeRaw(blok, w, h, CompressionFormat.Bc7); } catch { return null; }
-        if (kol == null || kol.Length < w * h) return null;
-        var wy = new byte[w * h * 4];
-        for (int i = 0; i < w * h; i++)
+
+        int length = ((width + 3) / 4) * ((height + 3) / 4) * 16;
+        if (offset + length > data.Length) return null;
+
+        var blocks = new byte[length];
+        Buffer.BlockCopy(data, (int)offset, blocks, 0, length);
+
+        ColorRgba32[] colors;
+        try { colors = Decoder.DecodeRaw(blocks, width, height, CompressionFormat.Bc7); }
+        catch (Exception) { return null; }
+
+        if (colors == null || colors.Length < width * height) return null;
+
+        var output = new byte[width * height * 4];
+        for (int i = 0; i < width * height; i++)
         {
-            wy[i * 4] = kol[i].b; wy[i * 4 + 1] = kol[i].g; wy[i * 4 + 2] = kol[i].r; wy[i * 4 + 3] = kol[i].a;
+            output[i * 4] = colors[i].b;
+            output[i * 4 + 1] = colors[i].g;
+            output[i * 4 + 2] = colors[i].r;
+            output[i * 4 + 3] = colors[i].a;
         }
-        return wy;
+        return output;
     }
 }

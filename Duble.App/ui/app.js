@@ -79,7 +79,8 @@ function renderujStatus() {
   const z = store.zadanie;
   let prawa = `<span class="stan-ok">${t('status.idle')}</span>`;
   if (z && (z.stan === 'start' || z.stan === 'postep')) {
-    const proc = z.procent ?? 0; const tekst = z.stan === 'postep' && z.wszystkie ? t('sources.indexingOf', { etap: z.etap || '', zrobione: fmt.liczba(z.zrobione), wszystkie: fmt.liczba(z.wszystkie) }) : t('status.working');
+    // etap przychodzi z silnika jako klucz (models, textures, compare…) — nazwę bierzemy ze słownika
+    const proc = z.procent ?? 0; const tekst = z.stan === 'postep' && z.wszystkie ? t('sources.indexingOf', { etap: z.etap ? t('stage.' + z.etap) : '', zrobione: fmt.liczba(z.zrobione), wszystkie: fmt.liczba(z.wszystkie) }) : t('status.working');
     prawa = `<span>${tekst}</span><div class="progress ${z.stan === 'start' ? 'indeterminate' : ''}"><i style="width:${proc}%"></i></div><button class="btn ghost sm" id="status-cancel">${t('sources.cancel')}</button>`;
   }
   s.innerHTML = `${lewa}<div class="right">${prawa}</div>`;

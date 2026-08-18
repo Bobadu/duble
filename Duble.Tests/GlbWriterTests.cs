@@ -10,18 +10,20 @@ using Xunit.Abstractions;
 
 namespace Duble.Tests;
 
-public class GlbTests
+public class GlbWriterTests
 {
-    readonly ITestOutputHelper wyj;
-    public GlbTests(ITestOutputHelper wyj) { this.wyj = wyj; }
+    static readonly IMeshPreviewBuilder Preview = new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IMeshPreviewBuilder>();
 
-    static SiatkaGeo Kwadrat() => new SiatkaGeo
+    readonly ITestOutputHelper wyj;
+    public GlbWriterTests(ITestOutputHelper wyj) { this.wyj = wyj; }
+
+    static MeshGeometry Kwadrat() => new MeshGeometry
     {
-        Name = "kwadrat", TextureInfo = "diff", Przezroczysta = false,
-        Pozycje = new float[] { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 },
-        Normalne = new float[] { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
+        Name = "kwadrat", Texture = "diff", Transparent = false,
+        Positions = new float[] { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 },
+        Normals = new float[] { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
         Uv = new float[] { 0, 1, 1, 1, 1, 0, 0, 0 },
-        Indeksy = new uint[] { 0, 1, 2, 0, 2, 3 },
+        Indices = new uint[] { 0, 1, 2, 0, 2, 3 },
     };
 
     static byte[] Png2x2() => PngWriter.Rgba(new byte[] { 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 128 }, 2, 2);
@@ -35,7 +37,7 @@ public class GlbTests
     [Fact]
     public void Glb_ma_poprawne_naglowki_i_liczby()
     {
-        var glb = Glb.Zapisz(new[] { Kwadrat() }, new Dictionary<string, byte[]> { ["diff"] = Png2x2() });
+        var glb = GlbWriter.Write(new[] { Kwadrat() }, new Dictionary<string, byte[]> { ["diff"] = Png2x2() });
         Assert.Equal(0x46546C67u, BitConverter.ToUInt32(glb, 0));   // "glTF"
         Assert.Equal(2u, BitConverter.ToUInt32(glb, 4));
         Assert.Equal((uint)glb.Length, BitConverter.ToUInt32(glb, 8));
@@ -69,9 +71,9 @@ public class GlbTests
     [Fact]
     public void Geometria_bez_tekstury_i_przezroczysta_dostaje_odpowiedni_material()
     {
-        var a = Kwadrat(); a.TextureInfo = null;
-        var b = Kwadrat(); b.Przezroczysta = true;
-        var glb = Glb.Zapisz(new[] { a, b }, new Dictionary<string, byte[]> { ["diff"] = Png2x2() });
+        var a = Kwadrat(); a.Texture = null;
+        var b = Kwadrat(); b.Transparent = true;
+        var glb = GlbWriter.Write(new[] { a, b }, new Dictionary<string, byte[]> { ["diff"] = Png2x2() });
         var json = Json(glb);
         var mats = json.GetProperty("materials");
         Assert.Equal(2, mats.GetArrayLength());
@@ -93,7 +95,7 @@ public class GlbTests
         if (!Sciezki.JestGra) { wyj.WriteLine("POMINIETY: brak studio_body\\dlc.rpf"); return; }
         var poz = new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IGarmentIndexer>().Index(Sciezki.Dlc("studio_body"), "studio_body", new IndexOptions()).Value.Garments;
         var uppr = poz.First(p => p.Slot == "uppr" && p.Number == 15);
-        var glb = Podglad3D.Glb(new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IArchiveCache>(), uppr, null, wyj.WriteLine);
+        var glb = Preview.Build(uppr, null, wyj.WriteLine).Value;
         Assert.True(glb.Length > 10000);
         var json = Json(glb);
         Assert.True(json.GetProperty("meshes")[0].GetProperty("primitives").GetArrayLength() >= 1);

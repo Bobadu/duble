@@ -1,103 +1,121 @@
-// PngWriter.cs — minimalny koder PNG (RGB i RGBA, bez filtrow, bez przeplotu).
+#nullable enable
+// A minimal PNG encoder: RGB and RGBA, no filters, no interlacing.
 //
-// PO CO WLASNY: raport ma osadzac miniatury jako data:image/png;base64, a caly projekt
-// stoi wylacznie na CodeWalker.Core — nie chcemy ciagnac System.Drawing.Common ani
-// zadnej biblioteki graficznej dla dwoch funkcji. PNG bez filtrow to okolo 60 linii:
-// naglowek + zlib(deflate) + CRC.
+// WHY OUR OWN: the report embeds thumbnails as data:image/png;base64, and the whole project stands on
+// CodeWalker.Core alone — pulling in System.Drawing.Common, or any imaging library, for two functions is not
+// worth it. An unfiltered PNG is about sixty lines: header, zlib(deflate), CRC.
 using System;
 using System.IO;
 using System.IO.Compression;
 
 namespace Duble.Core.Formats;
 
+/// <summary>Writes pixels out as a PNG file.</summary>
 public static class PngWriter
 {
-    static readonly byte[] Sygnatura = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
-    static readonly uint[] TablicaCrc = ZbudujCrc();
+    static readonly byte[] Signature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+    static readonly uint[] CrcTable = BuildCrcTable();
 
-    static uint[] ZbudujCrc()
+    static uint[] BuildCrcTable()
     {
-        var t = new uint[256];
+        var table = new uint[256];
         for (uint n = 0; n < 256; n++)
         {
             uint c = n;
             for (int k = 0; k < 8; k++) c = (c & 1) != 0 ? 0xEDB88320u ^ (c >> 1) : c >> 1;
-            t[n] = c;
+            table[n] = c;
         }
-        return t;
+        return table;
     }
 
-    static uint Crc(byte[] dane, int od, int ile)
+    static uint Crc(byte[] data, int offset, int count)
     {
-        uint c = 0xFFFFFFFFu;
-        for (int i = od; i < od + ile; i++) c = TablicaCrc[(c ^ dane[i]) & 0xFF] ^ (c >> 8);
-        return c ^ 0xFFFFFFFFu;
+        uint crc = 0xFFFFFFFFu;
+        for (int i = offset; i < offset + count; i++) crc = CrcTable[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+        return crc ^ 0xFFFFFFFFu;
     }
 
-    static uint Adler32(byte[] dane)
+    static uint Adler32(byte[] data)
     {
         uint a = 1, b = 0;
-        foreach (var x in dane) { a = (a + x) % 65521; b = (b + a) % 65521; }
+        foreach (var value in data)
+        {
+            a = (a + value) % 65521;
+            b = (b + a) % 65521;
+        }
         return (b << 16) | a;
     }
 
-    static void Be32(Stream s, uint v)
+    static void WriteBigEndian(Stream stream, uint value)
     {
-        s.WriteByte((byte)(v >> 24)); s.WriteByte((byte)(v >> 16));
-        s.WriteByte((byte)(v >> 8)); s.WriteByte((byte)v);
+        stream.WriteByte((byte)(value >> 24));
+        stream.WriteByte((byte)(value >> 16));
+        stream.WriteByte((byte)(value >> 8));
+        stream.WriteByte((byte)value);
     }
 
-    static void Kawalek(Stream s, string typ, byte[] tresc)
+    /// <summary>One PNG chunk: length, four-character type, payload, then a CRC over the type and payload.</summary>
+    static void Chunk(Stream stream, string type, byte[] payload)
     {
-        var buf = new byte[4 + tresc.Length];
-        for (int i = 0; i < 4; i++) buf[i] = (byte)typ[i];
-        Buffer.BlockCopy(tresc, 0, buf, 4, tresc.Length);
-        Be32(s, (uint)tresc.Length);
-        s.Write(buf, 0, buf.Length);
-        Be32(s, Crc(buf, 0, buf.Length));
+        var typed = new byte[4 + payload.Length];
+        for (int i = 0; i < 4; i++) typed[i] = (byte)type[i];
+        Buffer.BlockCopy(payload, 0, typed, 4, payload.Length);
+
+        WriteBigEndian(stream, (uint)payload.Length);
+        stream.Write(typed, 0, typed.Length);
+        WriteBigEndian(stream, Crc(typed, 0, typed.Length));
     }
 
-    /// <summary>Koduje obraz RGB (3 bajty na piksel, bez alfy) do PNG.</summary>
-    public static byte[] Rgb(byte[] rgb, int w, int h) => Koduj(rgb, w, h, 3, 2);
+    /// <summary>An RGB image (three bytes per pixel, no alpha) as a PNG.</summary>
+    public static byte[] Rgb(byte[] rgb, int width, int height) => Encode(rgb, width, height, 3, 2);
 
-    /// <summary>Koduje obraz RGBA (4 bajty na piksel, z alfa) do PNG — tekstury do podgladu 3D.</summary>
-    public static byte[] Rgba(byte[] rgba, int w, int h) => Koduj(rgba, w, h, 4, 6);
+    /// <summary>An RGBA image (four bytes per pixel) as a PNG — the textures the 3D preview uses.</summary>
+    public static byte[] Rgba(byte[] rgba, int width, int height) => Encode(rgba, width, height, 4, 6);
 
-    static byte[] Koduj(byte[] px, int w, int h, int bpp, byte typKoloru)
+    static byte[] Encode(byte[] pixels, int width, int height, int bytesPerPixel, byte colorType)
     {
-        // scanline = bajt filtra (0 = None) + w*bpp bajtow
-        var surowe = new byte[h * (1 + w * bpp)];
-        for (int y = 0; y < h; y++)
+        // a scanline is one filter byte (0 = None) followed by width * bytesPerPixel bytes
+        int stride = 1 + width * bytesPerPixel;
+        var raw = new byte[height * stride];
+        for (int y = 0; y < height; y++)
         {
-            int zrodlo = y * w * bpp;
-            int cel = y * (1 + w * bpp);
-            surowe[cel] = 0;
-            Buffer.BlockCopy(px, zrodlo, surowe, cel + 1, w * bpp);
+            raw[y * stride] = 0;
+            Buffer.BlockCopy(pixels, y * width * bytesPerPixel, raw, y * stride + 1, width * bytesPerPixel);
         }
 
-        byte[] skompresowane;
-        using (var ms = new MemoryStream())
+        byte[] compressed;
+        using (var buffer = new MemoryStream())
         {
-            // naglowek zlib: 0x78 0x01 (deflate, okno 32K, brak slownika) — (0x7801 % 31 == 0)
-            ms.WriteByte(0x78); ms.WriteByte(0x01);
-            using (var df = new DeflateStream(ms, CompressionLevel.Optimal, true))
-                df.Write(surowe, 0, surowe.Length);
-            Be32(ms, Adler32(surowe));
-            skompresowane = ms.ToArray();
+            // zlib header 0x78 0x01: deflate, 32K window, no dictionary (0x7801 % 31 == 0)
+            buffer.WriteByte(0x78);
+            buffer.WriteByte(0x01);
+            using (var deflate = new DeflateStream(buffer, CompressionLevel.Optimal, true))
+                deflate.Write(raw, 0, raw.Length);
+            WriteBigEndian(buffer, Adler32(raw));
+            compressed = buffer.ToArray();
         }
 
-        using var wy = new MemoryStream();
-        wy.Write(Sygnatura, 0, Sygnatura.Length);
+        using var output = new MemoryStream();
+        output.Write(Signature, 0, Signature.Length);
 
-        var ihdr = new byte[13];
-        ihdr[0] = (byte)(w >> 24); ihdr[1] = (byte)(w >> 16); ihdr[2] = (byte)(w >> 8); ihdr[3] = (byte)w;
-        ihdr[4] = (byte)(h >> 24); ihdr[5] = (byte)(h >> 16); ihdr[6] = (byte)(h >> 8); ihdr[7] = (byte)h;
-        ihdr[8] = 8;    // 8 bitow na kanal
-        ihdr[9] = typKoloru;    // 2 = RGB, 6 = RGBA
-        ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
-        Kawalek(wy, "IHDR", ihdr);
-        Kawalek(wy, "IDAT", skompresowane);
-        Kawalek(wy, "IEND", Array.Empty<byte>());
-        return wy.ToArray();
+        var header = new byte[13];
+        header[0] = (byte)(width >> 24);
+        header[1] = (byte)(width >> 16);
+        header[2] = (byte)(width >> 8);
+        header[3] = (byte)width;
+        header[4] = (byte)(height >> 24);
+        header[5] = (byte)(height >> 16);
+        header[6] = (byte)(height >> 8);
+        header[7] = (byte)height;
+        header[8] = 8;            // bits per channel
+        header[9] = colorType;    // 2 = RGB, 6 = RGBA
+        header[10] = 0;           // deflate
+        header[11] = 0;           // adaptive filtering
+        header[12] = 0;           // no interlacing
+
+        Chunk(output, "IHDR", header);
+        Chunk(output, "IDAT", compressed);
+        Chunk(output, "IEND", Array.Empty<byte>());
+        return output.ToArray();
     }
 }

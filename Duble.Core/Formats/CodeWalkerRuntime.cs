@@ -10,7 +10,7 @@ namespace Duble.Core.Formats;
 /// In gen9 mode CodeWalker recognises the format of every file from its RSC7 header (ydd 165/159, ytd 13/5) and
 /// reads Legacy correctly as well; legacy mode does NOT read gen9 — a gen9 uppr_015_r.ydd throws "illegal
 /// position". So the flag is set once and never changed, which leaves no race between indexing and preview.
-/// The Legacy/Enhanced label of a file comes from that file's own header (Rsc7Header.Gen9), not from the reading mode.
+/// The Legacy/Enhanced label of a file comes from that file's own header (Rsc7Header.IsEnhanced), not from the reading mode.
 ///
 /// This used to run from a [ModuleInitializer], which meant that merely loading the assembly mutated a global.
 /// It now runs when the container is built, or on the first call from an entry point.

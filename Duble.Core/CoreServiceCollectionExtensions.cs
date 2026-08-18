@@ -1,10 +1,12 @@
 #nullable enable
 using Duble.Core.Apply;
+using Duble.Core.Calibration;
 using Duble.Core.Comparison;
 using Duble.Core.Decisions;
 using Duble.Core.Fingerprints;
 using Duble.Core.Formats;
 using Duble.Core.Indexing;
+using Duble.Core.Reporting;
 using Duble.Core.Sources;
 using Duble.Core.Storage;
 using Duble.Core.Time;
@@ -43,13 +45,21 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IApplyExecutor, ApplyExecutor>();
         services.AddSingleton<IUndoStore, JsonUndoStore>();
 
+        services.AddSingleton<ICalibrator, Calibrator>();
+
+        services.AddSingleton<HtmlReportBuilder>();
+        services.AddSingleton<IHtmlReportBuilder>(sp => sp.GetRequiredService<HtmlReportBuilder>());
+        services.AddSingleton<ICsvExporter>(sp => sp.GetRequiredService<HtmlReportBuilder>());
+
         services.AddSingleton<ArchiveSourceReader>();
         services.AddSingleton<FolderSourceReader>();
         services.AddSingleton<ISourceReaderFactory, SourceReaderFactory>();
         services.AddSingleton<IArchiveCache, RpfArchiveCache>();
+        services.AddSingleton<IArchiveExtractor, RpfArchiveExtractor>();
 
         services.AddSingleton<IGeometryFingerprinter, GeometryFingerprinter>();
         services.AddSingleton<ITextureFingerprinter, TextureFingerprinter>();
+        services.AddSingleton<IMeshPreviewBuilder, MeshPreviewBuilder>();
         services.AddSingleton<IGarmentIndexer, GarmentIndexer>();
 
         // An application that wants Core's log lines adds its own logging; without one they go nowhere.

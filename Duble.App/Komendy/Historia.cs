@@ -63,7 +63,7 @@ public static class Historia
 
         m.Rejestruj("history.get", a =>
         {
-            var plik = Plik(Mostek.Tekst(a, "plik", true));
+            var plik = Plik(Mostek.Text(a, "plik", true));
             var wczytana = s.Cofki.Load(plik);
             if (wczytana.IsFailure) throw new BladMostka("io", wczytana.Error.Message);
             return new { wpis = Wpis(plik, wczytana.Value, true) };
@@ -71,7 +71,7 @@ public static class Historia
 
         m.Rejestruj("history.undo", a =>
         {
-            var plik = Plik(Mostek.Tekst(a, "plik", true));
+            var plik = Plik(Mostek.Text(a, "plik", true));
             var pozycje = Mostek.Lista(a, "pozycje");
             var wczytana = s.Cofki.Load(plik);
             if (wczytana.IsFailure) throw new BladMostka("io", wczytana.Error.Message);
@@ -109,14 +109,14 @@ public static class Historia
         {
             Wymag();
             if (s.Wynik == null) throw new BladMostka("not_found", "brak porownania");
-            var plik = Docelowy(Mostek.Tekst(a, "sciezka"), "html", BezpiecznaNazwa(s.Project.Name) + "-raport.html");
+            var plik = Docelowy(Mostek.Text(a, "sciezka"), "html", BezpiecznaNazwa(s.Project.Name) + "-raport.html");
             if (plik == null) return new { anulowano = true };
             var jezyk = Jezyk(); var rozstrzygnij = Rozstrzygnij(); var tytul = s.Project.Name;
             bool ok = jr.SprobujUruchom("raport", Path.GetFileName(plik), async (ct, postep) =>
             {
                 await Task.Yield();
-                postep(new ProgressReport("raport", 0, 0, Path.GetFileName(plik)));
-                Raport.Zbuduj(s.Archiwa, s.Catalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
+                postep(new ProgressReport("report", 0, 0, Path.GetFileName(plik)));
+                s.Raporty.Build(s.Catalog, s.Wynik, plik, _ => { }, jezyk, rozstrzygnij, tytul);
                 m.Zdarzenie("report.done", new { plik, typ = "html" });
             });
             if (!ok) throw new BladMostka("busy", "trwa inne zadanie");
@@ -127,11 +127,11 @@ public static class Historia
         {
             Wymag();
             if (s.Wynik == null) throw new BladMostka("not_found", "brak porownania");
-            var plik = Docelowy(Mostek.Tekst(a, "sciezka"), "csv", BezpiecznaNazwa(s.Project.Name) + "-grupy.csv");
+            var plik = Docelowy(Mostek.Text(a, "sciezka"), "csv", BezpiecznaNazwa(s.Project.Name) + "-grupy.csv");
             if (plik == null) return new { anulowano = true };
             try
             {
-                var csv = Raport.Csv(s.Catalog, s.Wynik, Rozstrzygnij(), Jezyk());
+                var csv = s.Csv.Export(s.Catalog, s.Wynik, Rozstrzygnij(), Jezyk());
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(plik)));
                 File.WriteAllText(plik, csv, new System.Text.UTF8Encoding(false));   // BOM jest juz w tresci
             }

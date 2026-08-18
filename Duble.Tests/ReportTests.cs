@@ -8,12 +8,13 @@ using Xunit;
 namespace Duble.Tests;
 
 /// <summary>Raport HTML w jezyku UI z rozstrzygnieciami (decyzje uzytkownika) i CSV grup/decyzji — na sztucznym katalogu.</summary>
-public class RaportTests
+public class ReportTests
 {
     static readonly IDuplicateFinder Finder =
         new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IDuplicateFinder>();
 
-    static readonly IArchiveCache Archiwa = new ServiceCollection().AddDubleCore().BuildServiceProvider().GetRequiredService<IArchiveCache>();
+    static readonly IServiceProvider Uslugi = new ServiceCollection().AddDubleCore().BuildServiceProvider();
+    static readonly HtmlReportBuilder Raporty = Uslugi.GetRequiredService<HtmlReportBuilder>();
 
     static (Catalog kat, ComparisonResult wynik, string tmp) Swiat()
     {
@@ -38,7 +39,7 @@ public class RaportTests
             };
             var plik = Path.Combine(tmp, "r.html");
             var log = new List<string>();
-            Raport.Zbuduj(Archiwa, kat, wynik, plik, log.Add, "en", g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "My project");
+            Raporty.Build(kat, wynik, plik, log.Add, "en", g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "My project");
             var html = File.ReadAllText(plik);
             Assert.Contains("<html lang=\"en\">", html);
             Assert.Contains("Duble — My project", html);
@@ -54,7 +55,7 @@ public class RaportTests
 
             // po polsku, domyslne rozstrzygniecia: a zostaje, b odrzucona; f,g odrzucone -> 3
             var plikPl = Path.Combine(tmp, "r-pl.html");
-            Raport.Zbuduj(Archiwa, kat, wynik, plikPl, null);
+            Raporty.Build(kat, wynik, plikPl, null);
             var pl = File.ReadAllText(plikPl);
             Assert.Contains("<html lang=\"pl\">", pl);
             Assert.Contains(">ZOSTAJE<", pl); Assert.Contains("do odrzucenia <b>3</b>", pl);
@@ -71,7 +72,7 @@ public class RaportTests
         {
             var efg = wynik.Groups.First(g => g.Members.Count == 3);
             var decyzje = new Dictionary<string, Decision> { [efg.Id] = new Decision { Ignored = true, Note = "inne; buty" } };
-            var csv = Raport.Csv(kat, wynik, g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "pl");
+            var csv = Raporty.Export(kat, wynik, g => new ResolutionService().Resolve(g, decyzje.TryGetValue(g.Id, out var d) ? d : null), "pl");
             Assert.StartsWith("\uFEFF", csv);
             var linie = csv.TrimEnd('\r', '\n').Split('\n').Select(l => l.TrimEnd('\r')).ToList();
             Assert.Equal(1 + 7, linie.Count);                       // naglowek + 7 czlonkow (2+2+3)
@@ -79,7 +80,7 @@ public class RaportTests
             Assert.Contains(linie, l => l.Contains(";zignorowana;\"inne; buty\";"));   // srednik w notatce -> cudzyslow
             Assert.Contains(linie, l => l.Contains(";zostaje;")); Assert.Contains(linie, l => l.Contains(";odrzucona;"));
             Assert.Contains(linie, l => l.Contains(";bez zmian;"));                        // przemalowanie
-            var en = Raport.Csv(kat, wynik, null, "en");
+            var en = Raporty.Export(kat, wynik, null, "en");
             Assert.StartsWith("\uFEFFgroup,verdict,reason,item,", en);
             Assert.Contains(",stays,", en); Assert.Contains(",rejected,", en);
         }

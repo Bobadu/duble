@@ -35,13 +35,13 @@ public class TextureDecoderTests
         }
         if (bc7 == null) { wyj.WriteLine("POMINIETY: nie znalazlam BC7 w civil01"); return; }
         wyj.WriteLine("BC7: " + plik);
-        var px = TextureDecoder.Piksele(bc7, 0, out int w, out int h);
+        var px = TextureDecoder.Pixels(bc7, 0, out int w, out int h);
         Assert.NotNull(px);
         Assert.Equal(bc7.Width, w); Assert.Equal(bc7.Height, h);
         Assert.Equal(w * h * 4, px.Length);
         Assert.Contains(px, b => b != 0);   // nie sama czern
         // mip 2 tez (uklad mipow w FullData: kolejno od najwiekszego)
-        var px2 = TextureDecoder.Piksele(bc7, 2, out int w2, out int h2);
+        var px2 = TextureDecoder.Pixels(bc7, 2, out int w2, out int h2);
         Assert.NotNull(px2); Assert.Equal(w >> 2, w2); Assert.Equal(w2 * h2 * 4, px2.Length);
         // podglad do recznego obejrzenia (Read tool): kolory maja wygladac jak ubranie, nie szum
         var rgb = new byte[w * h * 3];
@@ -78,7 +78,7 @@ public class TextureDecoderTests
         var ytd = new YtdFile();
         RpfFile.LoadResourceFile(ytd, CoreUslugi.GetRequiredService<IArchiveCache>().Read(tex.Path).Value, 13);
         var t0 = ytd.TextureDict.Textures.data_items.First();
-        var px = TextureDecoder.Piksele(t0, 0, out int w, out int h);
+        var px = TextureDecoder.Pixels(t0, 0, out int w, out int h);
         Assert.NotNull(px); Assert.Equal(w * h * 4, px.Length);
         var rgb = new byte[w * h * 3];
         for (int i = 0, j = 0; i < px.Length; i += 4, j += 3) { rgb[j] = px[i + 2]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i]; }

@@ -12,7 +12,8 @@ public interface IApplyExecutor
 {
     /// <summary>
     /// Moves what the plan says to move and returns the log that undoes it. Cancelling stops between files:
-    /// what has already moved stays moved and is in the log, and the log is marked as aborted.
+    /// whatever has already moved stays moved and is in the log, which is marked as aborted. The caller must
+    /// save that log either way — it is the only record of where those files went.
     /// </summary>
     UndoLog Execute(ApplyPlan plan, string description,
                     IProgress<ProgressReport>? progress = null, CancellationToken ct = default);
@@ -32,85 +33,120 @@ public sealed class ApplyExecutor : IApplyExecutor
     public UndoLog Execute(ApplyPlan plan, string description,
                            IProgress<ProgressReport>? progress = null, CancellationToken ct = default)
     {
-        var cofka = new UndoLog
+        var log = new UndoLog
         {
-            When = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), Description = description,
-            SharedCount = plan.SharedCount, InArchiveCount = plan.InArchiveCount, MissingCount = plan.MissingCount,
+            When = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+            Description = description,
+            SharedCount = plan.SharedCount,
+            InArchiveCount = plan.InArchiveCount,
+            MissingCount = plan.MissingCount,
         };
-        var ruchy = plan.Pozycje.SelectMany(p => p.Files.Where(r => r.State == FileMoveState.Move).Select(r => (p, r))).ToList();
-        int n = ruchy.Count, i = 0;
-        var pozycje = new Dictionary<string, UndoneGarment>();
-        foreach (var (p, r) in ruchy)
+
+        var moves = plan.Garments
+            .SelectMany(g => g.Files.Where(f => f.State == FileMoveState.Move).Select(f => (Garment: g, File: f)))
+            .ToList();
+        var undone = new Dictionary<string, UndoneGarment>();
+        int done = 0;
+
+        foreach (var (garment, file) in moves)
         {
-            progress?.Report(new ProgressReport("zastosuj", i, n, p.Name));
-            if (ct.IsCancellationRequested) { cofka.Aborted = true; break; }
+            progress?.Report(new ProgressReport("apply", done, moves.Count, garment.Name));
+            if (ct.IsCancellationRequested) { log.Aborted = true; break; }
+
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(r.To) ?? "");
-                if (File.Exists(r.To)) File.Delete(r.To);   // stary odrzut o tej samej nazwie — nadpisujemy (to kosz)
-                File.Move(r.From, r.To);
+                Directory.CreateDirectory(Path.GetDirectoryName(file.To) ?? "");
+                // an older reject of the same name: overwrite it, this is the bin
+                if (File.Exists(file.To)) File.Delete(file.To);
+                File.Move(file.From, file.To);
             }
-            catch (Exception e) { cofka.Aborted = true; cofka.Error = $"{r.From}: {e.Message}"; break; }
-            cofka.Moves.Add(new FileRestore { From = r.From, To = r.To, GarmentId = p.Id, Bytes = r.Bytes });
-            if (!pozycje.TryGetValue(p.Id, out var pc))
-                pozycje[p.Id] = pc = new UndoneGarment { Id = p.Id, Name = p.Name + (string.IsNullOrEmpty(p.Suffix) ? "" : " " + p.Suffix), SourceName = p.SourceName, SourceId = p.SourceId, BinFolder = p.BinFolder };
-            pc.Files++;
-            i++;
+            catch (Exception e)
+            {
+                log.Aborted = true;
+                log.Error = $"{file.From}: {e.Message}";
+                break;
+            }
+
+            log.Moves.Add(new FileRestore { From = file.From, To = file.To, GarmentId = garment.Id, Bytes = file.Bytes });
+
+            if (!undone.TryGetValue(garment.Id, out var entry))
+                undone[garment.Id] = entry = new UndoneGarment
+                {
+                    Id = garment.Id,
+                    Name = garment.Name + (string.IsNullOrEmpty(garment.Suffix) ? "" : " " + garment.Suffix),
+                    SourceName = garment.SourceName,
+                    SourceId = garment.SourceId,
+                    BinFolder = garment.BinFolder,
+                };
+            entry.Files++;
+            done++;
         }
-        progress?.Report(new ProgressReport("zastosuj", i, n, null));
-        cofka.Garments = pozycje.Values.ToList();
-        return cofka;
+
+        progress?.Report(new ProgressReport("apply", done, moves.Count, null));
+        log.Garments = undone.Values.ToList();
+        return log;
     }
 
-    // ===================== cofniecie =====================
-
-    /// <summary>Przywraca pliki (wszystkie albo tylko podanych pozycji). Ruch pominiety, gdy pliku nie ma juz w koszu albo
-    /// miejsce zrodlowe jest zajete. Oznacza Cofniety; gdy nie zostal zaden niecofniety ruch — ustawia UndoneAt.</summary>
-    public (int restored, int skipped) Undo(UndoLog cofka, IEnumerable<string>? tylkoPozycje = null,
+    public (int restored, int skipped) Undo(UndoLog log, IEnumerable<string>? garmentIds = null,
                                             IProgress<ProgressReport>? progress = null)
     {
-        var tylko = tylkoPozycje == null ? null : new HashSet<string>(tylkoPozycje);
-        var doCofniecia = cofka.Moves.Where(r => !r.Undone && (tylko == null || tylko.Contains(r.GarmentId))).ToList();
-        int wrocilo = 0, pominieto = 0, i = 0;
-        foreach (var r in doCofniecia)
+        var only = garmentIds == null ? null : new HashSet<string>(garmentIds);
+        var toRestore = log.Moves.Where(m => !m.Undone && (only == null || only.Contains(m.GarmentId))).ToList();
+        int restored = 0, skipped = 0, done = 0;
+
+        foreach (var move in toRestore)
         {
-            progress?.Report(new ProgressReport("cofnij", i++, doCofniecia.Count, Path.GetFileName(r.From)));
-            if (!File.Exists(r.To))
+            progress?.Report(new ProgressReport("undo", done++, toRestore.Count, Path.GetFileName(move.From)));
+
+            if (!File.Exists(move.To))
             {
-                // pliku nie ma w koszu, a jest na starym miejscu = w praktyce juz cofniety (np. cofka nie zdazyla sie zapisac) — uznajemy
-                if (File.Exists(r.From)) { r.Undone = true; } else pominieto++;
+                // not in the bin but back in its old place: already undone in practice — for instance when the
+                // log did not get saved after a move
+                if (File.Exists(move.From)) move.Undone = true; else skipped++;
                 continue;
             }
-            if (File.Exists(r.From)) { pominieto++; continue; }
+
+            // something else is sitting where it would return to; leave both alone
+            if (File.Exists(move.From)) { skipped++; continue; }
+
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(r.From) ?? "");
-                File.Move(r.To, r.From);
-                r.Undone = true; wrocilo++;
-                UsunPusteFoldery(Path.GetDirectoryName(r.To) ?? "");
+                Directory.CreateDirectory(Path.GetDirectoryName(move.From) ?? "");
+                File.Move(move.To, move.From);
+                move.Undone = true;
+                restored++;
+                RemoveEmptyFolders(Path.GetDirectoryName(move.To) ?? "");
             }
-            catch { pominieto++; }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                skipped++;
+            }
         }
-        if (cofka.Moves.All(r => r.Undone) && cofka.Moves.Count > 0) cofka.UndoneAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        return (wrocilo, pominieto);
+
+        if (log.Moves.Count > 0 && log.Moves.All(m => m.Undone))
+            log.UndoneAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        return (restored, skipped);
     }
 
-    /// <summary>Po cofnieciu sprzatamy puste foldery kosza (do 8 poziomow w gore) — zeby po Cofnij nie zostawal szkielet _odrzucone.</summary>
-    static void UsunPusteFoldery(string folder)
+    /// <summary>
+    /// Tidies empty bin folders after an undo, up to eight levels up, so undoing does not leave an empty
+    /// _odrzucone skeleton behind.
+    /// </summary>
+    static void RemoveEmptyFolders(string folder)
     {
-        for (int k = 0; k < 8 && !string.IsNullOrEmpty(folder); k++)
+        for (int level = 0; level < 8 && !string.IsNullOrEmpty(folder); level++)
         {
             try
             {
                 if (!Directory.Exists(folder) || Directory.EnumerateFileSystemEntries(folder).Any()) return;
                 Directory.Delete(folder);
             }
-            catch { return; }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return;
+            }
             folder = Path.GetDirectoryName(folder) ?? "";
         }
     }
-
-    // ===================== CLI (plik decyzji TSV + jeden korzen kosza) =====================
-
-
 }

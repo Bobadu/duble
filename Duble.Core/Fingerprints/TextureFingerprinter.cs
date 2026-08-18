@@ -52,21 +52,27 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
         return Result<TextureInfo>.Ok(info);
     }
 
-    static readonly double[,] Cos = BuildCosineTable();
-    const int NPh = 64;    // bok obrazu wejsciowego DCT
-    const int KPh = 16;    // bok bloku wspolczynnikow (16x16 = 256 bitow)
-    const int ColorGridSide = 8;   // siatka sygnatury koloru (8x8 x RGB = 192 bajty)
+    /// <summary>Side of the greyscale image the DCT runs on.</summary>
+    const int DctInputSide = 64;
+
+    /// <summary>Side of the coefficient block kept from it: 16x16 = the 256 bits of the hash.</summary>
+    const int DctBlockSide = 16;
+
+    /// <summary>Side of the colour signature grid: 8x8 in RGB is 192 bytes.</summary>
+    const int ColorGridSide = 8;
+
+    static readonly double[,] Cosines = BuildCosineTable();
 
     static double[,] BuildCosineTable()
     {
-        var t = new double[KPh, NPh];
-        for (int u = 0; u < KPh; u++)
-            for (int x = 0; x < NPh; x++)
-                t[u, x] = Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * NPh));
-        return t;
+        var table = new double[DctBlockSide, DctInputSide];
+        for (int u = 0; u < DctBlockSide; u++)
+            for (int x = 0; x < DctInputSide; x++)
+                table[u, x] = Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * DctInputSide));
+        return table;
     }
 
-    /// <summary>Krotka nazwa formatu do raportu.</summary>
+    /// <summary>The short format name the report and the catalog show.</summary>
     public static string FormatName(Texture t)
     {
         var f = t.Format.ToString();
@@ -85,139 +91,160 @@ public sealed class TextureFingerprinter : ITextureFingerprinter
     }
 
     /// <summary>
-    /// Dekoduje teksture i wypelnia odcisk: PHash, sygnature koloru, udzial alfy.
-    /// Zwraca piksele RGB miniatury (do raportu) albo null, gdy sie nie udalo.
+    /// Decodes the texture and fills in the fingerprint: perceptual hash, colour signature, alpha share.
+    /// Returns the RGB pixels of a thumbnail, or null when the texture would not decode.
     /// </summary>
-    static byte[]? Fill(Texture t, TextureInfo wy, int bokMiniatury, Action<byte[], int, int>? piksele)
+    static byte[]? Fill(Texture texture, TextureInfo info, int thumbnailSide, Action<byte[], int, int>? onPixels)
     {
-        wy.Name = t.Name;
-        wy.Width = t.Width;
-        wy.Height = t.Height;
-        wy.MipLevels = t.Levels;
-        wy.Format = FormatName(t);
-        wy.IsDecoded = false;
+        info.Name = texture.Name;
+        info.Width = texture.Width;
+        info.Height = texture.Height;
+        info.MipLevels = texture.Levels;
+        info.Format = FormatName(texture);
+        info.IsDecoded = false;
 
-        var px = DecodePixels(t, out int w, out int h);
-        if (px == null) return null;
-        piksele?.Invoke(px, w, h);   // np. miniatura do cache przy indeksowaniu (bez drugiego dekodowania)
+        var pixels = DecodePixels(texture, out int width, out int height);
+        if (pixels == null) return null;
 
-        // --- PHash: 64x64 w skali szarosci -> DCT -> blok 16x16 -> mediana ---
-        // DCT liczymy ROZDZIELNIE (najpierw wiersze, potem kolumny): 82 tys. mnozen
-        // zamiast miliona przy wersji naiwnej, przy identycznym wyniku.
-        var szare = ScaleToGrey(px, w, h, NPh, NPh);
+        // hand the decoded pixels straight on — indexing writes its thumbnail from these rather than decoding
+        // the same texture a second time
+        onPixels?.Invoke(pixels, width, height);
 
-        double sr = 0;
-        foreach (var s0 in szare) sr += s0;
-        sr /= szare.Length;
-        double war = 0;
-        foreach (var s0 in szare) war += (s0 - sr) * (s0 - sr);
-        wy.Variance = (float)Math.Sqrt(war / szare.Length);
+        // --- perceptual hash: 64x64 greyscale, DCT, the 16x16 block, then the median ---
+        // The DCT is SEPARABLE and computed as rows then columns: 82 thousand multiplications instead of a
+        // million for the naive form, with the same result.
+        var grey = ScaleToGrey(pixels, width, height, DctInputSide, DctInputSide);
 
-        var posrednie = new double[NPh * KPh];         // [x, v]
-        for (int x = 0; x < NPh; x++)
+        double mean = 0;
+        foreach (var value in grey) mean += value;
+        mean /= grey.Length;
+
+        double variance = 0;
+        foreach (var value in grey) variance += (value - mean) * (value - mean);
+        info.Variance = (float)Math.Sqrt(variance / grey.Length);
+
+        var rows = new double[DctInputSide * DctBlockSide];
+        for (int x = 0; x < DctInputSide; x++)
         {
-            int wiersz = x * NPh;
-            for (int v = 0; v < KPh; v++)
+            int row = x * DctInputSide;
+            for (int v = 0; v < DctBlockSide; v++)
             {
-                double s = 0;
-                for (int y = 0; y < NPh; y++) s += szare[wiersz + y] * Cos[v, y];
-                posrednie[x * KPh + v] = s;
+                double sum = 0;
+                for (int y = 0; y < DctInputSide; y++) sum += grey[row + y] * Cosines[v, y];
+                rows[x * DctBlockSide + v] = sum;
             }
         }
-        var wsp = new double[KPh * KPh];
-        for (int u = 0; u < KPh; u++)
-            for (int v = 0; v < KPh; v++)
+
+        var coefficients = new double[DctBlockSide * DctBlockSide];
+        for (int u = 0; u < DctBlockSide; u++)
+            for (int v = 0; v < DctBlockSide; v++)
             {
-                double s = 0;
-                for (int x = 0; x < NPh; x++) s += posrednie[x * KPh + v] * Cos[u, x];
-                wsp[u * KPh + v] = s;
+                double sum = 0;
+                for (int x = 0; x < DctInputSide; x++) sum += rows[x * DctBlockSide + v] * Cosines[u, x];
+                coefficients[u * DctBlockSide + v] = sum;
             }
 
-        // mediana liczona BEZ skladowej stalej (0,0) — inaczej zdominowalaby prog
-        var bezDc = wsp.Skip(1).OrderBy(x => x).ToArray();
-        double mediana = (bezDc[bezDc.Length / 2 - 1] + bezDc[bezDc.Length / 2]) / 2.0;
+        // the median leaves out the constant term at (0,0), which would otherwise dominate it
+        var withoutDc = coefficients.Skip(1).OrderBy(x => x).ToArray();
+        double median = (withoutDc[withoutDc.Length / 2 - 1] + withoutDc[withoutDc.Length / 2]) / 2.0;
+
         var hash = new ulong[4];
-        for (int i = 0; i < 256; i++) if (wsp[i] > mediana) hash[i >> 6] |= 1UL << (i & 63);
-        wy.PerceptualHash = hash;
+        for (int i = 0; i < 256; i++)
+            if (coefficients[i] > median) hash[i >> 6] |= 1UL << (i & 63);
+        info.PerceptualHash = hash;
 
-        // --- sygnatura koloru 8x8 RGB ---
-        var maly = ScaleToRgb(px, w, h, ColorGridSide, ColorGridSide);
-        wy.ColorSignature = Convert.ToBase64String(maly);
+        // --- colour signature: an 8x8 RGB grid ---
+        info.ColorSignature = Convert.ToBase64String(ScaleToRgb(pixels, width, height, ColorGridSide, ColorGridSide));
 
-        // --- udzial pikseli z alfa ---
-        int zAlfa = 0, wszystkie = w * h;
-        for (int i = 3; i < px.Length; i += 4) if (px[i] < 250) zAlfa++;
-        wy.AlphaShare = wszystkie > 0 ? (float)zAlfa / wszystkie : 0f;
+        // --- how much of the texture is transparent ---
+        int transparent = 0, total = width * height;
+        for (int i = 3; i < pixels.Length; i += 4)
+            if (pixels[i] < 250) transparent++;
+        info.AlphaShare = total > 0 ? (float)transparent / total : 0f;
 
-        wy.IsDecoded = true;
-        return ScaleToRgb(px, w, h, bokMiniatury, bokMiniatury);
+        info.IsDecoded = true;
+        return ScaleToRgb(pixels, width, height, thumbnailSide, thumbnailSide);
     }
 
     /// <summary>
-    /// Render do raportu: RGB z ALFA ZLOZONA NA SZACHOWNICE.
-    ///
-    /// Bez tego polowa tekstur ubran wychodzi czarna — atlas ma wielkie obszary
-    /// przezroczyste, a pod nimi zwykle leza czarne piksele. Odciski licza sie dalej
-    /// z surowego RGB (sa juz skalibrowane), skladanie dotyczy WYLACZNIE podgladu.
+    /// Pixels of the smallest mip that is still at least 128 px on a side. A 1024² texture with a full mip
+    /// chain therefore decodes at 128² — 64 times cheaper — and the fingerprint comes out the same, because
+    /// everything is scaled to 64x64 here anyway, with the same filter, so textures with and without mipmaps
+    /// stay comparable. On a decode error it steps down towards mip 0; null when no decoder fits the format.
     /// </summary>
-    /// <summary>Pixels of the largest mip at least 128 px on a side, stepping up on a decode error; null when no decoder fits.</summary>
-    internal static byte[]? DecodePixels(Texture? t, out int w, out int h)
+    internal static byte[]? DecodePixels(Texture? texture, out int width, out int height)
     {
-        w = h = 0;
-        if (t == null || t.Width <= 0 || t.Height <= 0) return null;
+        width = height = 0;
+        if (texture == null || texture.Width <= 0 || texture.Height <= 0) return null;
+
         int mip = 0;
-        for (int m = 0; m < Math.Max(1, (int)t.Levels); m++)
+        for (int level = 0; level < Math.Max(1, (int)texture.Levels); level++)
         {
-            int mw = Math.Max(1, t.Width >> m), mh = Math.Max(1, t.Height >> m);
-            if (mw >= 128 && mh >= 128) mip = m; else break;
+            int levelWidth = Math.Max(1, texture.Width >> level);
+            int levelHeight = Math.Max(1, texture.Height >> level);
+            if (levelWidth >= 128 && levelHeight >= 128) mip = level; else break;
         }
-        for (; mip >= 0; mip--)   // przy bledzie schodzimy na coraz wiekszy mip, az do 0
+
+        for (; mip >= 0; mip--)
         {
             try
             {
-                var px = TextureDecoder.Piksele(t, mip, out int mw, out int mh);   // DDSIO + BC7 (BCnEncoder.Net)
-                if (px == null) return null;                                 // format bez dekodera
-                w = mw; h = mh;
-                return px;
+                var pixels = TextureDecoder.Pixels(texture, mip, out int mipWidth, out int mipHeight);
+                if (pixels == null) return null;   // a format with no decoder: stepping down will not help
+                width = mipWidth;
+                height = mipHeight;
+                return pixels;
             }
-            catch { }
+            catch (Exception)
+            {
+                // this mip is corrupt; try a larger one
+            }
         }
+
         return null;
     }
 
-    /// <summary>Usrednianie po prostokatach (box filter) z BGRA do RGB.</summary>
-    internal static byte[] ScaleToRgb(byte[] px, int w, int h, int tw, int th)
+    /// <summary>Box-averaging from BGRA down to RGB.</summary>
+    internal static byte[] ScaleToRgb(byte[] pixels, int width, int height, int targetWidth, int targetHeight)
     {
-        var wy = new byte[tw * th * 3];
-        for (int y = 0; y < th; y++)
+        var output = new byte[targetWidth * targetHeight * 3];
+
+        for (int y = 0; y < targetHeight; y++)
         {
-            int y0 = y * h / th, y1 = Math.Max(y0 + 1, (y + 1) * h / th);
-            for (int x = 0; x < tw; x++)
+            int fromY = y * height / targetHeight, toY = Math.Max(fromY + 1, (y + 1) * height / targetHeight);
+            for (int x = 0; x < targetWidth; x++)
             {
-                int x0 = x * w / tw, x1 = Math.Max(x0 + 1, (x + 1) * w / tw);
-                long r = 0, g = 0, b = 0; int n = 0;
-                for (int yy = y0; yy < y1; yy++)
-                    for (int xx = x0; xx < x1; xx++)
+                int fromX = x * width / targetWidth, toX = Math.Max(fromX + 1, (x + 1) * width / targetWidth);
+
+                long r = 0, g = 0, b = 0;
+                int count = 0;
+                for (int sy = fromY; sy < toY; sy++)
+                    for (int sx = fromX; sx < toX; sx++)
                     {
-                        int o = (yy * w + xx) * 4;
-                        b += px[o]; g += px[o + 1]; r += px[o + 2];   // DDSIO oddaje BGRA
-                        n++;
+                        int source = (sy * width + sx) * 4;
+                        b += pixels[source];          // the decoder hands back BGRA
+                        g += pixels[source + 1];
+                        r += pixels[source + 2];
+                        count++;
                     }
-                int c = (y * tw + x) * 3;
-                wy[c] = (byte)(r / n); wy[c + 1] = (byte)(g / n); wy[c + 2] = (byte)(b / n);
+
+                int target = (y * targetWidth + x) * 3;
+                output[target] = (byte)(r / count);
+                output[target + 1] = (byte)(g / count);
+                output[target + 2] = (byte)(b / count);
             }
         }
-        return wy;
+
+        return output;
     }
 
-    static double[] ScaleToGrey(byte[] px, int w, int h, int tw, int th)
+    /// <summary>The same box filter, then Rec. 601 luma — the greyscale the perceptual hash runs on.</summary>
+    static double[] ScaleToGrey(byte[] pixels, int width, int height, int targetWidth, int targetHeight)
     {
-        var rgb = ScaleToRgb(px, w, h, tw, th);
-        var wy = new double[tw * th];
-        for (int i = 0; i < wy.Length; i++)
-            wy[i] = 0.299 * rgb[i * 3] + 0.587 * rgb[i * 3 + 1] + 0.114 * rgb[i * 3 + 2];
-        return wy;
+        var rgb = ScaleToRgb(pixels, width, height, targetWidth, targetHeight);
+        var grey = new double[targetWidth * targetHeight];
+        for (int i = 0; i < grey.Length; i++)
+            grey[i] = 0.299 * rgb[i * 3] + 0.587 * rgb[i * 3 + 1] + 0.114 * rgb[i * 3 + 2];
+        return grey;
     }
-
-    /// <summary>Odleglosc Hamminga miedzy odciskami 256-bitowymi. -1 = brak ktoregos odcisku.</summary>
 }

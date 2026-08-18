@@ -73,7 +73,7 @@ public sealed class RpfArchiveCache : IArchiveCache
 
         // ExtractFile hands back the resource without its RSC7 header; Rsc7Header puts it back so that the bytes
         // read exactly like a file on disk
-        return Read(() => Rsc7Header.Owin(entry, entry.File.ExtractFile(entry)), logicalPath);
+        return Read(() => Rsc7Header.Wrap(entry, entry.File.ExtractFile(entry))!, logicalPath);
     }
 
     public void Clear() => open.Clear();

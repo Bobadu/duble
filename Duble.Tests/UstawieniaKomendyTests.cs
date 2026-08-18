@@ -90,9 +90,9 @@ public class UstawieniaKomendyTests
             Assert.True(k.GetProperty("result").GetProperty("uruchomiono").GetBoolean());
             for (int i = 0; i < 300 && !wyslane.Any(w => w.Contains("\"event\":\"calibrate.done\"")); i++) await Task.Delay(50);
             var done = JsonDocument.Parse(wyslane.First(w => w.Contains("\"event\":\"calibrate.done\""))).RootElement.GetProperty("data").GetProperty("wynik");
-            Assert.Equal(7, done.GetProperty("pozycje").GetInt32());
-            Assert.True(done.GetProperty("geoNajblizszyObcy").GetProperty("kubelki").GetArrayLength() > 0);
-            Assert.True(done.GetProperty("propozycja").GetProperty("textureHashDistance").GetInt32() >= 4);
+            Assert.Equal(7, done.GetProperty("garments").GetInt32());
+            Assert.True(done.GetProperty("geoNearestForeign").GetProperty("buckets").GetArrayLength() > 0);
+            Assert.True(done.GetProperty("proposal").GetProperty("textureHashDistance").GetInt32() >= 4);
             Assert.Equal(20, done.GetProperty("usedThresholds").GetProperty("textureHashDistance").GetInt32());
         }
         finally { Directory.Delete(tmp, true); }

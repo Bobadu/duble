@@ -84,7 +84,7 @@ public sealed class Mostek
     public void Zdarzenie(string nazwa, object dane) => wyslij(JsonSerializer.Serialize(new { @event = nazwa, data = dane }, Json));
 
     // --- pomocnicze do argumentow ---
-    public static string Tekst(JsonElement args, string nazwa, bool wymagany = false)
+    public static string Text(JsonElement args, string nazwa, bool wymagany = false)
     {
         if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty(nazwa, out var v) && v.ValueKind == JsonValueKind.String) return v.GetString();
         if (wymagany) throw new BladMostka("bad_args", "brak argumentu: " + nazwa);

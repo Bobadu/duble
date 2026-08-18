@@ -33,14 +33,9 @@ public enum FileMoveState
     Missing,
 }
 
-/// <summary>Jeden plik pozycji w planie: dokad pojdzie i czy w ogole (Stan).</summary>
+/// <summary>One of a garment's files in the plan: where it would go, and whether it goes at all.</summary>
 public sealed class FileMove
 {
-    public const string Przenies = "przenies";
-    public const string Wspoldzielony = "wspoldzielony";   // uzywa go pozycja, ktora zostaje
-    public const string InArchiveCount = "wArchiwum";           // siedzi w .rpf — nie ruszamy archiwow
-    public const string Brak = "brak";                     // nie ma go na dysku / brak zrodla
-
     public string GarmentId { get; set; } = "";
     public string From { get; set; } = "";
     public string To { get; set; } = "";
@@ -66,7 +61,7 @@ public sealed class PlannedGarment
     public int MissingCount => Files.Count(r => r.State == FileMoveState.Missing);
 }
 
-/// <summary>Skad liczyc sciezke wzgledna pozycji (Korzen zrodla) i dokad ja przeniesc (Kosz).</summary>
+/// <summary>Where a garment's bin is, and what its paths are measured relative to.</summary>
 public sealed class BinTarget
 {
     public string Root { get; set; } = "";
@@ -77,17 +72,18 @@ public sealed class BinTarget
 
 public sealed class ApplyPlan
 {
-    public List<PlannedGarment> Pozycje { get; } = new();
-    /// <summary>Nazwy zrodel, ktorych nie ma na dysku (pozycje z nich maja pliki w stanie Brak).</summary>
+    public List<PlannedGarment> Garments { get; } = new();
+    /// <summary>Sources that are not on this disk; every file of their garments comes out missing.</summary>
     public List<string> MissingSources { get; } = new();
-    public int Files => Pozycje.Sum(p => p.MoveCount);
-    public long Bytes => Pozycje.Sum(p => p.Bytes);
-    public int SharedCount => Pozycje.Sum(p => p.SharedCount);
-    public int InArchiveCount => Pozycje.Sum(p => p.InArchiveCount);
-    public int MissingCount => Pozycje.Sum(p => p.MissingCount);
+    public int Files => Garments.Sum(p => p.MoveCount);
+    public long Bytes => Garments.Sum(p => p.Bytes);
+    public int SharedCount => Garments.Sum(p => p.SharedCount);
+    public int InArchiveCount => Garments.Sum(p => p.InArchiveCount);
+    public int MissingCount => Garments.Sum(p => p.MissingCount);
 
-    public IEnumerable<(string kosz, int pliki, long bajty)> BinTotals()
-        => Pozycje.Where(p => p.BinFolder != null).GroupBy(p => p.BinFolder, StringComparer.OrdinalIgnoreCase)
+    /// <summary>How much would land in each bin: the folder, the number of files and their size.</summary>
+    public IEnumerable<(string BinFolder, int Files, long Bytes)> BinTotals()
+        => Garments.Where(p => p.BinFolder != null).GroupBy(p => p.BinFolder, StringComparer.OrdinalIgnoreCase)
                   .Select(g => (g.Key, g.Sum(p => p.MoveCount), g.Sum(p => p.Bytes)))
                   .Where(x => x.Item2 > 0);
 }
@@ -111,7 +107,7 @@ public sealed class UndoneGarment
     public int Files { get; set; }
 }
 
-/// <summary>Dziennik jednego zastosowania: co przeniesiono i skad — wystarcza, zeby wszystko wrocilo.</summary>
+/// <summary>The log of one apply: what moved and where from — enough to put every file back.</summary>
 public sealed class UndoLog
 {
     public string When { get; set; } = "";

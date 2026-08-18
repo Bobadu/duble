@@ -224,7 +224,7 @@ function rysujKalibracje() {
   const btn = rootEl.querySelector('#calib-run'); if (btn) { btn.disabled = false; btn.innerHTML = `${icon('play')}${t('settings.calibRun')}`; }
   out.innerHTML = '';
   const w = ostatniaKalibracja; if (!w) return;
-  const pr = w.usedThresholds || {}; const prop = w.propozycja || {};
+  const pr = w.usedThresholds || {}; const prop = w.proposal || {};
   const f2 = v => Number(v).toFixed(2), f0 = v => String(Math.round(v)), f1 = v => Number(v).toFixed(1);
   const stat = (r, f) => r && r.n ? `${t('calib.n', { n: fmt.liczba(r.n) })} · ${t('calib.pct', { p05: f(r.p05), p50: f(r.p50), p95: f(r.p95) })}` : t('settings.calibNoData');
   const karta = (tytul, r, opcje, f) => {
@@ -232,19 +232,19 @@ function rysujKalibracje() {
     c.append(slupki(r, { ...opcje, format: f, pusty: t('settings.calibNoData') }));
     return c;
   };
-  out.append(el(`<p class="muted">${esc(t('settings.calibSummary', { poz: fmt.liczba(w.pozycjeZGeometria), tex: fmt.liczba(w.teksturyZdekodowane), kiedy: fmt.data(w.kiedy) }))}</p>`));
+  out.append(el(`<p class="muted">${esc(t('settings.calibSummary', { poz: fmt.liczba(w.garmentsWithGeometry), tex: fmt.liczba(w.decodedTextures), when: fmt.data(w.when) }))}</p>`));
   const g1 = el('<div class="calib-grid"></div>');
   const markiGeo = [{ wartosc: pr.geometryIdentical, etykieta: t('calib.thIdentical'), klasa: 'm-a' }, { wartosc: pr.geometrySimilar, etykieta: t('calib.thSimilar'), klasa: 'm-b' }];
-  g1.append(karta(t('calib.geoNearest'), w.geoNajblizszyObcy, { progi: markiGeo, kolor: 'neg' }, f2));
-  g1.append(karta(t('calib.geoSha'), w.geoIdentyczneSha, { progi: markiGeo, kolor: 'pos' }, f2));
-  g1.append(karta(t('calib.geoSame'), w.geoTenSamHash, { progi: markiGeo, kolor: 'pos' }, f2));
+  g1.append(karta(t('calib.geoNearest'), w.geoNearestForeign, { progi: markiGeo, kolor: 'neg' }, f2));
+  g1.append(karta(t('calib.geoSha'), w.geoSameFile, { progi: markiGeo, kolor: 'pos' }, f2));
+  g1.append(karta(t('calib.geoSame'), w.geoSameHash, { progi: markiGeo, kolor: 'pos' }, f2));
   const markPh = [{ wartosc: pr.textureHashDistance, etykieta: t('calib.threshold'), klasa: 'm-a' }];
-  g1.append(karta(t('calib.phVariants'), w.pHashWarianty, { progi: markPh, kolor: 'neg' }, f0));
-  g1.append(karta(t('calib.phSha'), w.pHashIdentyczne, { progi: markPh, kolor: 'pos' }, f0));
-  g1.append(karta(t('calib.phRandom'), w.pHashLosowe, { progi: markPh, kolor: 'neg' }, f0));
+  g1.append(karta(t('calib.phVariants'), w.hashVariants, { progi: markPh, kolor: 'neg' }, f0));
+  g1.append(karta(t('calib.phSha'), w.hashIdentical, { progi: markPh, kolor: 'pos' }, f0));
+  g1.append(karta(t('calib.phRandom'), w.hashRandom, { progi: markPh, kolor: 'neg' }, f0));
   const markKol = [{ wartosc: pr.textureColorDistance, etykieta: t('calib.threshold'), klasa: 'm-a' }];
-  g1.append(karta(t('calib.colVariants'), w.kolorWarianty, { progi: markKol, kolor: 'neg' }, f1));
-  g1.append(karta(t('calib.colRandom'), w.kolorLosowe, { progi: markKol, kolor: 'neg' }, f1));
+  g1.append(karta(t('calib.colVariants'), w.colorVariants, { progi: markKol, kolor: 'neg' }, f1));
+  g1.append(karta(t('calib.colRandom'), w.colorRandom, { progi: markKol, kolor: 'neg' }, f1));
   out.append(g1);
   const propTekst = t('settings.calibProposal', { geo: f2(prop.geometryIdentical), geo4: f2(prop.geometrySimilar), ph: f0(prop.textureHashDistance), kol: f2(prop.textureColorDistance) });
   const rozne = ['geometryIdentical', 'geometrySimilar', 'textureHashDistance', 'textureColorDistance'].some(k => Number(prop[k]) !== Number(pr[k]));
@@ -258,7 +258,7 @@ function rysujKalibracje() {
     } catch (e) { toast(e.message, { typ: 'error' }); }
   });
   out.append(pp);
-  if (w.geoPodejrzane) out.append(el(`<p class="help">${esc(t('settings.calibSuspicious', { n: w.geoPodejrzane }))}</p>`));
+  if (w.geoSuspicious) out.append(el(`<p class="help">${esc(t('settings.calibSuspicious', { n: w.geoSuspicious }))}</p>`));
 }
 
 function kartaCache(st, ctx) {

@@ -47,14 +47,14 @@ public static class Grupy
         var wg = s.Catalog.Garments.ToDictionary(p => p.Id);
         var o = new Dictionary<string, object>
         {
-            ["pozycje"] = plan.Pozycje.Count, ["pliki"] = plan.Files, ["bajty"] = plan.Bytes,
+            ["pozycje"] = plan.Garments.Count, ["pliki"] = plan.Files, ["bajty"] = plan.Bytes,
             ["wArchiwum"] = plan.InArchiveCount, ["wspoldzielone"] = plan.SharedCount, ["brakujace"] = plan.MissingCount,
             ["brakujaceZrodla"] = plan.MissingSources,
             ["kosz"] = s.Project.Settings?.BinFolder,
-            ["kosze"] = plan.BinTotals().Select(k => new { kosz = k.kosz, pliki = k.pliki, bajty = k.bajty }).ToList(),
+            ["kosze"] = plan.BinTotals().Select(k => new { kosz = k.BinFolder, pliki = k.Files, bajty = k.Bytes }).ToList(),
         };
         if (lista)
-            o["lista"] = plan.Pozycje.Select(p => new
+            o["lista"] = plan.Garments.Select(p => new
             {
                 id = p.Id, nazwa = p.Name, sufiks = p.Suffix, zrodlo = p.SourceName, zrodloId = p.SourceId, kontener = p.Container, kosz = p.BinFolder,
                 thumb = wg.TryGetValue(p.Id, out var poz) ? Widoki.Miniatura(poz) : null,
@@ -114,7 +114,7 @@ public static class Grupy
         {
             Wymag();
             var werdykty = Mostek.Lista(a, "werdykty"); var sloty = Mostek.Lista(a, "sloty"); var zrodla = Mostek.Lista(a, "zrodla");
-            var szukaj = (Mostek.Tekst(a, "szukaj") ?? "").Trim().ToLowerInvariant();
+            var szukaj = (Mostek.Text(a, "szukaj") ?? "").Trim().ToLowerInvariant();
             bool zignorowane = Mostek.Flaga(a, "zignorowane");
             var zywe = Zywe(s);
             var wynik = s.Wynik;
@@ -141,7 +141,7 @@ public static class Grupy
         m.Rejestruj("groups.get", a =>
         {
             Wymag();
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var x = Zywe(s).FirstOrDefault(y => y.g.Id == id);
             if (x.g == null) throw new BladMostka("not_found", id);
             return new { grupa = Grupa1(x.g, x.czl, x.r, true) };
@@ -150,7 +150,7 @@ public static class Grupy
         m.Rejestruj("groups.decide", a =>
         {
             Wymag();
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var x = Zywe(s).FirstOrDefault(y => y.g.Id == id);
             if (x.g == null) throw new BladMostka("not_found", id);
             var czlonkowie = x.g.Members;
@@ -160,7 +160,7 @@ public static class Grupy
                 d = new Decision { Winner = dom.Winner, Rejected = dom.Rejected.ToList() };
                 s.Project.Decisions[id] = d;
             }
-            var zw = Mostek.Tekst(a, "zwyciezca");
+            var zw = Mostek.Text(a, "zwyciezca");
             bool podanoOdrzucone = a.ValueKind == JsonValueKind.Object && a.TryGetProperty("odrzucone", out var od) && od.ValueKind == JsonValueKind.Array;
             if (zw != null && czlonkowie.Contains(zw))
             {
@@ -169,7 +169,7 @@ public static class Grupy
             }
             if (podanoOdrzucone) d.Rejected = Mostek.Lista(a, "odrzucone").Where(c => czlonkowie.Contains(c) && c != d.Winner).Distinct().ToList();
             if (a.ValueKind == JsonValueKind.Object && a.TryGetProperty("ignoruj", out var ig) && (ig.ValueKind == JsonValueKind.True || ig.ValueKind == JsonValueKind.False)) d.Ignored = ig.GetBoolean();
-            var notatka = Mostek.Tekst(a, "notatka");
+            var notatka = Mostek.Text(a, "notatka");
             if (notatka != null) d.Note = notatka.Length == 0 ? null : notatka;
             s.ZapiszProjekt();
             var r = Rozstrzygnij(s, x.g);
@@ -181,7 +181,7 @@ public static class Grupy
         m.Rejestruj("groups.reset", a =>
         {
             Wymag();
-            var id = Mostek.Tekst(a, "id", true);
+            var id = Mostek.Text(a, "id", true);
             var x = Zywe(s).FirstOrDefault(y => y.g.Id == id);
             if (x.g == null) throw new BladMostka("not_found", id);
             s.Project.Decisions.Remove(id);
@@ -195,7 +195,7 @@ public static class Grupy
         void UstawKosz(JsonElement a)
         {
             if (!Mostek.Flaga(a, "ustawKosz")) return;
-            var kosz = Mostek.Tekst(a, "kosz");
+            var kosz = Mostek.Text(a, "kosz");
             s.Project.Settings ??= new ProjectSettings();
             s.Project.Settings.BinFolder = string.IsNullOrWhiteSpace(kosz) ? null : kosz;
             s.ZapiszProjekt();
