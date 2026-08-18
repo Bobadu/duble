@@ -300,7 +300,7 @@ switch (cmd)
             Directory.CreateDirectory(folder);
             foreach (var t in ytdT.TextureDict.Textures.data_items)
             {
-                var px = TextureDecoder.Piksele(t, 0, out int tw, out int th);   // DDSIO + BC7
+                var px = TextureDecoder.Pixels(t, 0, out int tw, out int th);   // DDSIO + BC7
                 if (px == null) { Log($"{t.Name}: nie zdekodowano ({TextureFingerprinter.FormatName(t)})"); continue; }
                 var rgb = new byte[tw * th * 3];
                 for (int i = 0, j = 0; i < px.Length; i += 4, j += 3) { rgb[j] = px[i + 2]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i]; }
