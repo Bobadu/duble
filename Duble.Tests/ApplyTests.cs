@@ -12,7 +12,7 @@ public class ApplyTests
 {
     static readonly IUndoStore Store = new JsonUndoStore();
     static readonly IApplyPlanner Planner = new ApplyPlanner();
-    static readonly IApplyExecutor Executor = new ApplyExecutor();
+    static readonly IApplyExecutor Executor = new ApplyExecutor(new SystemClock());
 
     /// <summary>Sztuczna pozycja z plikami na dysku: &lt;tmp&gt;\src\&lt;kontener&gt;\&lt;typ&gt;_NNN_u.ydd + tekstury.</summary>
     static Garment Poz(string src, string kontener, string typ, int numer, params string[] litery)

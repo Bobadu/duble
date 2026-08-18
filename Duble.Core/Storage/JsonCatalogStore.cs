@@ -41,7 +41,7 @@ public sealed class JsonCatalogStore : ICatalogStore
     public Result Save(Catalog catalog, string path)
     {
         catalog.Version = Catalog.CurrentVersion;
-        catalog.Built = clock.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        catalog.Built = clock.Stamp();
         try
         {
             var folder = Path.GetDirectoryName(Path.GetFullPath(path));

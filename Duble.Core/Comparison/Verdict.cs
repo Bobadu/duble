@@ -26,6 +26,12 @@ public enum Verdict
 /// <summary>The key a verdict is looked up under in the dictionaries, and shown by in the interface.</summary>
 public static class Verdicts
 {
+    /// <summary>Every verdict, in the order the interface and the report present them.</summary>
+    public static readonly Verdict[] All =
+    {
+        Verdict.Duplicate, Verdict.Superset, Verdict.NeedsReview, Verdict.Retexture,
+    };
+
     public static string ToKey(this Verdict verdict) => verdict switch
     {
         Verdict.Duplicate => "duplicate",

@@ -1,9 +1,11 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.Json.Serialization;
 using Duble.Core.Decisions;
+using Duble.Core.Time;
 
 namespace Duble.Core.Projects;
 
@@ -40,7 +42,7 @@ public class Project
     {
         Name = name,
         Path = System.IO.Path.GetFullPath(path),
-        Created = now.ToString("yyyy-MM-dd HH:mm:ss"),
+        Created = now.ToString(Timestamps.Format, CultureInfo.InvariantCulture),
     };
 
     /// <summary>
