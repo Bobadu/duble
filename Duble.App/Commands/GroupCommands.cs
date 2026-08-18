@@ -48,7 +48,7 @@ public sealed class GroupCommands : CommandModule
 
     object List(JsonElement args)
     {
-        _ = Project;
+        RequireProject();
         var verdicts = args.Strings("werdykty");
         var slots = args.Strings("sloty");
         var sources = args.Strings("zrodla");

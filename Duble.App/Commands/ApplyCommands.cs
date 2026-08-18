@@ -38,7 +38,7 @@ public sealed class ApplyCommands : CommandModule
 
     object Preview(JsonElement args)
     {
-        _ = Project;   // there is nothing to plan without a project
+        RequireProject();   // there is nothing to plan without a project
         SetBinFolder(args);
         return PlanView.Describe(Session, CurrentPlan(), withList: true);
     }

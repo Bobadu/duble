@@ -146,7 +146,7 @@ public sealed class ProjectSettingsCommands : CommandModule
 
     object ClearCache(JsonElement args)
     {
-        _ = Project;
+        RequireProject();
         var (files, bytes) = Session.ClearCache(args.Flag("tex", true), args.Flag("mesh", true));
         Bridge.Event("settings.changed", new { zrodlo = "cache" });
         return new { usunieto = files, bajty = bytes, cache = CacheJson() };

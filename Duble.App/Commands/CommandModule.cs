@@ -33,6 +33,9 @@ public abstract class CommandModule : ICommandModule
     /// <summary>The open project, or a no_project answer — which the interface turns into its own message.</summary>
     protected Project Project => Session.Project ?? throw new BridgeException(BridgeErrors.NoProject, "no project is open");
 
+    /// <summary>The same refusal where the project itself is not needed, only the fact that there is one.</summary>
+    protected void RequireProject() => _ = Project;
+
     /// <summary>The project's name, which several commands use to describe the job they are starting.</summary>
     protected string ProjectName => Project.Name ?? "";
 

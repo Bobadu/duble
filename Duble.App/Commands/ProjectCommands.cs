@@ -22,7 +22,8 @@ public sealed class ProjectCommands : CommandModule
         Bridge.Register("project.open", Open);
         Bridge.Register("project.pickOpen", _ => PickAndOpen());
         Bridge.Register("project.pickFolder", _ => new { sciezka = Bridge.Dialogs.PickFolder(null, Settings.ProjectsFolder) });
-        Bridge.Register("project.save", _ => { RequireOpen(); Session.Save(); return new { }; });
+        // saving with nothing open is a no_project answer, not a quiet success
+        Bridge.Register("project.save", _ => { RequireProject(); Session.Save(); return new { }; });
         Bridge.Register("project.close", _ => { Session.Close(); Bridge.Event("project.closed", new { }); return new { }; });
         Bridge.Register("project.forget", Forget);
     }
@@ -103,7 +104,4 @@ public sealed class ProjectCommands : CommandModule
         Bridge.SaveSettings();
         Bridge.Event("project.opened", new { projekt = Session.Summary() });
     }
-
-    /// <summary>Saving with nothing open is a no_project answer, not a quiet success.</summary>
-    void RequireOpen() => _ = Project;
 }

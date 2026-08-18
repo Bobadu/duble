@@ -29,7 +29,7 @@ public sealed class CatalogCommands : CommandModule
 
     object List(JsonElement args)
     {
-        _ = Project;
+        RequireProject();
         var sources = args.Strings("zrodla");
         var slots = args.Strings("sloty");
         var formats = args.Strings("formaty");
@@ -108,7 +108,7 @@ public sealed class CatalogCommands : CommandModule
 
     object Item(JsonElement args)
     {
-        _ = Project;
+        RequireProject();
         var id = args.Required("id");
         var garment = Session.FindGarment(id) ?? throw new BridgeException(BridgeErrors.NotFound, id);
 

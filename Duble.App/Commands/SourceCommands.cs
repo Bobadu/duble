@@ -49,7 +49,7 @@ public sealed class SourceCommands : CommandModule
     /// <summary>A file dialog is only worth opening when there is a project to add the source to.</summary>
     object AddFromDialog(Func<string[]> pick)
     {
-        _ = Project;
+        RequireProject();
         return Add(pick());
     }
 

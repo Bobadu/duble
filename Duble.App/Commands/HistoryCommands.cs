@@ -37,7 +37,7 @@ public sealed class HistoryCommands : CommandModule
 
     List<object> All()
     {
-        _ = Project;   // with nothing open the interface wants no_project, not an empty list
+        RequireProject();   // with nothing open the interface wants no_project, not an empty list
         var entries = new List<object>();
         foreach (var file in Session.HistoryFiles())
         {
