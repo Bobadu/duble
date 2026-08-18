@@ -1,5 +1,6 @@
 #nullable enable
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using Duble.Core.Model;
 using Duble.Core.Storage;
@@ -9,6 +10,48 @@ namespace Duble.Tests;
 
 public class CatalogTests
 {
+    /// <summary>
+    /// The catalog's order has to be decided by the garments alone. Sorting by pack, slot and number left two
+    /// garments that share a number and differ only in suffix in whatever order a Dictionary enumerated them —
+    /// and .NET randomises string hashing per process, so it changed from run to run. The comparison walks this
+    /// list to build its pairs, so the same catalog gave pairs with A and B the other way round.
+    /// </summary>
+    [Fact]
+    public void The_order_is_decided_by_the_garments_and_nothing_else()
+    {
+        static Duble.Core.Model.Garment Make(string pack, string slot, int number, string suffix) => new()
+        {
+            Id = Duble.Core.Model.Garment.MakeId(pack, "c.rpf", slot, number, suffix),
+            PackName = pack, Container = "c.rpf", Slot = slot, Number = number, Suffix = suffix,
+        };
+
+        var garments = new[]
+        {
+            Make("p1", "feet", 50, "u_1"),
+            Make("p1", "feet", 50, "u"),
+            Make("p1", "feet", 51, "u"),
+            Make("p1", "accs", 3, "u"),
+            Make("p0", "feet", 50, "u"),
+        };
+
+        // whatever order they arrive in, the catalog holds them in one order
+        var expected = Order(garments);
+        foreach (var permutation in new[] { garments.Reverse().ToArray(), garments.OrderBy(g => g.Id).ToArray() })
+            Assert.Equal(expected, Order(permutation));
+
+        // and that order puts the shorter suffix first, rather than leaving the two of them to chance
+        Assert.Equal(
+            new[] { "p0|c.rpf|feet|50|u", "p1|c.rpf|accs|3|u", "p1|c.rpf|feet|50|u", "p1|c.rpf|feet|50|u_1", "p1|c.rpf|feet|51|u" },
+            expected);
+
+        static string[] Order(IEnumerable<Duble.Core.Model.Garment> garments)
+        {
+            var catalog = new Catalog();
+            catalog.Upsert(garments);
+            return catalog.Garments.Select(g => g.Id!).ToArray();
+        }
+    }
+
     static Garment Garment(string pack, string slot, int number, GameFormat format = GameFormat.Legacy) => new()
     {
         Id = $"{pack}|k.rpf|{slot}|{number}|u",

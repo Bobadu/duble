@@ -25,13 +25,20 @@ public sealed class IndexOptions
 /// <summary>What one run of indexing produced.</summary>
 /// <param name="Garments">The garments found, ordered by slot and number.</param>
 /// <param name="SkippedFiles">
-/// Files whose names do not follow the R* convention, or that could not be read. These are worth showing: they
-/// are usually the leftovers of an export, and a leftover is exactly what a duplicate finder is looking for.
+/// Files whose names do not follow the R* convention. Worth showing, but not a problem: they are usually the
+/// leftovers of an export, and a leftover is exactly what a duplicate finder is looking for.
+/// </param>
+/// <param name="UnreadableFiles">
+/// Files that ARE clothing by their name and could not be read — locked by the running game, or on a drive
+/// that hiccupped. This is a different thing from a skipped file and has to be told apart from it: the catalog
+/// that comes back is quietly incomplete, and a garment short of a texture scores lower, which can change
+/// which copy of a duplicate the comparison proposes keeping.
 /// </param>
 /// <param name="ReusedModels">Models taken from the previous catalog rather than read again.</param>
 /// <param name="ReusedTextures">Textures taken from the previous catalog rather than read again.</param>
 public sealed record IndexReport(
     IReadOnlyList<Garment> Garments,
     IReadOnlyList<string> SkippedFiles,
+    IReadOnlyList<string> UnreadableFiles,
     int ReusedModels,
     int ReusedTextures);

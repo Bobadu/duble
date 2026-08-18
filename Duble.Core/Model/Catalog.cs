@@ -18,13 +18,25 @@ public class Catalog
 
     public List<Garment> Garments { get; set; } = new();
 
-    /// <summary>Adds the garments, replacing any with the same id (a source indexed again).</summary>
+    /// <summary>
+    /// Adds the garments, replacing any with the same id (a source indexed again).
+    ///
+    /// The order is TOTAL, and has to be. Sorting by pack, slot and number alone leaves two garments that
+    /// share a number and differ only in suffix — feet_050_u and feet_050_u_1 — in whatever order the
+    /// dictionary happened to enumerate them, and .NET randomises string hashing per process, so that order
+    /// changed from one run to the next. The comparison walks this list to build its pairs, so the same
+    /// catalog produced pairs with A and B the other way round, and coverageA and coverageB swapped with
+    /// them. The id is unique, which is what makes the last key here enough.
+    /// </summary>
     public void Upsert(IEnumerable<Garment> garments)
     {
         var byId = Garments.ToDictionary(g => g.Id!);
         foreach (var g in garments) byId[g.Id!] = g;
         Garments = byId.Values
-            .OrderBy(g => g.PackName).ThenBy(g => g.Slot).ThenBy(g => g.Number)
+            .OrderBy(g => g.PackName, StringComparer.Ordinal)
+            .ThenBy(g => g.Slot, StringComparer.Ordinal)
+            .ThenBy(g => g.Number)
+            .ThenBy(g => g.Id, StringComparer.Ordinal)
             .ToList();
     }
 
