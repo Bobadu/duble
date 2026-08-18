@@ -249,12 +249,11 @@ public sealed class GarmentIndexer : IGarmentIndexer
         catch (Exception e) { log.LogWarning("{File}: {Message}", entry.LogicalPath, e.Message); return null; }
 
         var sha = Convert.ToHexString(SHA256.HashData(bytes));
-        var request = options.ThumbnailFolder == null
+        Action<byte[], int, int>? onPixels = options.ThumbnailFolder == null
             ? null
-            : new ThumbnailRequest(128, (pixels, width, height) =>
-                WriteThumbnail(options.ThumbnailFolder, sha, pixels, width, height));
+            : (pixels, width, height) => WriteThumbnail(options.ThumbnailFolder, sha, pixels, width, height);
 
-        var fingerprint = textures.Compute(bytes, request);
+        var fingerprint = textures.Compute(bytes, onPixels);
         var texture = fingerprint.IsSuccess ? fingerprint.Value : new TextureInfo();
 
         texture.FileName = entry.Name;
@@ -270,6 +269,9 @@ public sealed class GarmentIndexer : IGarmentIndexer
         => folder == null || texture.Sha256 == null || !texture.IsDecoded
            || File.Exists(Path.Combine(folder, texture.Sha256 + ".png"));
 
+    /// <summary>Side of the thumbnails the catalog grid shows, in pixels.</summary>
+    const int ThumbnailSide = 128;
+
     void WriteThumbnail(string folder, string sha, byte[] pixels, int width, int height)
     {
         var file = Path.Combine(folder, sha + ".png");
@@ -277,7 +279,8 @@ public sealed class GarmentIndexer : IGarmentIndexer
         try
         {
             Directory.CreateDirectory(folder);
-            File.WriteAllBytes(file, PngWriter.Rgb(Thumbnail.FromPixels(pixels, width, height, 128), 128, 128));
+            var thumbnail = Thumbnail.FromPixels(pixels, width, height, ThumbnailSide);
+            File.WriteAllBytes(file, PngWriter.Rgb(thumbnail, ThumbnailSide, ThumbnailSide));
         }
         catch (IOException)
         {
