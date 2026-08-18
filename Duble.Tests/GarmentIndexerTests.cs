@@ -100,10 +100,8 @@ public class GarmentIndexerTests
 
             var catalog = new Catalog();
             catalog.Upsert(first.Garments);
-            var progress = new List<ProgressReport>();
             var second = Indexer.Index(source, "civil03",
-                new IndexOptions { ThumbnailFolder = thumbnails, PreviousCatalog = catalog },
-                new Progress<ProgressReport>(progress.Add)).Value;
+                new IndexOptions { ThumbnailFolder = thumbnails, PreviousCatalog = catalog }).Value;
 
             Assert.Equal(first.Garments.Count, second.Garments.Count);
             Assert.Equal(first.Garments.Count, second.ReusedModels);   // nothing changed, so nothing was read again

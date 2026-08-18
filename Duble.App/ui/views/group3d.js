@@ -5,7 +5,6 @@ import { nazwaPozycji } from './duplicates.js';
 
 let stan = { tryb: 'obok', sync: true, wire: false, jasne: false, mix: 50 };
 
-function literaZPliku(plik) { const m = /_diff_\d{3}_([a-z])_/i.exec(plik || ''); return m ? m[1].toLowerCase() : null; }
 function urlModelu(c, litera) { return `https://duble.data/mesh/${encodeURIComponent(c.id)}.glb${litera ? '?w=' + encodeURIComponent(litera) : ''}`; }
 
 /** Renderuje zakladke do kontenera; zwraca { zniszcz }. */
@@ -41,7 +40,8 @@ export async function render(kont, g, ctx) {
   root.append(grid);
   kont.append(root);
 
-  function literyCzlonka(c) { return [...new Set((c.tekstury || []).map(tx => literaZPliku(tx.plik)).filter(Boolean))]; }
+  // litera wariantu przychodzi z Core (pole `litera`), bo trafia potem do ?w= w URL-u siatki
+  function literyCzlonka(c) { return [...new Set((c.tekstury || []).map(tx => tx.litera).filter(Boolean))]; }
   function przelacznik(btn, wl) { btn.classList.toggle('on', wl); btn.querySelector('.ico')?.replaceWith(el(icon(wl ? 'toggleOn' : 'toggleOff'))); }
 
   const zastosujStan = () => {

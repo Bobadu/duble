@@ -443,16 +443,19 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .col-path .btn, .col-path .badge { flex: none; }
 .col-tex-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-top: 2px; }
 .tex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-.tex { border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; padding: 4px; text-align: left; display: grid; gap: 4px; position: relative; transition: border-color .12s, transform .12s; }
+/* min-width:0 w calym lancuchu (kafelek -> podpis -> tekst): element siatki ma domyslnie min-width:auto,
+   wiec bez tego dluga nazwa pliku rozpycha kafelek ponad jego kolumne zamiast sie przyciac */
+.tex { border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; padding: 4px; text-align: left; display: grid; gap: 4px; position: relative; min-width: 0; transition: border-color .12s, transform .12s; }
 .tex:hover, .tex.para-hover { border-color: var(--accent); transform: translateY(-1px); }
 .tex.para-hover { box-shadow: 0 0 0 2px var(--accent-soft); }
 .tex-img { aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: var(--bg-2); display: grid; place-items: center; position: relative; }
 .tex-img img { width: 100%; height: 100%; object-fit: cover; }
 .tex-nopreview { font-size: 11px; color: var(--text-3); }
 .tex-dot { position: absolute; right: 4px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel-2); }
-.tex-cap { display: grid; gap: 1px; font-size: 11px; line-height: 1.25; }
-.tex-name { font-weight: 700; color: var(--text); }
-.tex-meta { color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tex-cap { display: grid; gap: 1px; font-size: 11px; line-height: 1.25; min-width: 0; }
+/* zwykle jedna litera, ale gdy nazwy pliku nie da sie rozebrac, wchodzi tu cala — kafelek ma ja przyciac, nie rozepchnac */
+.tex-name { font-weight: 700; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tex-meta { color: var(--text-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .warn-txt { color: var(--warn); font-weight: 600; }
 
 /* ---------- porownywarka tekstur ---------- */

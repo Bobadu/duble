@@ -154,7 +154,7 @@ public class ApplyTests
         {
             var plan = Planner.Plan(catalog, new[] { "z1|k.rpf|jbib|7|u", "z1|k.rpf|feet|50|u_1" }, target);
             var progress = new List<ProgressReport>();
-            var log = Executor.Execute(plan, "test", new Progress<ProgressReport>(progress.Add));
+            var log = Executor.Execute(plan, "test", new SyncProgress<ProgressReport>(progress.Add));
 
             Assert.False(log.Aborted);
             Assert.Equal(3, log.Moves.Count);

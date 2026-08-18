@@ -7,8 +7,11 @@ export function slupek(etyk, wartosc, maks, opis) {
   return `<div class="q-row"><span class="q-lab">${esc(etyk)}</span><div class="q-bar"><i style="width:${(v / maks) * 100}%"></i></div><span class="q-val">${Math.round(v)}/${maks}</span><span class="q-desc faint">${esc(opis)}</span></div>`;
 }
 
-/** Litera wariantu z nazwy pliku tekstury (jbib_diff_027_b_uni.ytd -> B), inaczej cala nazwa. */
-export function literaZPliku(plik) { const m = /_diff_\d{3}_([a-z])_/i.exec(plik || ''); return m ? m[1].toUpperCase() : (plik || ''); }
+/**
+ * Litera wariantu tekstury do pokazania. Liczy ja Core i przysyla w polu `litera` (ClothingFileName);
+ * gdy nazwy pliku nie da sie rozebrac, zostaje sama nazwa — kafelek ma ja przyciac.
+ */
+export function literaTekstury(tx) { return (tx.litera || '').toUpperCase() || tx.plik || ''; }
 
 /** Skrocona sciezka (archiwum|wewnatrz -> archiwum › wewnatrz), z lewej „…". */
 export function sciezkaKrotka(p, maks = 60) { if (!p) return ''; const s = p.replace('|', ' › '); return s.length > maks ? '…' + s.slice(-(maks - 1)) : s; }
@@ -32,6 +35,6 @@ export function kafelekTekstury(tx, { para = false, tytul = '' } = {}) {
   return el(`
     <button class="tex ${para ? 'has-pair' : ''}" data-sha="${esc(tx.sha || '')}" title="${esc(tx.plik)}&#10;${tx.w}×${tx.h} ${esc(tx.format || '')} · ${tx.mipy} mip${tytul ? ' · ' + esc(tytul) : ''}">
       <div class="tex-img">${tx.zdekodowana && tx.sha ? `<img src="https://duble.data/thumb/${esc(tx.sha)}.png" alt="" loading="lazy">` : `<span class="tex-nopreview">${esc(tx.format || '?')}</span>`}${para ? `<span class="tex-dot" aria-hidden="true"></span>` : ''}</div>
-      <div class="tex-cap"><span class="tex-name">${esc(literaZPliku(tx.plik))}</span><span class="tex-meta">${tx.w}×${tx.h} ${esc(tx.format || '')}${zn.length ? ` <span class="warn-txt">${zn.join(' ')}</span>` : ''}</span></div>
+      <div class="tex-cap"><span class="tex-name">${esc(literaTekstury(tx))}</span><span class="tex-meta">${tx.w}×${tx.h} ${esc(tx.format || '')}${zn.length ? ` <span class="warn-txt">${zn.join(' ')}</span>` : ''}</span></div>
     </button>`);
 }
