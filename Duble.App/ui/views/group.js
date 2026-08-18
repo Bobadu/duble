@@ -3,7 +3,7 @@ import { el, esc, toast, fmt, confirm } from '../ui.js';
 import { wipe } from '../wipe.js';
 import { KLASA_WERDYKTU, powodTekst, nazwaPozycji, znaczekWerdyktu } from './duplicates.js';
 import * as group3d from './group3d.js';
-import { blokJakosci, kafelekTekstury, sciezkaKrotka, literaZPliku } from './parts.js';
+import { blokJakosci, kafelekTekstury, sciezkaKrotka, literaTekstury } from './parts.js';
 
 let odpisz = null, ctxRef = null, rootEl = null, idGrupy = null, debounceNotatki = null;
 let uchwyt3d = null;   // { zniszcz } biezacej zakladki 3D
@@ -144,13 +144,13 @@ function matchesTekst(t, c, partner) {
 /** Strona porownania dla kazdego modelu w grupie: tekstura dopasowana (ta sama grafika), a jak nie ma — ten sam wariant. */
 function stronyPorownania(tx, c, partner, g) {
   const pary = new Set((partner.get(tx.sha) || []).map(p => p.sha));
-  const litera = literaZPliku(tx.plik);
   const strony = [];
   for (const cz of g.czlonkowie || []) {
     const txx = cz.id === c.id ? tx
-      : (cz.tekstury || []).find(x => pary.has(x.sha)) || (cz.tekstury || []).find(x => literaZPliku(x.plik) === litera);
+      : (cz.tekstury || []).find(x => pary.has(x.sha))
+        || (tx.litera ? (cz.tekstury || []).find(x => x.litera === tx.litera) : null);
     if (!txx || !txx.zdekodowana || !txx.sha) continue;
-    strony.push({ sha: txx.sha, nazwa: nazwaPozycji(cz), zrodlo: cz.zrodlo, litera: literaZPliku(txx.plik), plik: txx.plik, w: txx.w, h: txx.h, format: txx.format, mipy: txx.mipy, id: cz.id });
+    strony.push({ sha: txx.sha, nazwa: nazwaPozycji(cz), zrodlo: cz.zrodlo, litera: literaTekstury(txx), plik: txx.plik, w: txx.w, h: txx.h, format: txx.format, mipy: txx.mipy, id: cz.id });
   }
   return strony;
 }

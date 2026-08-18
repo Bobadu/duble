@@ -2,7 +2,7 @@
 import { el, esc, toast, fmt } from '../ui.js';
 import { wipe } from '../wipe.js';
 import { KLASA_WERDYKTU, powodTekst, nazwaPozycji, znaczekWerdyktu } from './duplicates.js';
-import { blokJakosci, kafelekTekstury, sciezkaKrotka, literaZPliku } from './parts.js';
+import { blokJakosci, kafelekTekstury, sciezkaKrotka, literaTekstury } from './parts.js';
 import * as group3d from './group3d.js';
 
 let odpisz = null, ctxRef = null, rootEl = null, idPozycji = null, uchwyt3d = null;
@@ -89,7 +89,7 @@ function karta2d(r, ctx) {
   const grid = kont.querySelector('.tex-grid');
   for (const tx of c.tekstury || []) {
     const k = kafelekTekstury(tx, { tytul: t('group.single') });
-    k.onclick = () => { if (!tx.zdekodowana || !tx.sha) { toast(t('wipe.noPreview'), { typ: 'warn' }); return; } wipe([{ sha: tx.sha, nazwa: nazwaPozycji(c), zrodlo: c.zrodlo, litera: literaZPliku(tx.plik), plik: tx.plik, w: tx.w, h: tx.h, format: tx.format, mipy: tx.mipy }]); };
+    k.onclick = () => { if (!tx.zdekodowana || !tx.sha) { toast(t('wipe.noPreview'), { typ: 'warn' }); return; } wipe([{ sha: tx.sha, nazwa: nazwaPozycji(c), zrodlo: c.zrodlo, litera: literaTekstury(tx), plik: tx.plik, w: tx.w, h: tx.h, format: tx.format, mipy: tx.mipy }]); };
     grid.append(k);
   }
   const lista = kont.querySelector('.item-groups-list');

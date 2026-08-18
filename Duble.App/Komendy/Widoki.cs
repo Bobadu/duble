@@ -39,7 +39,15 @@ public static class Widoki
             podst["rozpiska"] = Punkt(rozpiska);
             podst["sciezkaYdd"] = p.ModelPath;
             podst["bajtyYdd"] = p.ModelSize;
-            podst["tekstury"] = p.Textures.Select(t => new { sha = t.Sha256, plik = t.FileName, nazwa = t.Name, w = t.Width, h = t.Height, format = t.Format, mipy = t.MipLevels, alfa = t.AlphaShare, zdekodowana = t.IsDecoded, bajty = t.Size }).ToList();
+            // `litera` (wariant koloru) liczy Core — UI mial na to wlasny regexp w dwoch plikach i oba gubily
+            // propsy (p_ears_diff_017_a.ytd nie ma po literze rasy)
+            podst["tekstury"] = p.Textures.Select(t => new
+            {
+                sha = t.Sha256, plik = t.FileName, nazwa = t.Name,
+                litera = ClothingFileName.ParseTexture(t.FileName)?.Letter,
+                w = t.Width, h = t.Height, format = t.Format, mipy = t.MipLevels,
+                alfa = t.AlphaShare, zdekodowana = t.IsDecoded, bajty = t.Size,
+            }).ToList();
         }
         return podst;
     }

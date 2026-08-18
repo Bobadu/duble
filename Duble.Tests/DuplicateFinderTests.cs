@@ -142,8 +142,10 @@ public class DuplicateFinderTests
             Make("p3", "jbib", 3, "H3", 1000, 600, Shape(30), "S3"),
         });
 
+        // SyncProgress, nie Progress: ten drugi oddaje wywolania na pule watkow, wiec asercja tuz po Find
+        // potrafi wykonac sie zanim ostatni raport dojdzie
         var progress = new List<ProgressReport>();
-        Finder.Find(catalog, null, new Progress<ProgressReport>(progress.Add));
+        Finder.Find(catalog, null, new SyncProgress<ProgressReport>(progress.Add));
         Assert.Contains(progress, report => report.Stage == "compare" && report.Done == 3 && report.Total == 3);
 
         using var cancellation = new CancellationTokenSource();
