@@ -3,7 +3,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Duble.App</RootNamespace>
     <AssemblyName>Duble</AssemblyName>
@@ -17,7 +18,8 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
   </ItemGroup>
   <ItemGroup>
-    <!-- interfejs osadzony w exe; w trybie -dev czytany z folderu ui\ (edycja na zywo) -->
+    <!-- The interface is embedded in the executable; in developer mode it is read from ui\ instead, so that
+         editing an HTML, CSS or JS file is one page reload away from being visible. -->
     <EmbeddedResource Include="ui\**\*" Exclude="ui\_dev-*.js" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
     <Resource Include="assets\duble.ico" />
   </ItemGroup>

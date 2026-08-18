@@ -28,13 +28,13 @@ public class ArchiveExtractorTests
     [Fact]
     public void An_unpacked_archive_indexes_to_the_same_garments_as_the_archive_did()
     {
-        if (!Sciezki.JestGra) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
+        if (!TestPaths.HasGame) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
 
-        var temp = Sciezki.Tymczasowy("unpack");
+        var temp = TestPaths.Temp("unpack");
         try
         {
             var progress = new List<ProgressReport>();
-            var result = Extractor.ExtractArchive(Sciezki.Dlc("studio_body"), Path.Combine(temp, "studio_body"),
+            var result = Extractor.ExtractArchive(TestPaths.Dlc("studio_body"), Path.Combine(temp, "studio_body"),
                                                   new SyncProgress<ProgressReport>(progress.Add));
 
             output.WriteLine($"files={result.Files} archives={result.Archives} bytes={result.Bytes} errors={result.Errors.Count}");
@@ -57,7 +57,7 @@ public class ArchiveExtractorTests
             Assert.Contains(Directory.GetFiles(temp, "*", SearchOption.AllDirectories),
                             file => !file.EndsWith(".ydd") && !file.EndsWith(".ytd"));
 
-            var fromArchive = Index(Sciezki.Dlc("studio_body"), "x");
+            var fromArchive = Index(TestPaths.Dlc("studio_body"), "x");
             var fromCopy = Index(Path.Combine(temp, "studio_body"), "x");
             Assert.Equal(fromArchive.Count, fromCopy.Count);
 
@@ -74,14 +74,14 @@ public class ArchiveExtractorTests
     [Fact]
     public void Unpacking_a_whole_source_copies_the_loose_files_and_skips_the_bin()
     {
-        if (!Sciezki.JestGra) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
+        if (!TestPaths.HasGame) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
 
-        var temp = Sciezki.Tymczasowy("unpack-source");
+        var temp = TestPaths.Temp("unpack-source");
         try
         {
             var source = Path.Combine(temp, "src", "stream");
             Directory.CreateDirectory(source);
-            File.Copy(Sciezki.Dlc("studio_body"), Path.Combine(source, "paczka.rpf"));
+            File.Copy(TestPaths.Dlc("studio_body"), Path.Combine(source, "paczka.rpf"));
             File.WriteAllText(Path.Combine(source, "x.meta"), "<meta/>");
 
             Directory.CreateDirectory(Path.Combine(temp, "src", "_rejected"));

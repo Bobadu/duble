@@ -1,74 +1,132 @@
-// JobRunner.cs — jedno ciezkie zadanie naraz (indeksowanie, porownanie, zastosuj…), postep jako zdarzenia "job", anulowanie.
+// JobRunner.cs — one long job at a time (indexing, comparing, applying…), reported to the interface as "job"
+// events and cancellable from there.
 //
-// zdarzenie "job": { typ, opis, stan: start|postep|koniec|anulowano|blad, etap, zrobione, wszystkie, procent, tekst, blad }
+// event "job": { typ, opis, stan: start|postep|koniec|anulowano|blad, etap, zrobione, wszystkie, procent,
+//                tekst, blad } — the interface's vocabulary, see Bridge.
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Duble.App;
 
+/// <summary>The kinds of job, as the interface knows them: it shows progress only for the one it expects.</summary>
+public static class JobKinds
+{
+    public const string Index = "indeks";
+    public const string Compare = "porownaj";
+    public const string Apply = "zastosuj";
+    public const string Undo = "cofnij";
+    public const string Unpack = "rozpakuj";
+    public const string Report = "raport";
+    public const string Calibration = "kalibracja";
+}
+
 public sealed class JobRunner
 {
-    readonly Action<string, object> zdarzenie;
-    readonly object klucz = new();
-    CancellationTokenSource cts;
-    public bool Zajety { get; private set; }
-    public string Biezace { get; private set; }
+    /// <summary>Progress is reported per file — hundreds of times a second while applying — and every event
+    /// redraws the interface, so it is passed on at most this often. A new stage and the last step of a stage
+    /// always get through, otherwise a progress bar could sit at 90 % after the work had finished.</summary>
+    const int MinimumMillisecondsBetweenReports = 100;
 
-    public JobRunner(Action<string, object> zdarzenie) { this.zdarzenie = zdarzenie; }
+    readonly Action<string, object> raise;
+    readonly object gate = new();
+    CancellationTokenSource? cancellation;
 
-    /// <summary>Uruchamia prace w tle. false = inne zadanie w toku (nic nie uruchomiono).</summary>
-    public async Task<bool> Uruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.ProgressReport>, Task> praca)
+    public JobRunner(Action<string, object> raise) => this.raise = raise;
+
+    /// <summary>Whether a job is running. The interface asks before offering to start another.</summary>
+    public bool Busy { get; private set; }
+
+    /// <summary>The kind of the running job, or null.</summary>
+    public string? Current { get; private set; }
+
+    /// <summary>Runs the work and waits for it. false = another job was already running, nothing was started.</summary>
+    public async Task<bool> Run(string kind, string description, Func<CancellationToken, Action<ProgressReport>, Task> work)
     {
-        CancellationTokenSource moj;
-        lock (klucz)
-        {
-            if (Zajety) return false;
-            Zajety = true; Biezace = typ; cts = moj = new CancellationTokenSource();
-        }
-        var ct = moj.Token;
-        zdarzenie("job", new { typ, opis, stan = "start" });
-        // postep bywa zglaszany per plik (zastosuj/cofnij: setki razy na sekunde) — do UI idzie najwyzej co ~100 ms
-        // (plus zawsze: nowy etap i ostatni krok etapu), bo kazde zdarzenie odswieza widoki
-        long ostatniTik = 0; string ostatniEtap = null; var klucz2 = new object();
-        void ProgressReport(Duble.Core.ProgressReport p)
-        {
-            lock (klucz2)
-            {
-                var teraz = Environment.TickCount64;
-                bool koniecEtapu = p.Total > 0 && p.Done >= p.Total;
-                bool nowyEtap = p.Stage != ostatniEtap;
-                if (!koniecEtapu && !nowyEtap && teraz - ostatniTik < 100) return;
-                ostatniTik = teraz; ostatniEtap = p.Stage;
-            }
-            zdarzenie("job", new
-            {
-                typ, opis, stan = "postep", etap = p.Stage, zrobione = p.Done, wszystkie = p.Total,
-                procent = p.Total > 0 ? (int)(100L * p.Done / p.Total) : 0, tekst = p.Container,
-            });
-        }
-        try
-        {
-            await Task.Run(() => praca(ct, ProgressReport), ct).ConfigureAwait(false);
-            zdarzenie("job", new { typ, opis, stan = "koniec" });
-        }
-        catch (OperationCanceledException) { zdarzenie("job", new { typ, opis, stan = "anulowano" }); }
-        catch (Exception e) { zdarzenie("job", new { typ, opis, stan = "blad", blad = e.Message }); }
-        finally
-        {
-            lock (klucz) { Zajety = false; Biezace = null; if (ReferenceEquals(cts, moj)) cts = null; }
-            moj.Dispose();
-        }
+        var reserved = Reserve(kind);
+        if (reserved == null) return false;
+        await Execute(kind, description, work, reserved).ConfigureAwait(false);
         return true;
     }
 
-    /// <summary>Jak Uruchom, ale nie czeka na koniec: true = wystartowalo (w tle), false = zajety.</summary>
-    public bool SprobujUruchom(string typ, string opis, Func<CancellationToken, Action<Duble.Core.ProgressReport>, Task> praca)
+    /// <summary>Starts the work in the background. true = it is running, false = another job was already running.</summary>
+    public bool TryStart(string kind, string description, Func<CancellationToken, Action<ProgressReport>, Task> work)
     {
-        lock (klucz) { if (Zajety) return false; }
-        _ = Uruchom(typ, opis, praca);   // ustawia Zajety synchronicznie (do pierwszego await)
-        return Zajety;
+        var reserved = Reserve(kind);
+        if (reserved == null) return false;
+        _ = Execute(kind, description, work, reserved);
+        return true;
     }
 
-    public void Anuluj() { lock (klucz) cts?.Cancel(); }
+    public void Cancel()
+    {
+        lock (gate) cancellation?.Cancel();
+    }
+
+    /// <summary>Takes the single slot, or returns null if it is taken. Reserving and starting have to be one
+    /// step: two commands arriving together would otherwise both believe they had started their job.</summary>
+    CancellationTokenSource? Reserve(string kind)
+    {
+        lock (gate)
+        {
+            if (Busy) return null;
+            Busy = true;
+            Current = kind;
+            return cancellation = new CancellationTokenSource();
+        }
+    }
+
+    async Task Execute(string kind, string description, Func<CancellationToken, Action<ProgressReport>, Task> work, CancellationTokenSource reserved)
+    {
+        var token = reserved.Token;
+        raise("job", new { typ = kind, opis = description, stan = "start" });
+        try
+        {
+            await Task.Run(() => work(token, Throttled(kind, description)), token).ConfigureAwait(false);
+            raise("job", new { typ = kind, opis = description, stan = "koniec" });
+        }
+        catch (OperationCanceledException) { raise("job", new { typ = kind, opis = description, stan = "anulowano" }); }
+        catch (Exception e) { raise("job", new { typ = kind, opis = description, stan = "blad", blad = e.Message }); }
+        finally
+        {
+            lock (gate)
+            {
+                Busy = false;
+                Current = null;
+                if (ReferenceEquals(cancellation, reserved)) cancellation = null;
+            }
+            reserved.Dispose();
+        }
+    }
+
+    Action<ProgressReport> Throttled(string kind, string description)
+    {
+        var throttle = new object();
+        long lastTick = 0;
+        string? lastStage = null;
+
+        return report =>
+        {
+            lock (throttle)
+            {
+                var now = Environment.TickCount64;
+                bool endOfStage = report.Total > 0 && report.Done >= report.Total;
+                bool newStage = report.Stage != lastStage;
+                if (!endOfStage && !newStage && now - lastTick < MinimumMillisecondsBetweenReports) return;
+                lastTick = now;
+                lastStage = report.Stage;
+            }
+            raise("job", new
+            {
+                typ = kind,
+                opis = description,
+                stan = "postep",
+                etap = report.Stage,
+                zrobione = report.Done,
+                wszystkie = report.Total,
+                procent = report.Total > 0 ? (int)(100L * report.Done / report.Total) : 0,
+                tekst = report.Container,
+            });
+        };
+    }
 }

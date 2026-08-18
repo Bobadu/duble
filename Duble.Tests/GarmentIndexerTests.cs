@@ -29,9 +29,9 @@ public class GarmentIndexerTests
     [Fact]
     public void An_rpf_archive_as_a_source_yields_geometry_and_textures()
     {
-        if (!Sciezki.JestGra) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
+        if (!TestPaths.HasGame) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
 
-        var garments = Index(Sciezki.Dlc("studio_body"), "studio_body");
+        var garments = Index(TestPaths.Dlc("studio_body"), "studio_body");
         var uppr = garments.FirstOrDefault(g => g.Slot == "uppr" && g.Number == 15);
 
         Assert.NotNull(uppr);
@@ -51,12 +51,12 @@ public class GarmentIndexerTests
     [Fact]
     public void An_rpf_sitting_in_a_folder_is_a_container_of_its_own()
     {
-        if (!Sciezki.JestGra) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
+        if (!TestPaths.HasGame) { output.WriteLine("SKIPPED: no studio_body\\dlc.rpf"); return; }
 
-        var temp = Sciezki.Tymczasowy("rpf-in-folder");
+        var temp = TestPaths.Temp("rpf-in-folder");
         try
         {
-            File.Copy(Sciezki.Dlc("studio_body"), Path.Combine(temp, "dlc.rpf"));
+            File.Copy(TestPaths.Dlc("studio_body"), Path.Combine(temp, "dlc.rpf"));
             var garments = Index(temp, "test");
 
             Assert.NotEmpty(garments);
@@ -71,9 +71,9 @@ public class GarmentIndexerTests
     [Fact]
     public void A_legacy_folder_indexes_as_legacy()
     {
-        if (!Sciezki.SaLegacy4) { output.WriteLine("SKIPPED: no downloads"); return; }
+        if (!TestPaths.HasLegacyPacks) { output.WriteLine("SKIPPED: no downloads"); return; }
 
-        var garments = Index(Sciezki.Downloads("vrp_clothes_f_civil03"), "vrp_clothes_f_civil03");
+        var garments = Index(TestPaths.Downloads("vrp_clothes_f_civil03"), "vrp_clothes_f_civil03");
         Assert.Equal(62, garments.Count);
         Assert.All(garments, garment => Assert.Equal(GameFormat.Legacy, garment.GameFormat));
     }
@@ -81,10 +81,10 @@ public class GarmentIndexerTests
     [Fact]
     public void A_second_run_reuses_fingerprints_and_writes_the_thumbnails()
     {
-        if (!Sciezki.SaLegacy4) { output.WriteLine("SKIPPED: no downloads"); return; }
+        if (!TestPaths.HasLegacyPacks) { output.WriteLine("SKIPPED: no downloads"); return; }
 
-        var source = Sciezki.Downloads("vrp_clothes_f_civil03");
-        var thumbnails = Sciezki.Tymczasowy("thumbnails");
+        var source = TestPaths.Downloads("vrp_clothes_f_civil03");
+        var thumbnails = TestPaths.Temp("thumbnails");
         try
         {
             var first = Indexer.Index(source, "civil03", new IndexOptions { ThumbnailFolder = thumbnails }).Value;
@@ -120,7 +120,7 @@ public class GarmentIndexerTests
     [Fact]
     public void The_bin_folder_is_invisible_to_indexing()
     {
-        var temp = Sciezki.Tymczasowy("bin");
+        var temp = TestPaths.Temp("bin");
         try
         {
             Assert.True(BinFolder.Contains(temp, Path.Combine(temp, "_rejected", "p", "k.rpf", "jbib_001_u.ydd")));
@@ -138,11 +138,11 @@ public class GarmentIndexerTests
     [Fact]
     public void Cancelling_stops_the_indexing()
     {
-        if (!Sciezki.SaLegacy4) { output.WriteLine("SKIPPED: no downloads"); return; }
+        if (!TestPaths.HasLegacyPacks) { output.WriteLine("SKIPPED: no downloads"); return; }
 
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         Assert.ThrowsAny<OperationCanceledException>(() =>
-            Indexer.Index(Sciezki.Downloads("vrp_clothes_f_civil03"), "civil03", new IndexOptions(), null, cancellation.Token));
+            Indexer.Index(TestPaths.Downloads("vrp_clothes_f_civil03"), "civil03", new IndexOptions(), null, cancellation.Token));
     }
 }

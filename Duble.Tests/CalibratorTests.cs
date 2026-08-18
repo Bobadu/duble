@@ -7,7 +7,7 @@ using Xunit;
 namespace Duble.Tests;
 
 /// <summary>
-/// The calibrator over a made-up catalog (Sztuczne.Siedem): the distributions, their histograms, the
+/// The calibrator over a made-up catalog (SampleData.SevenGarments): the distributions, their histograms, the
 /// thresholds it proposes, and cancelling half-way.
 /// </summary>
 public class CalibratorTests
@@ -35,11 +35,11 @@ public class CalibratorTests
     [Fact]
     public void Measuring_a_catalog_gives_distributions_and_a_usable_proposal()
     {
-        var directory = Sciezki.Tymczasowy("calibration");
+        var directory = TestPaths.Temp("calibration");
         try
         {
             var catalog = new Catalog();
-            catalog.Upsert(Sztuczne.Siedem(directory));
+            catalog.Upsert(SampleData.SevenGarments(directory));
             var report = Calibrator.Run(catalog);
 
             Assert.Equal(7, report.Garments);
@@ -77,11 +77,11 @@ public class CalibratorTests
     [Fact]
     public void Cancelling_stops_the_measurement()
     {
-        var directory = Sciezki.Tymczasowy("calibration-cancel");
+        var directory = TestPaths.Temp("calibration-cancel");
         try
         {
             var catalog = new Catalog();
-            catalog.Upsert(Sztuczne.Siedem(directory));
+            catalog.Upsert(SampleData.SevenGarments(directory));
 
             using var cancellation = new CancellationTokenSource();
             cancellation.Cancel();

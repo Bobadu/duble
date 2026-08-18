@@ -329,13 +329,28 @@ and the README project table use the new vocabulary.
 
 ## Stages 2–4
 
-**Stage 2 — app shell and bridge.** `Sesja` → `Session`, `Mostek` → `Bridge`, `Komendy` → `Commands`,
-`Ustawienia` → `Settings`, `Zasoby` → `Resources`, `Gry` → `GameLocator`, `Argumenty` → `CommandLine`. The
-bridge protocol keys become English and the compatibility table from PR 4 is removed together with the matching
-change in the interface.
+**Stage 2 — app shell and bridge.** *Done.* `Sesja` → `Session`, `Mostek` → `Bridge`, `Komendy` → `Commands`,
+`Ustawienia` → `Settings`, `Zasoby` → `WebResources` (a `Window` already has a `Resources`), `Gry` →
+`GameDetector`, `Argumenty` → `StartupOptions`. Each group of commands became a class with its dependencies in
+its constructor rather than a static method full of closures, the two steps every command ends with — index,
+then compare — became `CatalogWorkflow`, and the tuple `(group, members, resolution)` that three screens passed
+around became `LiveGroups`.
+
+Two things this document expected did not happen, and deliberately:
+
+- **The bridge vocabulary stays Polish for now.** The keys inside `result` and `data` are the *interface's*
+  names, and the interface is stage 3. Renaming them here would mean editing every JS file in the same breath,
+  which is precisely the change that made the project name vanish from the start screen once already. Instead
+  every payload now names its fields explicitly — `nazwa = source.Name`, never the shorthand `new {
+  source.Name }` — so stage 3 changes one side of a written-out mapping rather than hunting for implicit ones.
+- **Settings written by 1.0.0 are migrated.** `settings.json` is small but not disposable: without it an update
+  would silently reset the language, the theme and the recent projects. The file is read under both sets of
+  names and rewritten under the new ones. (The project file needs no such thing: its keys were already English
+  after stage 1.)
 
 **Stage 3 — interface.** `Duble.App/ui`: module and function names, `data-` attributes, session-storage keys,
-CSS class names. i18n keys are already English; the Polish user-facing text stays in `pl.json` where it belongs.
+CSS class names, and with them the bridge vocabulary above. i18n keys are already English; the Polish
+user-facing text stays in `pl.json` where it belongs.
 
 **Stage 4 — CLI and user-visible names.** *Done.* Verbs `indeks / porownaj / raport / zastosuj / cofnij /
 kalibruj` became `index / compare / report / apply / undo / calibrate`, and the bin folder `_odrzucone` became

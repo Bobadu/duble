@@ -207,7 +207,7 @@ public class GoldenMasterTests
     /// </summary>
     static GoldenResult LoadGolden(string fileName)
     {
-        using var document = JsonDocument.Parse(File.ReadAllText(Sciezki.Golden(fileName)));
+        using var document = JsonDocument.Parse(File.ReadAllText(TestPaths.Golden(fileName)));
         var root = document.RootElement;
 
         string Text(JsonElement element)
@@ -284,11 +284,11 @@ public class GoldenMasterTests
     [Fact, Trait("Speed", "Slow")]
     public void Four_legacy_packs_still_compare_the_same_way()
     {
-        if (!Sciezki.SaLegacy4) { output.WriteLine("SKIPPED: no downloads\\vrp_clothes_f_civil01 and the rest"); return; }
+        if (!TestPaths.HasLegacyPacks) { output.WriteLine("SKIPPED: no downloads\\vrp_clothes_f_civil01 and the rest"); return; }
 
         var catalog = new Catalog();
         foreach (var pack in new[] { "vrp_clothes_f_civil01", "vrp_clothes_f_civil02", "vrp_clothes_f_civil03", "civil_f_premium" })
-            catalog.Upsert(Index(Sciezki.Downloads(pack), pack));
+            catalog.Upsert(Index(TestPaths.Downloads(pack), pack));
 
         Compare(LoadGolden("legacy4-duble.json"), ToGolden(Finder.Find(catalog)));
     }
@@ -296,7 +296,7 @@ public class GoldenMasterTests
     [Fact, Trait("Speed", "Slow")]
     public void The_enhanced_studio_wardrobe_still_compares_the_same_way()
     {
-        var dlc = Sciezki.Dlc("studio_wardrobe");
+        var dlc = TestPaths.Dlc("studio_wardrobe");
         if (dlc == null || !File.Exists(dlc)) { output.WriteLine("SKIPPED: no studio_wardrobe\\dlc.rpf"); return; }
 
         var catalog = new Catalog();

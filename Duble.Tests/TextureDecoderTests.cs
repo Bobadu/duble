@@ -44,12 +44,12 @@ public class TextureDecoderTests
     [Fact, Trait("Speed", "Slow")]
     public void A_legacy_bc7_texture_decodes_to_pixels()
     {
-        if (!Sciezki.SaLegacy4) { output.WriteLine("SKIPPED: no downloads"); return; }
+        if (!TestPaths.HasLegacyPacks) { output.WriteLine("SKIPPED: no downloads"); return; }
         CodeWalkerRuntime.Initialize();
 
         Texture bc7 = null;
         string file = null;
-        foreach (var candidate in Directory.EnumerateFiles(Sciezki.Downloads("vrp_clothes_f_civil01"), "*.ytd", SearchOption.AllDirectories))
+        foreach (var candidate in Directory.EnumerateFiles(TestPaths.Downloads("vrp_clothes_f_civil01"), "*.ytd", SearchOption.AllDirectories))
         {
             var ytd = new YtdFile();
             RpfFile.LoadResourceFile(ytd, File.ReadAllBytes(candidate), 13);
@@ -78,7 +78,7 @@ public class TextureDecoderTests
     [Fact, Trait("Speed", "Slow")]
     public void An_enhanced_bc7_texture_decodes_too()
     {
-        var dlc = Sciezki.Dlc("studio_wardrobe");
+        var dlc = TestPaths.Dlc("studio_wardrobe");
         if (dlc == null || !File.Exists(dlc)) { output.WriteLine("SKIPPED: no studio_wardrobe"); return; }
 
         var texture = Index(dlc, "studio_wardrobe").SelectMany(g => g.Textures).FirstOrDefault(t => t.Format == "BC7");
@@ -98,9 +98,9 @@ public class TextureDecoderTests
     [Fact]
     public void A_preview_png_is_rgba_and_no_larger_than_asked_for()
     {
-        if (!Sciezki.SaLegacy4) { output.WriteLine("SKIPPED: no downloads"); return; }
+        if (!TestPaths.HasLegacyPacks) { output.WriteLine("SKIPPED: no downloads"); return; }
 
-        var file = Directory.EnumerateFiles(Sciezki.Downloads("vrp_clothes_f_civil03"), "*.ytd", SearchOption.AllDirectories).First();
+        var file = Directory.EnumerateFiles(TestPaths.Downloads("vrp_clothes_f_civil03"), "*.ytd", SearchOption.AllDirectories).First();
         var ytd = new YtdFile();
         RpfFile.LoadResourceFile(ytd, File.ReadAllBytes(file), 13);
 

@@ -7,34 +7,52 @@ using Xunit;
 
 namespace Duble.Tests;
 
-/// <summary>Slowniki UI (ui\i18n\pl.json, en.json): te same klucze, brak pustych, kazdy klucz uzyty w JS/HTML istnieje.</summary>
+/// <summary>
+/// The dictionaries of the interface (ui\i18n\pl.json and en.json): the same keys on both sides, none of them
+/// empty, and every key the interface asks for actually there. Core's own dictionary is merged into these, so
+/// some of these tests reach across to it.
+/// </summary>
 public class I18nUiTests
 {
-    static string Ui => Sciezki.Ui;
-    static Dictionary<string, string> Slownik(string j) => JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(Ui, "i18n", j + ".json")));
+    static string Ui => TestPaths.Ui;
+
+    static Dictionary<string, string> Translations(string language)
+        => JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(Path.Combine(Ui, "i18n", language + ".json")));
+
+    static IEnumerable<string> InterfaceFiles(params string[] extensions)
+        => Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories)
+            .Where(file => extensions.Any(file.EndsWith)
+                           && !file.Contains(Path.DirectorySeparatorChar + "vendor" + Path.DirectorySeparatorChar));
 
     [Fact]
-    public void Pl_i_en_maja_te_same_klucze_i_zadnych_pustych()
+    public void Both_languages_have_the_same_keys_and_none_of_them_is_empty()
     {
-        var pl = Slownik("pl"); var en = Slownik("en");
-        Assert.Empty(pl.Keys.Except(en.Keys)); Assert.Empty(en.Keys.Except(pl.Keys));
-        Assert.All(pl.Values, v => Assert.False(string.IsNullOrWhiteSpace(v))); Assert.All(en.Values, v => Assert.False(string.IsNullOrWhiteSpace(v)));
+        var pl = Translations("pl");
+        var en = Translations("en");
+
+        Assert.Empty(pl.Keys.Except(en.Keys));
+        Assert.Empty(en.Keys.Except(pl.Keys));
+        Assert.All(pl.Values, value => Assert.False(string.IsNullOrWhiteSpace(value)));
+        Assert.All(en.Values, value => Assert.False(string.IsNullOrWhiteSpace(value)));
     }
 
     [Fact]
-    public void Kazdy_klucz_uzyty_w_ui_istnieje_w_slowniku()
+    public void Every_key_the_interface_asks_for_exists()
     {
-        var pl = Slownik("pl");
-        // t('klucz') albo t('klucz', {...}); klucze skladane dynamicznie (t('nav.' + id)) sprawdzaja testy slotow/nazw
-        var re = new Regex(@"(?:\bt\(\s*'([a-zA-Z0-9_.]+)'\s*[,)]|data-i18n(?:-title|-placeholder|-aria)?=""([a-zA-Z0-9_.]+)"")");
-        var brak = new List<string>();
-        foreach (var f in Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories).Where(f => (f.EndsWith(".js") || f.EndsWith(".html")) && !f.Contains(Path.DirectorySeparatorChar + "vendor" + Path.DirectorySeparatorChar)))
-            foreach (Match m in re.Matches(File.ReadAllText(f)))
+        var pl = Translations("pl");
+        // t('key') or t('key', {...}); keys built at run time (t('nav.' + id)) are covered by the tests below
+        var pattern = new Regex(@"(?:\bt\(\s*'([a-zA-Z0-9_.]+)'\s*[,)]|data-i18n(?:-title|-placeholder|-aria)?=""([a-zA-Z0-9_.]+)"")");
+
+        var missing = new List<string>();
+        foreach (var file in InterfaceFiles(".js", ".html"))
+            foreach (Match match in pattern.Matches(File.ReadAllText(file)))
             {
-                var k = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value;
-                if (!pl.ContainsKey(k) && !k.StartsWith("reason.") && !k.StartsWith("verdict.") && !k.StartsWith("slot.")) brak.Add(Path.GetFileName(f) + ": " + k);
+                var key = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                if (!pl.ContainsKey(key) && !key.StartsWith("reason.") && !key.StartsWith("verdict.") && !key.StartsWith("slot."))
+                    missing.Add(Path.GetFileName(file) + ": " + key);
             }
-        Assert.Empty(brak);
+
+        Assert.Empty(missing);
     }
 
     /// <summary>
@@ -60,8 +78,9 @@ public class I18nUiTests
     [Fact]
     public void Every_progress_stage_has_a_label_in_both_languages()
     {
-        var pl = Slownik("pl");
-        var en = Slownik("en");
+        var pl = Translations("pl");
+        var en = Translations("en");
+
         foreach (var stage in new[] { "start", "models", "textures", "compare", "apply", "undo", "unpack", "report", "calibration" })
         {
             Assert.True(pl.ContainsKey("stage." + stage), "pl stage." + stage);
@@ -80,15 +99,13 @@ public class I18nUiTests
     {
         foreach (var language in new[] { "pl", "en" })
         {
-            var dictionary = Slownik(language);
+            var dictionary = Translations(language);
             foreach (var key in new[] { "apply.besideSource", "settings.binBeside" })
                 Assert.Contains(BinFolder.Name, dictionary[key]);
         }
 
         var stale = new List<string>();
-        foreach (var file in Directory.EnumerateFiles(Ui, "*.*", SearchOption.AllDirectories)
-                     .Where(f => (f.EndsWith(".js") || f.EndsWith(".html") || f.EndsWith(".json"))
-                                 && !f.Contains(Path.DirectorySeparatorChar + "vendor" + Path.DirectorySeparatorChar)))
+        foreach (var file in InterfaceFiles(".js", ".html", ".json"))
         {
             var text = File.ReadAllText(file);
             // any underscore-prefixed folder that looks like a bin but is not the one Core writes
@@ -96,17 +113,24 @@ public class I18nUiTests
                 if (match.Value is "_odrzucone" or "_rejected" && match.Value != BinFolder.Name)
                     stale.Add($"{Path.GetFileName(file)}: {match.Value}");
         }
+
         Assert.Empty(stale);
     }
 
     [Fact]
-    public void Sloty_maja_tlumaczenia()
+    public void Every_slot_has_a_name_in_both_languages()
     {
-        var pl = Slownik("pl"); var en = Slownik("en");
-        foreach (var typ in new[] { "berd", "hair", "uppr", "lowr", "hand", "feet", "teef", "accs", "task", "decl", "jbib", "p_head", "p_eyes", "p_ears", "p_mouth", "p_lhand", "p_rhand", "p_lwrist", "p_rwrist", "p_hip" })
+        var pl = Translations("pl");
+        var en = Translations("en");
+
+        foreach (var slot in new[]
+                 {
+                     "berd", "hair", "uppr", "lowr", "hand", "feet", "teef", "accs", "task", "decl", "jbib",
+                     "p_head", "p_eyes", "p_ears", "p_mouth", "p_lhand", "p_rhand", "p_lwrist", "p_rwrist", "p_hip",
+                 })
         {
-            Assert.True(pl.ContainsKey("slot." + typ), "pl slot." + typ);
-            Assert.True(en.ContainsKey("slot." + typ), "en slot." + typ);
+            Assert.True(pl.ContainsKey("slot." + slot), "pl slot." + slot);
+            Assert.True(en.ContainsKey("slot." + slot), "en slot." + slot);
         }
     }
 }

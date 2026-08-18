@@ -20,9 +20,9 @@ public class ReportTests
 
     static (Catalog Catalog, ComparisonResult Result, string Directory) World()
     {
-        var directory = Sciezki.Tymczasowy("report");
+        var directory = TestPaths.Temp("report");
         var catalog = new Catalog();
-        catalog.Upsert(Sztuczne.Siedem(directory));
+        catalog.Upsert(SampleData.SevenGarments(directory));
         return (catalog, Finder.Find(catalog), directory);
     }
 

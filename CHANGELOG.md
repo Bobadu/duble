@@ -8,6 +8,15 @@ All notable changes to Duble are documented here. The format follows
 
 ### Changed
 
+- **The desktop application is in English throughout its C# code**, as the engine and the command line already
+  were: `Sesja` → `Session`, `Mostek` → `Bridge`, `Komendy` → `Commands`, and one class per group of commands
+  instead of one long registration method. The interface (`Duble.App/ui`) is unchanged and so is the vocabulary
+  it speaks over the bridge; both move together in the next step.
+- **Settings written by 1.0.0 are read and carried over.** `settings.json` now uses English names; the file
+  from an earlier version is still read, so the language, the theme, the window position and the recent
+  projects survive the update. The file is rewritten in the new shape the next time Duble exits.
+- **The file dialogs and the WebView2 error follow the language.** They were Polish whatever the interface was
+  set to.
 - **The bin folder is `_rejected`**, not `_odrzucone`. A bin written by 1.0.0 is not recognised: the indexer
   would read it as a pack of its own, so rename it by hand if you have one.
 - **Command line in English.** `indeks / porownaj / raport / zastosuj / cofnij / kalibruj` are now
@@ -21,6 +30,11 @@ All notable changes to Duble are documented here. The format follows
 
 ### Fixed
 
+- **An apply whose undo log cannot be written says so.** The files had already moved and the failure was
+  swallowed, leaving an operation with no way back and nothing on screen to say why.
+- **A project that cannot be saved reports it** instead of leaving the change in memory only.
+- **Two commands arriving at the same moment can no longer both believe they started a job.** The check for
+  "is something already running" and the taking of the slot are now one step.
 - **The same catalog compares the same way twice.** Garments sharing a slot and number but differing in suffix
   were ordered by a dictionary's enumeration, which .NET randomises per process, so `comparison.json` differed
   between runs over identical input — pairs came out with their two sides swapped, and their coverages with

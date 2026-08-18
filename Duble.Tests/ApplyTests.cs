@@ -52,7 +52,7 @@ public class ApplyTests
     /// </summary>
     static (string Temp, string Source, string Bin, Catalog Catalog, Func<Garment, BinTarget> Target) World()
     {
-        var temp = Sciezki.Tymczasowy("apply");
+        var temp = TestPaths.Temp("apply");
         var source = Path.Combine(temp, "z1");
         Directory.CreateDirectory(source);
         var bin = Path.Combine(temp, "_rejected", "z1");
@@ -236,7 +236,7 @@ public class ApplyTests
     [Fact]
     public void A_path_outside_the_source_keeps_only_its_file_name()
     {
-        var temp = Sciezki.Tymczasowy("relative");
+        var temp = TestPaths.Temp("relative");
         try
         {
             var file = Path.Combine(temp, "a", "b.rpf", "c.ydd");
