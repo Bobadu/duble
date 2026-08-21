@@ -5,7 +5,7 @@
     CodeWalker.Core lives outside this folder, so it does not inherit any of this.
   -->
   <PropertyGroup>
-    <Version>2.2.0</Version>
+    <Version>2.3.0</Version>
     <Product>Duble</Product>
     <Company>Bobadu</Company>
     <Authors>Bobadu</Authors>
