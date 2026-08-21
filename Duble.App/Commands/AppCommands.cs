@@ -1,8 +1,11 @@
-// Commands/AppCommands.cs — the program itself: what it is, when its interface is up, and the settings that
-// belong to the program rather than to a project (language, theme, recent projects).
+// Commands/AppCommands.cs — the program itself: what it is, when its interface is up, the settings that
+// belong to the program rather than to a project (language, theme, recent projects), and whether a newer
+// Duble has been released.
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Duble.App.Commands;
 
@@ -14,8 +17,13 @@ public sealed class AppCommands : ICommandModule
     public const string Licence = "MIT";
 
     readonly Bridge bridge;
+    readonly IUpdateSource updates;
 
-    public AppCommands(Bridge bridge) => this.bridge = bridge;
+    public AppCommands(Bridge bridge, IUpdateSource updates)
+    {
+        this.bridge = bridge;
+        this.updates = updates;
+    }
 
     /// <summary>The interface has loaded its dictionaries and drawn once. The window waits for this before
     /// opening a project from the command line or taking a screenshot.</summary>
@@ -24,9 +32,11 @@ public sealed class AppCommands : ICommandModule
     public void Register()
     {
         bridge.Register("app.info", _ => Info());
+        bridge.Register("app.changelog", _ => new { markdown = ChangelogText() });
         bridge.Register("ui.ready", _ => { UiReady?.Invoke(); return new { }; });
         bridge.Register("settings.get", _ => CurrentSettings());
         bridge.Register("settings.set", Change);
+        bridge.Register("update.check", _ => CheckNow());
     }
 
     object Info() => new
@@ -53,6 +63,7 @@ public sealed class AppCommands : ICommandModule
         chosenLanguage = bridge.Settings.Language,
         theme = bridge.Settings.Theme,
         recent = bridge.Settings.Recent,
+        checkUpdates = bridge.Settings.CheckUpdates,
     };
 
     object Change(System.Text.Json.JsonElement args)
@@ -63,11 +74,62 @@ public sealed class AppCommands : ICommandModule
         // "" and "system" both mean "follow Windows", which is what null stands for in the file
         if (language != null) bridge.Settings.Language = language is "" or "system" ? null : language;
         if (theme != null) bridge.Settings.Theme = theme;
+        if (args.OptionalFlag("checkUpdates") is { } check) bridge.Settings.CheckUpdates = check;
 
         try { bridge.Settings.Save(bridge.SettingsFile); }
         catch (Exception e) { throw new BridgeException(BridgeErrors.Io, e.Message); }
 
         return CurrentSettings();
+    }
+
+    /// <summary>
+    /// The check behind Settings' toggle, run once the interface is up. Quiet on purpose, both ways: being
+    /// offline at start is normal and being up to date needs no toast — only a genuinely newer release is
+    /// worth announcing.
+    /// </summary>
+    public async Task AnnounceUpdate()
+    {
+        if (!bridge.Settings.CheckUpdates) return;
+        try
+        {
+            var release = await updates.Latest().ConfigureAwait(false);
+            if (!Updates.IsNewer(Version(), release.Version)) return;
+
+            bridge.Event("update.available", new
+            {
+                version = Updates.Plain(release.Version),
+                url = release.Url,
+                notes = release.Notes,
+            });
+        }
+        catch { /* no network, rate-limited, GitHub down: the start of the program is no place to say so */ }
+    }
+
+    /// <summary>The check behind the button — a person pressed it, so a failure is answered, not swallowed.</summary>
+    async Task<object> CheckNow()
+    {
+        Release release;
+        try { release = await updates.Latest().ConfigureAwait(false); }
+        catch (Exception e) { throw new BridgeException(BridgeErrors.Io, e.Message); }
+
+        return new
+        {
+            version = Updates.Plain(release.Version),
+            newer = Updates.IsNewer(Version(), release.Version),
+            url = release.Url,
+            notes = release.Notes,
+            published = release.Published,
+        };
+    }
+
+    /// <summary>CHANGELOG.md, embedded at build time: "what's new" needs no network and never drifts from the
+    /// build it ships in.</summary>
+    static string ChangelogText()
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("CHANGELOG.md");
+        if (stream == null) return "";
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     /// <summary>The version shown in About: the informational one without the commit it was built from.</summary>

@@ -342,6 +342,25 @@ body.dragging .dropzone, .dropzone.active { border-color: var(--accent); backgro
 .about-libs { display: flex; gap: 6px; flex-wrap: wrap; }
 .about-libs .pill { gap: 8px; }
 .about-foot { display: flex; gap: 6px 18px; flex-wrap: wrap; color: var(--text-3); font-size: 12.5px; border-top: 1px solid var(--border); padding-top: 14px; }
+
+/* ---------- a newer release, and what is written about it ---------- */
+.update-card { border-color: var(--accent); }
+.update-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.update-head .ico { width: 20px; height: 20px; color: var(--accent); flex: none; }
+.update-head h2 { font-size: 16px; flex: 1; min-width: 200px; }
+.update-notes { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; max-height: 300px; overflow: auto; }
+.changelog { max-height: 420px; overflow: auto; padding-right: 8px; }
+
+/* the changelog and release notes: Markdown drawn by components/Markdown.tsx */
+.md { font-size: 13px; line-height: 1.55; color: var(--text-2); display: grid; gap: 8px; }
+.md h3 { font-size: 15px; color: var(--text); margin-top: 8px; }
+.md h3:first-child { margin-top: 0; }
+.md h4 { font-size: 13px; color: var(--text); margin-top: 4px; }
+.md h5 { font-size: 12.5px; color: var(--text-2); }
+.md ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; }
+.md b { color: var(--text); }
+.md code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+.md a { color: var(--accent); }
 .wip { text-align: center; padding: 80px 20px; color: var(--text-2); }
 .wip .ico { width: 64px; height: 64px; color: var(--accent); margin-bottom: 14px; opacity: .8; }
 .wip h2 { color: var(--text); margin-bottom: 8px; }

@@ -1,9 +1,11 @@
-// views/About.tsx — what this program is, where its files are, and what it is built on.
+// views/About.tsx — what this program is, where its files are, what it is built on, and what is new in it.
 import { useState } from 'react';
-import { useApp } from '../app/AppState';
+import { useApp, type UpdateAvailable } from '../app/AppState';
 import { bridge, messageOf } from '../bridge/bridge';
+import { useCommand } from '../bridge/hooks';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
+import { Markdown } from '../components/Markdown';
 import { useToast } from '../components/Toast';
 import { useTranslate } from '../i18n';
 
@@ -25,7 +27,7 @@ const PRINCIPLES = [
 
 export function About() {
   const t = useTranslate();
-  const { info } = useApp();
+  const { info, update } = useApp();
   const toast = useToast();
 
   const open = (url: string) =>
@@ -35,6 +37,8 @@ export function About() {
 
   return (
     <div className="about">
+      {update && <UpdateBanner update={update} current={info.version} open={open} />}
+
       <div className="card about-card">
         <div className="card-body">
           <div className="about-hero">
@@ -92,6 +96,8 @@ export function About() {
         </div>
       </div>
 
+      <Changelog />
+
       {(paths.projects || paths.settings) && (
         <div className="section about-sec">
           <div className="section-head">
@@ -130,6 +136,63 @@ export function About() {
         <span>{t('about.copyright')}</span>
         {info.licence && <span>{t('about.appLicense', { lic: info.licence })}</span>}
       </div>
+    </div>
+  );
+}
+
+/** A newer release, announced by the check at start: its notes, and the way to it. */
+function UpdateBanner({ update, current, open }: { update: UpdateAvailable; current: string; open: (url: string) => void }) {
+  const t = useTranslate();
+
+  return (
+    <div className="card update-card">
+      <div className="card-body">
+        <div className="update-head">
+          <Icon name="info" />
+          <h2>{t('update.title', { version: update.version })}</h2>
+          <span className="faint">{t('update.yours', { version: current })}</span>
+          <Button variant="primary" icon="external" onClick={() => open(update.url)}>
+            {t('update.download')}
+          </Button>
+        </div>
+        {update.notes && (
+          <div className="update-notes">
+            <Markdown text={update.notes} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The changelog of the running build, from its first release section down — the file's own preamble repeats
+ * what this screen already says. Folded away like the technical paths, and fetched only when unfolded.
+ */
+function Changelog() {
+  const t = useTranslate();
+  const [open, setOpen] = useState(() => sessionStorage.getItem('about.changelog') === '1');
+  const log = useCommand('app.changelog', null, { enabled: open });
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    sessionStorage.setItem('about.changelog', next ? '1' : '0');
+  };
+
+  const releases = log.data ? log.data.markdown.slice(Math.max(0, log.data.markdown.indexOf('## ['))) : '';
+
+  return (
+    <div className="section about-sec">
+      <button type="button" className="adv-toggle" aria-expanded={open} onClick={toggle}>
+        <Icon name="chevron" className={open ? 'rot180' : undefined} />
+        <span className="label">{t('about.changelog')}</span>
+      </button>
+      {open && releases && (
+        <div className="adv-body changelog">
+          <Markdown text={releases} />
+        </div>
+      )}
     </div>
   );
 }

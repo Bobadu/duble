@@ -5,11 +5,14 @@
 // screen subscribing to the same ones. Anything a single screen needs it asks for itself, with useCommand.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { bridge } from '../bridge/bridge';
-import type { AppInfo, AppSettings, JobEvent, ProjectSummary } from '../bridge/contract';
+import type { AppInfo, AppSettings, Events, JobEvent, ProjectSummary } from '../bridge/contract';
 import { useBridgeEvent } from '../bridge/hooks';
 import { I18nProvider, LANGUAGES, type Language } from '../i18n';
 
 export type Theme = 'system' | 'dark' | 'light';
+
+/** The newer release the host announced at start, held here so About can still show it after the toast is gone. */
+export type UpdateAvailable = Events['update.available'];
 
 interface AppState {
   info: AppInfo;
@@ -20,9 +23,12 @@ interface AppState {
   /** Whether that job is still going. */
   busy: boolean;
   windowMaximized: boolean;
+  /** A newer release, when the check at start found one. */
+  update: UpdateAvailable | undefined;
   /** "system" clears the choice and follows Windows, which is what C# stores as no language at all. */
   setLanguage: (language: Language | 'system') => Promise<void>;
   setTheme: (theme: Theme) => Promise<void>;
+  setCheckUpdates: (check: boolean) => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -45,6 +51,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [project, setProject] = useState<ProjectSummary | undefined>();
   const [job, setJob] = useState<JobEvent | undefined>();
   const [windowMaximized, setWindowMaximized] = useState(false);
+  const [update, setUpdate] = useState<UpdateAvailable | undefined>();
 
   // --lang and --theme belong to the run, not to the settings: a screenshot must not change what the user chose
   const overrides = useMemo(() => new URLSearchParams(location.search), []);
@@ -77,6 +84,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useBridgeEvent('project.closed', () => setProject(undefined));
   useBridgeEvent('job', setJob);
   useBridgeEvent('window.state', (data) => setWindowMaximized(data.maximized));
+  useBridgeEvent('update.available', setUpdate);
 
   const setLanguage = useCallback(async (language: Language | 'system') => {
     const settings = await bridge.call('settings.set', { language: language });
@@ -86,6 +94,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback(async (theme: Theme) => {
     applyTheme(theme);
     const settings = await bridge.call('settings.set', { theme: theme });
+    setLoaded((previous) => (previous ? { ...previous, settings } : previous));
+  }, []);
+
+  const setCheckUpdates = useCallback(async (check: boolean) => {
+    const settings = await bridge.call('settings.set', { checkUpdates: check });
     setLoaded((previous) => (previous ? { ...previous, settings } : previous));
   }, []);
 
@@ -104,10 +117,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         job,
         busy: job?.state === 'start' || job?.state === 'progress',
         windowMaximized,
+        update,
         setLanguage,
         setTheme,
+        setCheckUpdates,
       },
-    [loaded, project, job, windowMaximized, setLanguage, setTheme],
+    [loaded, project, job, windowMaximized, update, setLanguage, setTheme, setCheckUpdates],
   );
 
   useDeveloperHandle(loaded?.info.dev ?? false);
@@ -163,4 +178,4 @@ const fallbackInfo: AppInfo = {
   paths: { settings: '', webView2: '', projects: '' },
 };
 
-const fallbackSettings: AppSettings = { language: 'pl', theme: 'dark', recent: [] };
+const fallbackSettings: AppSettings = { language: 'pl', theme: 'dark', recent: [], checkUpdates: true };

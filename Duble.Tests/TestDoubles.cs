@@ -28,6 +28,23 @@ public sealed class SyncProgress<T> : IProgress<T>
     public void Report(T value) => onReport(value);
 }
 
+/// <summary>
+/// The update check, without GitHub: it answers with whatever release a test sets, or fails with the failure
+/// it is given. Out of the box it names the running version, so a test that never thinks about updates sees
+/// "nothing newer" rather than the network.
+/// </summary>
+public sealed class FakeUpdateSource : IUpdateSource
+{
+    public Release Release { get; set; } = new(Duble.App.Commands.AppCommands.Version(), "https://example.test/latest", null, null);
+
+    public Exception? Failure { get; set; }
+
+    public System.Threading.Tasks.Task<Release> Latest(System.Threading.CancellationToken cancel = default)
+        => Failure != null
+            ? System.Threading.Tasks.Task.FromException<Release>(Failure)
+            : System.Threading.Tasks.Task.FromResult(Release);
+}
+
 /// <summary>The window, without WPF: it records what the interface asked it to do.</summary>
 public sealed class FakeWindow : IHostWindow
 {

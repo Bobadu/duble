@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <Resource Include="assets\duble.ico" />
+    <!-- About -> What's new shows the changelog of the build it ships in, so it rides inside the assembly -->
+    <EmbeddedResource Include="..\CHANGELOG.md" LogicalName="CHANGELOG.md" />
   </ItemGroup>
 
   <!--

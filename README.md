@@ -114,7 +114,8 @@ made with.
 - Unpacking an `.rpf` source into a folder of RSC7 files, like an OpenIV or CodeWalker export
 - Calibration: comparison thresholds measured on your own catalog and drawn as distribution charts
 - Polish and English interface, light and dark theme
-- No telemetry, no account, no network access
+- No telemetry, no account. The one network call is the update check against github.com — nothing is sent, and
+  Settings turns it off
 
 ## Build from source
 

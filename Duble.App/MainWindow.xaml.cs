@@ -23,6 +23,8 @@ public partial class MainWindow : Window, IHostWindow, IFileDialogs
     public Bridge? Bridge { get; private set; }
     public JobRunner? Jobs { get; private set; }
 
+    AppCommands? appCommands;
+
     /// <summary>Whether the interface has reported that it is up.</summary>
     public bool UiReady { get; private set; }
 
@@ -112,7 +114,11 @@ public partial class MainWindow : Window, IHostWindow, IFileDialogs
             foreach (var module in CommandModules.Create(App.Services, bridge, Session, Jobs))
             {
                 module.Register();
-                if (module is AppCommands app) app.UiReady += OnUiReady;
+                if (module is AppCommands app)
+                {
+                    appCommands = app;
+                    app.UiReady += OnUiReady;
+                }
             }
 
             Dropped += paths => bridge.Event("files.dropped", new { paths = paths });
@@ -235,6 +241,11 @@ public partial class MainWindow : Window, IHostWindow, IFileDialogs
     {
         UiReady = true;
         Log("ui.ready");
+
+        // quietly, off the UI thread; a screenshot run stays still, so nothing may pop over it
+        if (string.IsNullOrEmpty(App.Options.ScreenshotFile) && appCommands != null)
+            _ = Task.Run(appCommands.AnnounceUpdate);
+
         _ = Dispatcher.InvokeAsync(async () =>
         {
             // the project from the command line (a double click on a .duble, or --project) opens only now,

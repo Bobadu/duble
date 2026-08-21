@@ -41,6 +41,9 @@ public sealed class Settings
     /// <summary>system, dark or light.</summary>
     public string Theme { get; set; } = SystemTheme;
 
+    /// <summary>Whether to ask GitHub for the newest release when the program starts.</summary>
+    public bool CheckUpdates { get; set; } = true;
+
     public List<RecentProject> Recent { get; set; } = new();
     public WindowPlacement? Window { get; set; }
 
