@@ -119,8 +119,9 @@ export function Item({ id }: { id: string }) {
 
             <div className="col-facts">
               <div>
-                <span className="faint">{t('group.model')}</span> <b>{formatNumber(garment.vertices)}</b> {t('group.verts')} ·{' '}
-                <b>{formatNumber(garment.triangles)}</b> {t('group.tris')} · {t('group.lods')} <b>{garment.lods}</b>
+                <span className="faint">{t('group.model')}</span> <b>{formatNumber(garment.vertices)}</b>{' '}
+                {t('group.verts', { n: garment.vertices })} · <b>{formatNumber(garment.triangles)}</b>{' '}
+                {t('group.tris', { n: garment.triangles })} · {t('group.lods')} <b>{garment.lods}</b>
               </div>
               <div>
                 <span className="faint">{t('group.size')}</span> <b>{formatSize(garment.bytes, language)}</b> ·{' '}

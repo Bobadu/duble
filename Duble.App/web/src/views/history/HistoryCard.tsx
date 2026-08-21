@@ -11,7 +11,7 @@ import { formatSize, shortenPath, useI18n, useTranslate } from '../../i18n';
 
 export function HistoryCard({ entry, onUndo }: { entry: HistoryEntry; onUndo: (garmentIds: string[] | null, files: number) => void }) {
   const t = useTranslate();
-  const { language, formatNumber, formatDate } = useI18n();
+  const { language, formatDate } = useI18n();
   const toast = useToast();
   const [open, setOpen] = useState(false);
 
@@ -46,8 +46,8 @@ export function HistoryCard({ entry, onUndo }: { entry: HistoryEntry; onUndo: (g
 
             <div className="meta">
               {t('history.entry', {
-                garments: formatNumber(entry.garments),
-                files: formatNumber(entry.files),
+                garments: entry.garments,
+                files: entry.files,
                 mb: formatSize(entry.bytes, language),
               })}
               {aside.length > 0 && <span className="faint"> · {aside.join(' · ')}</span>}

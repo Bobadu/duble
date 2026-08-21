@@ -1,10 +1,9 @@
-// views/duplicates/GroupFilters.tsx — the one bar above the list: verdict, slot, source, search, and a way
-// back to everything.
+// views/duplicates/GroupFilters.tsx — the one bar above the list: verdict, slot, source, and a way back to
+// everything. Searching lives in the heading, as it does in the catalog.
 import type { SlotFilter, SourceFilter, Verdict } from '../../bridge/contract';
 import { Button } from '../../components/Button';
 import { Icon } from '../../components/Icon';
 import { Segmented, type Segment } from '../../components/Segmented';
-import { SearchField } from '../../components/SearchField';
 import { Select } from '../../components/Select';
 import { verdictClassName, verdictIcon } from '../../components/Badge';
 import { useTranslate } from '../../i18n';
@@ -81,21 +80,16 @@ export function GroupFilters({
         />
       )}
 
-      <SearchField
-        value={filters.search}
-        onChange={(text) => set('search', text)}
-        placeholder={t('dup.searchPlaceholder')}
-        label={t('dup.search')}
-      />
-
-      <Button
-        variant="ghost"
-        icon="x"
-        className="clear"
-        title={t('dup.clearFilters')}
-        style={any ? undefined : { visibility: 'hidden' }}
-        onClick={clear}
-      />
+      <div className="end">
+        <Button
+          variant="ghost"
+          icon="x"
+          className="clear"
+          title={t('dup.clearFilters')}
+          style={any ? undefined : { visibility: 'hidden' }}
+          onClick={clear}
+        />
+      </div>
     </div>
   );
 }

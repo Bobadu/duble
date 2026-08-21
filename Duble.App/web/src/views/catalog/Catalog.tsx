@@ -14,7 +14,7 @@ import { Segmented, type Segment } from '../../components/Segmented';
 import { Select } from '../../components/Select';
 import { Switch } from '../../components/Switch';
 import { VirtualGrid } from '../../components/VirtualGrid';
-import { useI18n, useTranslate } from '../../i18n';
+import { useTranslate } from '../../i18n';
 import { GarmentTile } from './GarmentTile';
 import { useCatalogFilters } from './useCatalogFilters';
 
@@ -29,7 +29,6 @@ const SLOT_ORDER = [
 
 export function Catalog() {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
   const { project } = useApp();
   const { filters, set, clear, any } = useCatalogFilters();
 
@@ -64,8 +63,8 @@ export function Catalog() {
 
   const { total, textures, shown, filters: buckets, garments } = catalog.data;
 
-  const counted = t('catalog.count', { n: formatNumber(total), t: formatNumber(textures) });
-  const summary = shown === total ? counted : `${counted} · ${t('catalog.shown', { n: formatNumber(shown), m: formatNumber(total) })}`;
+  const counted = t('catalog.count', { n: total, t: textures });
+  const summary = shown === total ? counted : `${counted} · ${t('catalog.shown', { n: shown, m: total })}`;
 
   const formats: Segment<string>[] = [{ value: '', label: t('dup.allVerdicts'), count: total }];
   if (buckets.formats.legacy)
@@ -113,17 +112,19 @@ export function Catalog() {
           />
         )}
 
-        <Switch on={filters.problems} label={t('catalog.problems')} onChange={(on) => set('problems', on)} />
-        <Switch on={filters.inGroup} label={t('catalog.inGroups')} onChange={(on) => set('inGroup', on)} />
+        <div className="end">
+          <Switch on={filters.problems} label={t('catalog.problems')} onChange={(on) => set('problems', on)} />
+          <Switch on={filters.inGroup} label={t('catalog.inGroups')} onChange={(on) => set('inGroup', on)} />
 
-        <Button
-          variant="ghost"
-          icon="x"
-          className="clear"
-          title={t('dup.clearFilters')}
-          style={any ? undefined : { visibility: 'hidden' }}
-          onClick={clear}
-        />
+          <Button
+            variant="ghost"
+            icon="x"
+            className="clear"
+            title={t('dup.clearFilters')}
+            style={any ? undefined : { visibility: 'hidden' }}
+            onClick={clear}
+          />
+        </div>
       </div>
 
       <VirtualGrid

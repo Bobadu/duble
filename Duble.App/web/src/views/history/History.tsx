@@ -10,12 +10,11 @@ import { Button } from '../../components/Button';
 import { useConfirm } from '../../components/Confirm';
 import { EmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
-import { useI18n, useTranslate } from '../../i18n';
+import { useTranslate } from '../../i18n';
 import { HistoryCard } from './HistoryCard';
 
 export function History() {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
   const { project } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
@@ -41,7 +40,7 @@ export function History() {
   const undo = async (file: string, garmentIds: string[] | null, files: number) => {
     const sure = await confirm({
       title: t('history.title'),
-      text: t('history.confirmUndo', { n: formatNumber(files) }),
+      text: t('history.confirmUndo', { n: files }),
       confirmLabel: garmentIds ? t('history.undoOne') : t('history.undoAll'),
     });
     if (!sure) return;

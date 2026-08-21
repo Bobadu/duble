@@ -39,6 +39,15 @@ All notable changes to Duble are documented here. The format follows
 
 - **The calibration charts show the measurements again.** They had been reading three fields the engine
   stopped sending when it was renamed, so every chart in 1.0.0 says "not enough data" whatever was measured.
+- **A counted noun follows its number.** The dictionaries carried one plural form per phrase, so the interface
+  said "1 items" in English and "2 pozycji" in Polish. A phrase now writes the noun as
+  `{n|pozycja|pozycje|pozycji}` — one form per plural category of its language — and the number itself is
+  written the reader's way (1 894 in Polish, 1,894 in English). A test holds every counted noun to exactly the
+  count of forms its language needs, so a two-form Polish noun cannot slip back in.
+- **The threshold labels on a calibration chart no longer overprint.** Calibration on a small catalog can put
+  two thresholds on the same value, and their labels drew in the same spot; they stack now, and a label near
+  the right edge hangs to the left of its line instead of off the card.
+- **The members of a duplicate group share the width of their card** instead of huddling on its left.
 - **The search boxes no longer lose the caret** while typing in Duplicates and in the catalog.
 - **An apply whose undo log cannot be written says so.** The files had already moved and the failure was
   swallowed, leaving an operation with no way back and nothing on screen to say why.

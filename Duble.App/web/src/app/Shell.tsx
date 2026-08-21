@@ -4,7 +4,7 @@ import { bridge } from '../bridge/bridge';
 import type { ViewName } from './router';
 import { Icon, type IconName } from '../components/Icon';
 import { Progress } from '../components/Progress';
-import { useI18n, useTranslate } from '../i18n';
+import { useTranslate } from '../i18n';
 import { useApp } from './AppState';
 import { routeToHash, useRoute } from './router';
 
@@ -81,7 +81,6 @@ export function Rail() {
 
 export function StatusBar() {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
   const { project, job, busy } = useApp();
 
   return (
@@ -92,11 +91,11 @@ export function StatusBar() {
             <b>{project.name}</b>
           </span>
           <span className="sep" />
-          <span>{t('status.sources', { n: formatNumber(project.sources) })}</span>
+          <span>{t('status.sources', { n: project.sources })}</span>
           <span className="sep" />
-          <span>{t('status.items', { n: formatNumber(project.garments) })}</span>
+          <span>{t('status.items', { n: project.garments })}</span>
           <span className="sep" />
-          <span>{t('status.textures', { n: formatNumber(project.textures) })}</span>
+          <span>{t('status.textures', { n: project.textures })}</span>
         </>
       ) : (
         <span>{t('status.noProject')}</span>
@@ -109,8 +108,8 @@ export function StatusBar() {
               {job.state === 'progress' && job.total
                 ? t('sources.indexingOf', {
                     stage: job.stage ? t(`stage.${job.stage}`) : '',
-                    done: formatNumber(job.done),
-                    total: formatNumber(job.total),
+                    done: job.done ?? 0,
+                    total: job.total ?? 0,
                   })
                 : t('status.working')}
             </span>

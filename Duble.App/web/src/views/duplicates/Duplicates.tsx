@@ -10,9 +10,10 @@ import { bridge, ErrorCode, errorCodeOf, messageOf } from '../../bridge/bridge';
 import { useCommand } from '../../bridge/hooks';
 import { Button } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
+import { SearchField } from '../../components/SearchField';
 import { Switch } from '../../components/Switch';
 import { useToast } from '../../components/Toast';
-import { useI18n, useTranslate } from '../../i18n';
+import { useTranslate } from '../../i18n';
 import { ApplyDialog } from '../apply/ApplyDialog';
 import { DecisionBar } from './DecisionBar';
 import { GroupCard } from './GroupCard';
@@ -21,7 +22,6 @@ import { useGroupFilters } from './useGroupFilters';
 
 export function Duplicates() {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
   const { project, busy } = useApp();
   const toast = useToast();
   const filters = useGroupFilters();
@@ -76,11 +76,11 @@ export function Duplicates() {
         summary={
           compared
             ? t('dup.summary', {
-                groups: formatNumber(summary.total),
-                duplicate: formatNumber(summary.duplicate),
-                superset: formatNumber(summary.superset),
-                needsReview: formatNumber(summary.needsReview),
-                retexture: formatNumber(summary.retexture),
+                groups: summary.total ?? 0,
+                duplicate: summary.duplicate,
+                superset: summary.superset,
+                needsReview: summary.needsReview,
+                retexture: summary.retexture,
               })
             : undefined
         }
@@ -93,6 +93,7 @@ export function Duplicates() {
             />
           ) : undefined
         }
+        search={compared ? { value: filters.filters.search, onChange: (text) => filters.set('search', text) } : undefined}
       />
 
       {compared && (
@@ -141,11 +142,14 @@ function Head({
   onCompare,
   busy,
   ignored,
+  search,
 }: {
   summary?: string;
   onCompare?: () => void;
   busy?: boolean;
   ignored?: ReactNode;
+  /** In the heading rather than in the filter bar, where the catalog keeps its search as well. */
+  search?: { value: string; onChange: (value: string) => void };
 }) {
   const t = useTranslate();
 
@@ -157,6 +161,14 @@ function Head({
       </div>
       {onCompare && (
         <div className="actions">
+          {search && (
+            <SearchField
+              value={search.value}
+              onChange={search.onChange}
+              placeholder={t('dup.searchPlaceholder')}
+              label={t('dup.search')}
+            />
+          )}
           {ignored}
           <Button icon="refresh" disabled={busy} onClick={onCompare}>
             {t('dup.recompare')}
@@ -169,14 +181,13 @@ function Head({
 
 function IgnoredSwitch({ on, count, onChange }: { on: boolean; count: number; onChange: (on: boolean) => void }) {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
 
   return (
     <Switch
       on={on}
       label={t('dup.showIgnored')}
       count={count}
-      title={t('dup.showIgnoredHint', { n: formatNumber(count) })}
+      title={t('dup.showIgnoredHint', { n: count })}
       onChange={onChange}
     />
   );
