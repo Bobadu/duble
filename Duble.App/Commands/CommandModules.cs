@@ -12,12 +12,13 @@ public static class CommandModules
 {
     /// <summary>
     /// <paramref name="updates"/> is where the update check asks and <paramref name="installer"/> is what can
-    /// install what it finds; null means GitHub and Velopack. The tests pass their own, so that nothing in
+    /// install what it finds; null means GitHub and the Setup. The tests pass their own, so that nothing in
     /// the suite reaches the network.
     /// </summary>
     public static IReadOnlyList<ICommandModule> Create(IServiceProvider services, Bridge bridge, Session session, JobRunner jobs,
         IUpdateSource? updates = null, IUpdateInstaller? installer = null)
     {
+        var releases = updates ?? new GitHubUpdateSource();
         var groups = new LiveGroups(session, services.GetRequiredService<IResolutionService>());
         var garments = new GarmentView(services.GetRequiredService<IQualityScorer>());
         var workflow = new CatalogWorkflow(bridge, session,
@@ -28,7 +29,7 @@ public static class CommandModules
 
         return new ICommandModule[]
         {
-            new AppCommands(bridge, updates ?? new GitHubUpdateSource(), installer ?? new VelopackInstaller()),
+            new AppCommands(bridge, releases, installer ?? new InnoUpdateInstaller(releases)),
             new WindowCommands(bridge),
             new ProjectCommands(bridge, session),
             new SourceCommands(bridge, session, jobs, workflow, services.GetRequiredService<IArchiveExtractor>()),

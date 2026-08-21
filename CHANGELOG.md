@@ -6,6 +6,15 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **The Setup is a wizard.** `Duble-Setup.exe` shows where Duble will land and lets you change it, asks
+  whether to put a shortcut on the desktop, and offers to start the program at the end — in Polish or
+  English, after your Windows. Updating from inside the program stays one click: the new Setup is fetched,
+  its SHA-256 has to agree with the published one, and it runs silently while the program restarts.
+- A copy installed by 2.2.0's Setup does not know this arrangement and will not update itself — uninstall it
+  and install fresh from this release. (2.2.0 was out for a day; if that copy is not yours, nobody has one.)
+
 ### Removed
 
 - **The portable exe is no longer published.** A release now carries the installer alone. A portable 2.1.0

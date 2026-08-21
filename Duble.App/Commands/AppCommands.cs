@@ -128,17 +128,24 @@ public sealed class AppCommands : ICommandModule
     }
 
     /// <summary>
-    /// The Install button. Downloading says how far it is; the happy path never answers, because the process
-    /// is replaced by the new version. What does come back is a failure, and a person is watching for it.
+    /// The Install button. Downloading says how far it is; once the Setup has the swap, the program closes —
+    /// a moment after answering, so the answer still reaches the interface — and comes back as the new
+    /// version. A failure is answered, and a person is watching for it.
     /// </summary>
     async Task<object> ApplyUpdate()
     {
         try
         {
             await installer.Apply(percent => bridge.Event("update.progress", new { percent })).ConfigureAwait(false);
-            return new { };
         }
         catch (Exception e) { throw new BridgeException(BridgeErrors.Io, e.Message); }
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(500).ConfigureAwait(false);
+            bridge.Window.Invoke(bridge.Window.Close);
+        });
+        return new { };
     }
 
     /// <summary>CHANGELOG.md, embedded at build time: "what's new" needs no network and never drifts from the
