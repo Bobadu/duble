@@ -46,8 +46,8 @@ turns on DevTools (`F12`). `npm run typecheck` is what CI checks before it build
 
 From the command line: `dotnet build Duble.sln -c Release` and `dotnet test Duble.Tests -c Release` are
 exactly what CI runs — there is no build script to learn. `dotnet publish Duble.App -p:PublishProfile=win-x64`
-makes a self-contained single-file executable for yourself; releases ship the Velopack installer instead,
-which the release workflow packs from a plain folder publish.
+makes a self-contained single-file executable for yourself; releases ship the Inno Setup installer instead,
+which the release workflow compiles from `installer\Duble.iss` over a plain folder publish.
 
 ### Tests
 

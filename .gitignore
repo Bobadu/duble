@@ -3,6 +3,8 @@ bin/
 obj/
 publish/
 TestResults/
+installer/publish/
+installer/out/
 
 # the interface: dependencies and the bundle built from them
 node_modules/

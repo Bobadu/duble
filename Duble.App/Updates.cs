@@ -1,24 +1,33 @@
 // Updates.cs — whether a newer Duble has been released, and getting it installed.
 //
 // The one place the program talks to the network. GitHub is asked for the latest release and nothing is sent
-// beyond the request itself; Settings can turn the check at start off entirely. The application asks through
-// GitHubUpdateSource and installs through VelopackInstaller; the tests bring their own IUpdateSource and
-// IUpdateInstaller, so the suite never reaches the network.
+// beyond the requests themselves; Settings can turn the check at start off entirely. The application asks
+// through GitHubUpdateSource and installs through InnoUpdateInstaller; the tests bring their own
+// IUpdateSource and IUpdateInstaller, so the suite never reaches the network.
 using System;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Velopack;
-using Velopack.Sources;
+using Microsoft.Win32;
 
 namespace Duble.App;
 
 /// <summary>The newest release, as the update check needs it: which version, where to get it, what it says.</summary>
-public sealed record Release(string Version, string Url, string? Notes, string? Published);
+public sealed record Release(string Version, string Url, string? Notes, string? Published)
+{
+    /// <summary>Where the release's Setup downloads from, when the release carries one.</summary>
+    public string? SetupUrl { get; init; }
+
+    /// <summary>Where the Setup's SHA-256 file downloads from — a download that does not agree is discarded.</summary>
+    public string? ChecksumUrl { get; init; }
+}
 
 /// <summary>Where the update check asks. The application asks GitHub; the tests answer themselves.</summary>
 public interface IUpdateSource
@@ -32,8 +41,9 @@ public interface IUpdateSource
 /// </summary>
 public sealed class GitHubUpdateSource : IUpdateSource
 {
-    // one client for the process: the check runs once at start and then only when a person presses the button
-    static readonly HttpClient Client = CreateClient();
+    // one client for the process, shared with the installer's downloads: the check runs once at start and
+    // then only when a person presses a button
+    internal static readonly HttpClient Client = CreateClient();
 
     static HttpClient CreateClient()
     {
@@ -54,52 +64,146 @@ public sealed class GitHubUpdateSource : IUpdateSource
 
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancel).ConfigureAwait(false));
         var root = json.RootElement;
+
+        string? setup = null, checksum = null;
+        if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
+            foreach (var asset in assets.EnumerateArray())
+            {
+                var name = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
+                var download = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
+                if (name == "Duble-Setup.exe") setup = download;
+                if (name == "Duble-Setup.exe.sha256") checksum = download;
+            }
+
         return new Release(
             Version: root.GetProperty("tag_name").GetString() ?? "",
             Url: root.GetProperty("html_url").GetString() ?? Commands.AppCommands.Repository + "/releases/latest",
             Notes: root.TryGetProperty("body", out var body) ? body.GetString() : null,
-            Published: root.TryGetProperty("published_at", out var published) ? published.GetString() : null);
+            Published: root.TryGetProperty("published_at", out var published) ? published.GetString() : null)
+        {
+            SetupUrl = setup,
+            ChecksumUrl = checksum,
+        };
     }
 }
 
-/// <summary>Getting the newer release installed in place. The installed program can; the portable exe cannot.</summary>
+/// <summary>Getting the newer release installed in place. The installed program can; a loose copy cannot.</summary>
 public interface IUpdateInstaller
 {
     /// <summary>Whether this running copy can update itself — true when it was put here by the Setup.</summary>
     bool CanApply { get; }
 
     /// <summary>
-    /// Downloads the newest release, reporting percent done, then restarts into it. Every happy path ends
-    /// with the process being replaced — when this returns at all, the restart did not happen.
+    /// Downloads the newest release's Setup, reporting percent done, checks it against its published SHA-256
+    /// and hands it the swap. Returning is not success yet: the caller closes the program, the Setup replaces
+    /// its files, and the new version starts.
     /// </summary>
     Task Apply(Action<int> progress, CancellationToken cancel = default);
 }
 
 /// <summary>
-/// Velopack, against this repository's GitHub releases: the same place the Setup came from. It reads
-/// `releases.win.json` from the release assets, downloads the package, and hands the swap to Update.exe.
+/// The Setup, run again: installer\Duble.iss compiled by the release workflow, downloaded from the newest
+/// release and started with /VERYSILENT once this program is on its way out. A detached shell bridges the
+/// gap — waits for this process to be gone, runs the Setup, starts the new version.
 /// </summary>
-public sealed class VelopackInstaller : IUpdateInstaller
+public sealed class InnoUpdateInstaller : IUpdateInstaller
 {
-    static UpdateManager Manager => new(new GithubSource(Commands.AppCommands.Repository, null, prerelease: false));
+    /// <summary>The uninstall entry the Setup writes: the AppId of installer\Duble.iss plus Inno's suffix.</summary>
+    const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{7C42B95D-31A4-4E7B-9AEA-6E2D64F82D11}_is1";
 
-    public bool CanApply
-    {
-        get
-        {
-            try { return Manager.IsInstalled; }
-            catch { return false; } // an odd install layout must read as "cannot", never as a crash at start
-        }
-    }
+    readonly IUpdateSource source;
+
+    public InnoUpdateInstaller(IUpdateSource source) => this.source = source;
+
+    /// <summary>Installed means: running from exactly the folder the uninstall entry says the Setup filled.</summary>
+    public bool CanApply => InstalledTo() is { } location && SamePath(location, AppContext.BaseDirectory);
 
     public async Task Apply(Action<int> progress, CancellationToken cancel = default)
     {
-        var manager = Manager;
-        var update = await manager.CheckForUpdatesAsync().ConfigureAwait(false)
-            ?? throw new InvalidOperationException("there is no newer release to install");
+        var release = await source.Latest(cancel).ConfigureAwait(false);
+        if (release.SetupUrl == null) throw new InvalidOperationException("the newest release carries no Setup");
 
-        await manager.DownloadUpdatesAsync(update, progress, cancel).ConfigureAwait(false);
-        manager.ApplyUpdatesAndRestart(update);
+        var setup = Path.Combine(Path.GetTempPath(), "Duble-Setup-" + Updates.Plain(release.Version) + ".exe");
+        await Download(release.SetupUrl, setup, progress, cancel).ConfigureAwait(false);
+        await CheckAgainstPublishedHash(setup, release.ChecksumUrl, cancel).ConfigureAwait(false);
+
+        HandOver(setup);
+    }
+
+    static string? InstalledTo()
+    {
+        foreach (var root in new[] { Registry.CurrentUser, Registry.LocalMachine })
+            try
+            {
+                using var key = root.OpenSubKey(UninstallKey);
+                if (key?.GetValue("InstallLocation") is string location && location.Length > 0) return location;
+            }
+            catch { /* a hive that cannot be read means "not installed there" */ }
+        return null;
+    }
+
+    static bool SamePath(string a, string b)
+        => string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(a)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(b)), StringComparison.OrdinalIgnoreCase);
+
+    static async Task Download(string url, string file, Action<int> progress, CancellationToken cancel)
+    {
+        using var response = await GitHubUpdateSource.Client
+            .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancel).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var total = response.Content.Headers.ContentLength ?? 0;
+        var buffer = new byte[81920];
+        long done = 0;
+
+        await using var from = await response.Content.ReadAsStreamAsync(cancel).ConfigureAwait(false);
+        await using var to = File.Create(file);
+        int read;
+        while ((read = await from.ReadAsync(buffer, cancel).ConfigureAwait(false)) > 0)
+        {
+            await to.WriteAsync(buffer.AsMemory(0, read), cancel).ConfigureAwait(false);
+            done += read;
+            if (total > 0) progress((int)(done * 100 / total));
+        }
+    }
+
+    /// <summary>The published SHA-256 has to agree — a download that does not is deleted, not run.</summary>
+    static async Task CheckAgainstPublishedHash(string file, string? checksumUrl, CancellationToken cancel)
+    {
+        if (checksumUrl == null) return; // a release without the checksum file: nothing to hold the download to
+
+        var published = (await GitHubUpdateSource.Client.GetStringAsync(checksumUrl, cancel).ConfigureAwait(false))
+            .Trim().Split(' ')[0];
+
+        await using var stream = File.OpenRead(file);
+        var actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, cancel).ConfigureAwait(false));
+
+        if (!string.Equals(published, actual, StringComparison.OrdinalIgnoreCase))
+        {
+            File.Delete(file);
+            throw new InvalidOperationException("the downloaded Setup does not match its published checksum");
+        }
+    }
+
+    /// <summary>
+    /// The Setup can only swap files once this process is gone, so a detached shell waits a moment, runs it
+    /// silently and starts the new version. Written as a script rather than a /c one-liner: three quoted
+    /// paths on one cmd line is how installers acquire folklore.
+    /// </summary>
+    static void HandOver(string setup)
+    {
+        var exe = Path.Combine(AppContext.BaseDirectory, "Duble.exe");
+        var script = Path.Combine(Path.GetTempPath(), "duble-update.cmd");
+        File.WriteAllLines(script, new[]
+        {
+            "@echo off",
+            "timeout /t 2 /nobreak >nul",
+            $"\"{setup}\" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART",
+            $"start \"\" \"{exe}\"",
+        });
+
+        Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{script}\"") { UseShellExecute = false, CreateNoWindow = true });
     }
 }
 
