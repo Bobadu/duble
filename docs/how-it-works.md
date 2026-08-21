@@ -112,6 +112,6 @@ History lists every apply and can undo it as a whole or item by item.
   game, but the pack's own metadata still lists the old numbering — rebuild it with the tool the pack was made
   with. The Apply dialog explains this in "What does that mean?".
 - It does not write into `.rpf` archives.
-- It does not phone home: no telemetry, no accounts. The one network call is the update check — at start, and
-  on the button in Settings, github.com is asked for the newest release; nothing is sent beyond the request,
-  and Settings → Updates turns the check at start off.
+- It does not phone home: no telemetry, no accounts. The program talks to github.com and to nothing else —
+  the update check at start and on the button in Settings, and the download when Install is pressed; nothing
+  is sent beyond the requests, and Settings → Updates turns the check at start off.

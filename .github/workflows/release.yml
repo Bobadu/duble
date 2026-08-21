@@ -2,8 +2,10 @@ name: release
 
 # Tag a commit to cut a release:
 #   git tag -a v1.0.1 -m "Duble 1.0.1" && git push origin v1.0.1
-# The workflow builds, runs the tests, publishes the single-file Duble.exe, writes a SHA-256 checksum
-# and creates a GitHub Release with the matching section of CHANGELOG.md as the notes.
+# The workflow builds, runs the tests, publishes the portable single-file Duble.exe and the Velopack
+# installer (Duble-win-Setup.exe — shortcuts, uninstall entry, and the packages the installed program
+# updates itself from), writes SHA-256 checksums and creates a GitHub Release with the matching section
+# of CHANGELOG.md as the notes.
 
 on:
   push:
@@ -85,11 +87,50 @@ jobs:
           if (-not $body) { $body = @("See CHANGELOG.md.") }
           $body | Set-Content $notes -Encoding utf8
 
+      # The installer: the same application published as a folder — Velopack swaps files inside its install,
+      # so it has no use for the single-file bundle — then packed with Update.exe and the shortcuts.
+      - name: Publish for the installer
+        run: >
+          dotnet publish Duble.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=false
+          -p:DebugType=none -p:Version=${{ steps.v.outputs.version }} -o velopack/publish --nologo
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk
+
+      # the previous release, so this one can ship a delta package; the first Velopack release has none
+      - name: Download previous Velopack release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          vpk download github --repoUrl https://github.com/${{ github.repository }} --token $env:GH_TOKEN -o velopack/out
+          if ($LASTEXITCODE -ne 0) { Write-Host "no previous Velopack release - shipping a full package only" }
+          exit 0
+
+      - name: Pack the installer
+        run: >
+          vpk pack --packId Duble --packVersion ${{ steps.v.outputs.version }} --packDir velopack/publish
+          --mainExe Duble.exe --packTitle Duble --packAuthors Bobadu --icon Duble.App/assets/duble.ico
+          --shortcuts Desktop,StartMenuRoot --noPortable --releaseNotes publish/notes.md -o velopack/out
+
+      - name: Checksum the installer
+        shell: pwsh
+        run: |
+          $exe = 'velopack/out/Duble-win-Setup.exe'
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  Duble-win-Setup.exe" | Set-Content 'velopack/out/Duble-win-Setup.exe.sha256' -Encoding ascii
+          Write-Host "SHA-256 $hash  ($([math]::Round((Get-Item $exe).Length / 1MB, 1)) MB)"
+
       - name: Create GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.v.outputs.version }}'
-          gh release create "v$v" publish/Duble.exe publish/Duble.exe.sha256 `
+          # the Setup and its checksum, the update packages, and the index the installed program reads;
+          # assets.win.json is build metadata and stays out
+          $velopack = Get-ChildItem velopack/out -File |
+            Where-Object { $_.Name -match 'Setup\.exe(\.sha256)?$|\.nupkg$|^releases\.' } |
+            ForEach-Object FullName
+          gh release create "v$v" publish/Duble.exe publish/Duble.exe.sha256 @velopack `
             --title "Duble $v" --notes-file publish/notes.md --target ${{ github.sha }}

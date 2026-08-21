@@ -146,6 +146,8 @@
   "update.title": "Wyszedł Duble {version}",
   "update.yours": "masz {version}",
   "update.download": "Pobierz",
+  "update.install": "Zainstaluj i uruchom ponownie",
+  "update.installing": "Pobieranie… {percent}%",
   "about.changelog": "Co nowego",
   "about.title": "O programie",
   "about.tagline": "Duble znajduje podwójne ubrania w paczkach do GTA V i pomaga bezpiecznie posprzątać bibliotekę modów — bez zgadywania i bez utraty plików.",

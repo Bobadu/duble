@@ -6,6 +6,15 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **An installer.** `Duble-win-Setup.exe` installs Duble the ordinary way: shortcuts on the desktop and in
+  the Start menu, an entry in "Installed apps" to uninstall by, no administrator asked. The portable
+  `Duble.exe` stays alongside it for anyone who prefers one file.
+- **The installed program updates itself.** When a newer release is out, the button reads "Install and
+  restart": the update downloads with its progress on screen and the program comes back as the new version.
+  The portable exe keeps opening the release page instead — it cannot swap the file it is running from.
+
 ## [2.1.0] — 2026-08-21
 
 ### Added

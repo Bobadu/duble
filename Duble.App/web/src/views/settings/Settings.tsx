@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { Icon } from '../../components/Icon';
 import { Segmented } from '../../components/Segmented';
 import { useToast } from '../../components/Toast';
+import { UpdateAction } from '../../components/UpdateAction';
 import { formatSize, shortenPath, useI18n, useTranslate, type Language } from '../../i18n';
 import { Calibration } from './Calibration';
 import { Thresholds } from './Thresholds';
@@ -106,9 +107,6 @@ function Updates({ onSaved }: { onSaved: () => void }) {
     }
   };
 
-  const openRelease = (url: string) =>
-    void bridge.call('shell.openUrl', { url }).catch((failure: unknown) => toast.warn(messageOf(failure)));
-
   return (
     <div className="card setting">
       <div className="card-body">
@@ -132,9 +130,7 @@ function Updates({ onSaved }: { onSaved: () => void }) {
           {checked?.newer && (
             <>
               <span>{t('update.available', { version: checked.version })}</span>
-              <Button small variant="primary" icon="external" onClick={() => openRelease(checked.url)}>
-                {t('update.download')}
-              </Button>
+              <UpdateAction small url={checked.url} canApply={checked.canApply} />
             </>
           )}
         </div>

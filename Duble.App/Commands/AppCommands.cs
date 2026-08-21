@@ -18,11 +18,13 @@ public sealed class AppCommands : ICommandModule
 
     readonly Bridge bridge;
     readonly IUpdateSource updates;
+    readonly IUpdateInstaller installer;
 
-    public AppCommands(Bridge bridge, IUpdateSource updates)
+    public AppCommands(Bridge bridge, IUpdateSource updates, IUpdateInstaller installer)
     {
         this.bridge = bridge;
         this.updates = updates;
+        this.installer = installer;
     }
 
     /// <summary>The interface has loaded its dictionaries and drawn once. The window waits for this before
@@ -37,6 +39,7 @@ public sealed class AppCommands : ICommandModule
         bridge.Register("settings.get", _ => CurrentSettings());
         bridge.Register("settings.set", Change);
         bridge.Register("update.check", _ => CheckNow());
+        bridge.Register("update.apply", _ => ApplyUpdate());
     }
 
     object Info() => new
@@ -100,6 +103,7 @@ public sealed class AppCommands : ICommandModule
                 version = Updates.Plain(release.Version),
                 url = release.Url,
                 notes = release.Notes,
+                canApply = installer.CanApply,
             });
         }
         catch { /* no network, rate-limited, GitHub down: the start of the program is no place to say so */ }
@@ -119,7 +123,22 @@ public sealed class AppCommands : ICommandModule
             url = release.Url,
             notes = release.Notes,
             published = release.Published,
+            canApply = installer.CanApply,
         };
+    }
+
+    /// <summary>
+    /// The Install button. Downloading says how far it is; the happy path never answers, because the process
+    /// is replaced by the new version. What does come back is a failure, and a person is watching for it.
+    /// </summary>
+    async Task<object> ApplyUpdate()
+    {
+        try
+        {
+            await installer.Apply(percent => bridge.Event("update.progress", new { percent })).ConfigureAwait(false);
+            return new { };
+        }
+        catch (Exception e) { throw new BridgeException(BridgeErrors.Io, e.Message); }
     }
 
     /// <summary>CHANGELOG.md, embedded at build time: "what's new" needs no network and never drifts from the

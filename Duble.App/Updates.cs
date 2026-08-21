@@ -1,8 +1,9 @@
-// Updates.cs — whether a newer Duble has been released.
+// Updates.cs — whether a newer Duble has been released, and getting it installed.
 //
 // The one place the program talks to the network. GitHub is asked for the latest release and nothing is sent
 // beyond the request itself; Settings can turn the check at start off entirely. The application asks through
-// GitHubUpdateSource; the tests bring their own IUpdateSource, so the suite never reaches the network.
+// GitHubUpdateSource and installs through VelopackInstaller; the tests bring their own IUpdateSource and
+// IUpdateInstaller, so the suite never reaches the network.
 using System;
 using System.Globalization;
 using System.Net.Http;
@@ -11,6 +12,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Velopack;
+using Velopack.Sources;
 
 namespace Duble.App;
 
@@ -56,6 +59,47 @@ public sealed class GitHubUpdateSource : IUpdateSource
             Url: root.GetProperty("html_url").GetString() ?? Commands.AppCommands.Repository + "/releases/latest",
             Notes: root.TryGetProperty("body", out var body) ? body.GetString() : null,
             Published: root.TryGetProperty("published_at", out var published) ? published.GetString() : null);
+    }
+}
+
+/// <summary>Getting the newer release installed in place. The installed program can; the portable exe cannot.</summary>
+public interface IUpdateInstaller
+{
+    /// <summary>Whether this running copy can update itself — true when it was put here by the Setup.</summary>
+    bool CanApply { get; }
+
+    /// <summary>
+    /// Downloads the newest release, reporting percent done, then restarts into it. Every happy path ends
+    /// with the process being replaced — when this returns at all, the restart did not happen.
+    /// </summary>
+    Task Apply(Action<int> progress, CancellationToken cancel = default);
+}
+
+/// <summary>
+/// Velopack, against this repository's GitHub releases: the same place the Setup came from. It reads
+/// `releases.win.json` from the release assets, downloads the package, and hands the swap to Update.exe.
+/// </summary>
+public sealed class VelopackInstaller : IUpdateInstaller
+{
+    static UpdateManager Manager => new(new GithubSource(Commands.AppCommands.Repository, null, prerelease: false));
+
+    public bool CanApply
+    {
+        get
+        {
+            try { return Manager.IsInstalled; }
+            catch { return false; } // an odd install layout must read as "cannot", never as a crash at start
+        }
+    }
+
+    public async Task Apply(Action<int> progress, CancellationToken cancel = default)
+    {
+        var manager = Manager;
+        var update = await manager.CheckForUpdatesAsync().ConfigureAwait(false)
+            ?? throw new InvalidOperationException("there is no newer release to install");
+
+        await manager.DownloadUpdatesAsync(update, progress, cancel).ConfigureAwait(false);
+        manager.ApplyUpdatesAndRestart(update);
     }
 }
 

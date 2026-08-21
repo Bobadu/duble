@@ -122,6 +122,52 @@ public class UpdateTests
         Assert.False(app.Saw("update.available"));
     }
 
+    // ---------------- installing in place ----------------
+
+    [Fact]
+    public async Task The_check_says_whether_this_copy_can_install_the_update_itself()
+    {
+        using var app = new TestApp("update-canapply");
+        app.Installer.CanApply = true;
+
+        var result = await app.Call("update.check");
+
+        Assert.True(result.GetProperty("canApply").GetBoolean());
+    }
+
+    [Fact]
+    public async Task The_portable_exe_cannot_install_itself_and_says_so()
+    {
+        using var app = new TestApp("update-portable");
+
+        var result = await app.Call("update.check");
+
+        Assert.False(result.GetProperty("canApply").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Applying_reports_its_progress_and_hands_over_to_the_installer()
+    {
+        using var app = new TestApp("update-apply");
+        app.Installer.CanApply = true;
+
+        await app.Call("update.apply");
+
+        Assert.True(app.Installer.Applied);
+        Assert.Equal(100, app.EventData("update.progress").GetProperty("percent").GetInt32());
+    }
+
+    [Fact]
+    public async Task An_apply_that_fails_is_answered_not_swallowed()
+    {
+        using var app = new TestApp("update-apply-fails");
+        app.Installer.Failure = new IOException("download interrupted");
+
+        var error = await app.Failing("update.apply");
+
+        Assert.Equal("io", error.GetProperty("code").GetString());
+    }
+
     // ---------------- the setting itself ----------------
 
     [Fact]
