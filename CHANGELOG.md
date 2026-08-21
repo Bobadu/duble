@@ -6,6 +6,8 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-08-21
+
 ### Changed
 
 - **The Setup is a wizard.** `Duble-Setup.exe` shows where Duble will land and lets you change it, asks
@@ -146,7 +148,8 @@ First public release.
   your own catalog, drawn as charts, with a suggested threshold.
 - **Command line** (`duble`) — `indeks`, `porownaj`, `raport`, `zastosuj`, `cofnij`, `kalibruj` for scripted use.
 
-[Unreleased]: https://github.com/Bobadu/duble/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/Bobadu/duble/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/Bobadu/duble/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Bobadu/duble/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/Bobadu/duble/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Bobadu/duble/compare/v1.0.0...v2.0.0
