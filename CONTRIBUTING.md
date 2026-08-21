@@ -44,9 +44,10 @@ dotnet run --project Duble.App -- --dev --ui-url http://localhost:5173
 `--dev` on its own (or the **Duble (developer mode)** profile) uses the interface built into the executable and
 turns on DevTools (`F12`). `npm run typecheck` is what CI checks before it builds anything.
 
-From the command line: `dotnet build Duble.sln -c Release`, `dotnet test Duble.Tests -c Release` and
-`dotnet publish Duble.App -p:PublishProfile=win-x64` for the shipping single-file executable. That is exactly
-what CI runs — there is no build script to learn.
+From the command line: `dotnet build Duble.sln -c Release` and `dotnet test Duble.Tests -c Release` are
+exactly what CI runs — there is no build script to learn. `dotnet publish Duble.App -p:PublishProfile=win-x64`
+makes a self-contained single-file executable for yourself; releases ship the Velopack installer instead,
+which the release workflow packs from a plain folder publish.
 
 ### Tests
 

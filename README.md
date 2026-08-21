@@ -49,16 +49,13 @@ are. [docs/how-it-works.md](docs/how-it-works.md) explains the fingerprints and 
 
 ## Install
 
-Two ways, from the [latest release](https://github.com/Bobadu/duble/releases/latest):
+Download `Duble-win-Setup.exe` from the [latest release](https://github.com/Bobadu/duble/releases/latest) and
+run it: shortcuts land on the desktop and in the Start menu, "Installed apps" gets an entry to uninstall by,
+and no administrator is asked. From then on Duble updates itself — when a new release is out, one button
+downloads it and restarts into it.
 
-- **`Duble-win-Setup.exe`** — the installer. Shortcuts on the desktop and in the Start menu, an entry in
-  "Installed apps" to uninstall by, no administrator asked. The installed program updates itself: when a new
-  release is out, one button downloads it and restarts into it.
-- **`Duble.exe`** — the portable version: one self-contained file of about 60 MB, run from anywhere. It tells
-  you about new releases too, but downloading them is up to you.
-
-Neither is code signed, so SmartScreen asks for confirmation on the first run (More info → Run anyway). Every
-release publishes `.sha256` checksums next to the binaries.
+The installer is not code signed, so SmartScreen asks for confirmation on the first run (More info → Run
+anyway). Every release publishes a `Duble-win-Setup.exe.sha256` checksum next to it.
 
 Settings live in `%AppData%\Bobadu\Duble\`, projects default to `Documents\Duble\`.
 
