@@ -6,6 +6,13 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+### Removed
+
+- **The portable exe is no longer published.** A release now carries the installer alone. A portable 2.1.0
+  or 2.2.0 still hears about new releases, and its Download button leads to the release page, where the
+  Setup takes over. Anyone who wants a single file can still build one from source:
+  `dotnet publish Duble.App -p:PublishProfile=win-x64`.
+
 ## [2.2.0] — 2026-08-21
 
 ### Added
