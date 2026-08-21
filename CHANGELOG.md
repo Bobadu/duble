@@ -6,6 +6,15 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Duble notices a new release.** At start — and on the button in Settings → Updates — the program asks
+  github.com for the newest release. A newer one is announced with its notes and a Download button; being
+  offline at start is silence, not an error. It is the program's only network call, nothing is sent beyond
+  the request, and the check at start can be turned off.
+- **The changelog is in the program.** About → What's new shows this file, embedded at build time, so what an
+  update brings can be read right where the update is offered.
+
 ## [2.0.0] — 2026-08-21
 
 The tool speaks English in its code, its command line and its files; the interface is a React and TypeScript

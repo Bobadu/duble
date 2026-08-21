@@ -10,7 +10,12 @@ namespace Duble.App.Commands;
 
 public static class CommandModules
 {
-    public static IReadOnlyList<ICommandModule> Create(IServiceProvider services, Bridge bridge, Session session, JobRunner jobs)
+    /// <summary>
+    /// <paramref name="updates"/> is where the update check asks; null means GitHub. The tests pass their own,
+    /// so that nothing in the suite reaches the network.
+    /// </summary>
+    public static IReadOnlyList<ICommandModule> Create(IServiceProvider services, Bridge bridge, Session session, JobRunner jobs,
+        IUpdateSource? updates = null)
     {
         var groups = new LiveGroups(session, services.GetRequiredService<IResolutionService>());
         var garments = new GarmentView(services.GetRequiredService<IQualityScorer>());
@@ -22,7 +27,7 @@ public static class CommandModules
 
         return new ICommandModule[]
         {
-            new AppCommands(bridge),
+            new AppCommands(bridge, updates ?? new GitHubUpdateSource()),
             new WindowCommands(bridge),
             new ProjectCommands(bridge, session),
             new SourceCommands(bridge, session, jobs, workflow, services.GetRequiredService<IArchiveExtractor>()),

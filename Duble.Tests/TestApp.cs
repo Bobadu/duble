@@ -37,7 +37,8 @@ public sealed class TestApp : IDisposable
         Jobs = new JobRunner(Bridge.Event);
         Groups = new LiveGroups(Session, Services.GetRequiredService<IResolutionService>());
 
-        foreach (var module in CommandModules.Create(Services, Bridge, Session, Jobs)) module.Register();
+        Modules = CommandModules.Create(Services, Bridge, Session, Jobs, Updates);
+        foreach (var module in Modules) module.Register();
     }
 
     public string Temp { get; }
@@ -49,6 +50,11 @@ public sealed class TestApp : IDisposable
     public LiveGroups Groups { get; }
     public FakeWindow Window { get; } = new();
     public FakeDialogs Dialogs { get; } = new();
+    public FakeUpdateSource Updates { get; } = new();
+    public IReadOnlyList<ICommandModule> Modules { get; }
+
+    /// <summary>The one module of that type, for a test that drives it directly rather than through Call.</summary>
+    public T Module<T>() where T : ICommandModule => Modules.OfType<T>().Single();
 
     /// <summary>Every message the bridge pushed to the interface, as raw JSON.</summary>
     public List<string> Sent { get; } = new();

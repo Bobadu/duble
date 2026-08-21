@@ -5,6 +5,7 @@ import { useAnnounceReady, useApp } from './app/AppState';
 import { Rail, StatusBar, TitleBar } from './app/Shell';
 import { navigate, useRoute, type ViewName } from './app/router';
 import { useJobNotifications } from './app/useJobNotifications';
+import { useUpdateNotification } from './app/useUpdateNotification';
 import { bridge, messageOf } from './bridge/bridge';
 import { useBridgeEvent } from './bridge/hooks';
 import { useToast } from './components/Toast';
@@ -23,6 +24,7 @@ export function App() {
 
   useAnnounceReady();
   useJobNotifications();
+  useUpdateNotification();
   useDroppedFiles();
   useShortcuts();
 

@@ -406,6 +406,18 @@ export interface AppSettings {
   chosenLanguage?: string;
   theme: 'system' | 'dark' | 'light';
   recent: RecentProject[];
+  /** Whether the program asks GitHub for the newest release when it starts. */
+  checkUpdates: boolean;
+}
+
+/** What the update check learned: the newest release there is, and whether it is ahead of this build. */
+export interface UpdateCheck {
+  version: string;
+  newer: boolean;
+  url: string;
+  /** The release notes, as Markdown — the same section CHANGELOG.md carries. */
+  notes?: string;
+  published?: string;
 }
 
 export interface AddedSources {
@@ -425,9 +437,11 @@ export interface Started {
  */
 export interface Commands {
   'app.info': { args: null; result: AppInfo };
+  'app.changelog': { args: null; result: { markdown: string } };
   'ui.ready': { args: null; result: unknown };
   'settings.get': { args: null; result: AppSettings };
-  'settings.set': { args: { language?: string; theme?: string }; result: AppSettings };
+  'settings.set': { args: { language?: string; theme?: string; checkUpdates?: boolean }; result: AppSettings };
+  'update.check': { args: null; result: UpdateCheck };
 
   'window.minimize': { args: null; result: unknown };
   'window.maximize': { args: null; result: { maximized: boolean } };
@@ -558,6 +572,7 @@ export interface Events {
   'report.done': { file: string; kind: 'html' | 'csv' };
   'calibrate.done': { report: CalibrationReport };
   'settings.changed': { source: 'project' | 'cache' };
+  'update.available': { version: string; url: string; notes?: string };
   'window.state': { maximized: boolean };
   'files.dropped': { paths: string[] };
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useApp, type Theme } from '../../app/AppState';
 import { navigate } from '../../app/router';
 import { bridge, messageOf } from '../../bridge/bridge';
-import type { ProjectSettingsState } from '../../bridge/contract';
+import type { ProjectSettingsState, UpdateCheck } from '../../bridge/contract';
 import { useCommand } from '../../bridge/hooks';
 import { Button } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
@@ -79,6 +79,64 @@ function ProgramSettings() {
               onChange={(chosen) => void setTheme(chosen as Theme).then(saved)}
             />
           </div>
+        </div>
+
+        <Updates onSaved={saved} />
+      </div>
+    </div>
+  );
+}
+
+/** The update check: whether it runs at start, and the button that runs it right now. */
+function Updates({ onSaved }: { onSaved: () => void }) {
+  const t = useTranslate();
+  const { settings, setCheckUpdates } = useApp();
+  const toast = useToast();
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState<UpdateCheck | undefined>();
+
+  const check = async () => {
+    setChecking(true);
+    try {
+      setChecked(await bridge.call('update.check'));
+    } catch (failure) {
+      toast.error(t('update.failed', { error: messageOf(failure) }));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const openRelease = (url: string) =>
+    void bridge.call('shell.openUrl', { url }).catch((failure: unknown) => toast.warn(messageOf(failure)));
+
+  return (
+    <div className="card setting">
+      <div className="card-body">
+        <div className="label">{t('settings.updates')}</div>
+        <p className="help">{t('settings.updatesHelp')}</p>
+
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={settings.checkUpdates}
+            onChange={(event) => void setCheckUpdates(event.target.checked).then(onSaved)}
+          />
+          <span>{t('settings.updatesCheck')}</span>
+        </label>
+
+        <div className="btn-row">
+          <Button small icon="refresh" disabled={checking} onClick={() => void check()}>
+            {t('settings.updatesNow')}
+          </Button>
+          {checked && !checked.newer && <span className="faint">{t('update.latest')}</span>}
+          {checked?.newer && (
+            <>
+              <span>{t('update.available', { version: checked.version })}</span>
+              <Button small variant="primary" icon="external" onClick={() => openRelease(checked.url)}>
+                {t('update.download')}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>

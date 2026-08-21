@@ -8,7 +8,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsPackable>false</IsPackable>
     <NoWarn>$(NoWarn);xUnit1004</NoWarn>
-    <!-- jak CLI: liczby formatowane niezaleznie od jezyka Windows (zloty wzorzec ma "100 %" z kultury niezmiennej) -->
+    <!-- like the CLI: numbers formatted the same whatever language Windows is in (the golden master has
+         "100 %" from the invariant culture) -->
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
