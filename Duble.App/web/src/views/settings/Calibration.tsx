@@ -61,7 +61,7 @@ export function Calibration() {
 
 function Report({ report }: { report: CalibrationReport }) {
   const t = useTranslate();
-  const { formatNumber, formatDate } = useI18n();
+  const { formatDate } = useI18n();
   const toast = useToast();
 
   const inForce = report.usedThresholds;
@@ -101,8 +101,8 @@ function Report({ report }: { report: CalibrationReport }) {
     <div>
       <p className="muted">
         {t('settings.calibSummary', {
-          withGeometry: formatNumber(report.garmentsWithGeometry),
-          tex: formatNumber(report.decodedTextures),
+          withGeometry: report.garmentsWithGeometry,
+          tex: report.decodedTextures,
           when: formatDate(report.when),
         })}
       </p>
@@ -158,10 +158,9 @@ function Chart({
   tone: 'pos' | 'neg';
 }) {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
 
   const summary = distribution?.n
-    ? `${t('calib.n', { n: formatNumber(distribution.n) })} · ${t('calib.pct', {
+    ? `${t('calib.n', { n: distribution.n })} · ${t('calib.pct', {
         p05: format(distribution.p05),
         p50: format(distribution.p50),
         p95: format(distribution.p95),

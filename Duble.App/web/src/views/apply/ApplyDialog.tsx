@@ -24,7 +24,7 @@ export function shouldOpenBinAfterApply(): boolean {
 
 export function ApplyDialog({ onClose }: { onClose: () => void }) {
   const t = useTranslate();
-  const { language, formatNumber } = useI18n();
+  const { language } = useI18n();
   const toast = useToast();
 
   const [bin, setBin] = useState<{ folder: string | null } | null>(null);
@@ -75,7 +75,7 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
           <>
             <Button onClick={onClose}>{t('common.cancel')}</Button>
             <Button variant="primary" disabled={!plan?.files || starting} onClick={apply}>
-              {t('apply.go', { n: formatNumber(plan?.files ?? 0) })}
+              {t('apply.go', { n: plan?.files ?? 0 })}
             </Button>
           </>
         }
@@ -86,8 +86,8 @@ export function ApplyDialog({ onClose }: { onClose: () => void }) {
               <p className="lead">
                 <Icon name="trash" />{' '}
                 {t('apply.summary', {
-                  garments: formatNumber(plan.garments),
-                  files: formatNumber(plan.files),
+                  garments: plan.garments,
+                  files: plan.files,
                   mb: formatSize(plan.bytes, language),
                 })}
               </p>

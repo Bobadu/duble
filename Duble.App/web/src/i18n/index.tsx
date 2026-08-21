@@ -8,6 +8,10 @@
 //
 // `t` looks in the interface's first and falls back to the engine's. An unknown key renders as [key] rather
 // than as nothing, so a missing translation is visible instead of silently blank.
+//
+// A number given to `t` is written out in the reader's language (1894 → "1 894") and can choose the form of
+// the noun it counts: `{n|pozycja|pozycje|pozycji}` — Polish needs three forms, English two. Hence numbers
+// are passed to `t` as numbers, not as text formatted at the call site.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import en from './en.json';
 import pl from './pl.json';
@@ -16,6 +20,23 @@ export const LANGUAGES = ['pl', 'en'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 const dictionaries: Record<Language, Record<string, string>> = { pl, en };
+
+/** `{n|pozycja|pozycje|pozycji}` — the parameter that counts, then one form of the noun per plural category. */
+const INFLECTION = /\{([a-zA-Z][a-zA-Z0-9]*)\|([^{}]*)\}/g;
+
+/**
+ * Which form fits a number. Polish has three (1 pozycja, 2 pozycje, 5 pozycji, and 12 pozycji again), English
+ * two. The rules are CLDR's, written out rather than pulled from Intl.PluralRules so that the count of forms
+ * in a sentence is what decides — a template with two forms is asked a two-form question in either language.
+ */
+function pluralForm(language: Language, count: number, forms: number): number {
+  if (forms < 3 || language !== 'pl') return count === 1 ? 0 : 1;
+
+  if (count === 1) return 0;
+  const last = count % 10;
+  const lastTwo = count % 100;
+  return last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? 1 : 2;
+}
 
 /**
  * The keys of the interface's dictionary, for autocomplete and for catching a typo at build time. Keys built
@@ -56,6 +77,8 @@ export function I18nProvider({ language, children }: { language: Language; child
     document.documentElement.lang = language;
   }, [language]);
 
+  const numbers = useMemo(() => new Intl.NumberFormat(language), [language]);
+
   const t = useCallback<Translate>(
     (key, params) => {
       const template = dictionaries[language][key] ?? engine[key];
@@ -63,15 +86,22 @@ export function I18nProvider({ language, children }: { language: Language; child
       if (template === undefined) return key.startsWith('slot.') ? key.slice(5) : `[${key}]`;
       if (!params) return template;
 
-      let text = template;
+      // the form of the counted noun first, while the number is still a number
+      let text = template.replace(INFLECTION, (whole, name: string, forms: string) => {
+        const count = params[name];
+        const options = forms.split('|');
+        return typeof count === 'number' ? (options[pluralForm(language, count, options.length)] ?? whole) : whole;
+      });
+
       for (const [name, value] of Object.entries(params)) {
         // a value starting with '@' is itself a key, the way Duble.Core writes {geo: '@geo.identical'}
-        const resolved = typeof value === 'string' && value.startsWith('@') ? t(value.slice(1)) : String(value);
+        const resolved =
+          typeof value === 'number' ? numbers.format(value) : value.startsWith('@') ? t(value.slice(1)) : value;
         text = text.replaceAll(`{${name}}`, resolved);
       }
       return text;
     },
-    [language, engine],
+    [language, engine, numbers],
   );
 
   const value = useMemo<I18n>(

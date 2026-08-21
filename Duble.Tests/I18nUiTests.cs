@@ -147,7 +147,8 @@ public class I18nUiTests
     {
         var pl = Translations("pl");
         var en = Translations("en");
-        var placeholder = new Regex(@"\{([a-zA-Z][a-zA-Z0-9]*)\}");
+        // {name} writes the value out; {name|form|form|form} only chooses the form of the noun it counts
+        var placeholder = new Regex(@"\{([a-zA-Z][a-zA-Z0-9]*)[|}]");
 
         SortedSet<string> Placeholders(string text)
             => new(placeholder.Matches(text).Select(match => match.Groups[1].Value));
@@ -158,5 +159,26 @@ public class I18nUiTests
             .ToList();
 
         Assert.Empty(different);
+    }
+
+    /// <summary>
+    /// A counted noun is written `{n|pozycja|pozycje|pozycji}`: one form per plural category, and the count of
+    /// forms is what the interface asks the language for. Polish needs three, English two — a Polish sentence
+    /// written with two forms would silently print "2 pozycja".
+    /// </summary>
+    [Fact]
+    public void Every_counted_noun_has_a_form_for_each_category_of_its_language()
+    {
+        var forms = new Regex(@"\{[a-zA-Z][a-zA-Z0-9]*\|([^{}]*)\}");
+        var expected = new Dictionary<string, int> { ["pl"] = 3, ["en"] = 2 };
+
+        var wrong = new List<string>();
+        foreach (var (language, count) in expected)
+            foreach (var (key, text) in Translations(language))
+                foreach (Match match in forms.Matches(text))
+                    if (match.Groups[1].Value.Split('|').Length != count)
+                        wrong.Add($"{language} {key}: {match.Value}");
+
+        Assert.Empty(wrong);
     }
 }

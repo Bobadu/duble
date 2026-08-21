@@ -11,7 +11,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { Icon } from '../../components/Icon';
 import { MenuButton, type MenuItem } from '../../components/Menu';
 import { useToast } from '../../components/Toast';
-import { useI18n, useTranslate } from '../../i18n';
+import { useTranslate } from '../../i18n';
 import { DetectGamesDialog } from './DetectGamesDialog';
 import { SourceCard } from './SourceCard';
 import { UnpackDialog } from './UnpackDialog';
@@ -21,7 +21,6 @@ const DROPPED_KEY = 'dropped';
 
 export function Sources() {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
   const { project, job } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
@@ -75,8 +74,8 @@ export function Sources() {
     if (finished.state === 'done')
       toast.ok(
         t('sources.done', {
-          garments: formatNumber(project?.garments ?? 0),
-          textures: formatNumber(project?.textures ?? 0),
+          garments: project?.garments ?? 0,
+          textures: project?.textures ?? 0,
         }),
       );
     if (finished.state === 'cancelled') toast.warn(t('sources.cancelled'));

@@ -8,7 +8,7 @@ import { routeToHash } from '../../app/router';
 
 export function DecisionBar({ plan, busy, onApply }: { plan: ApplyPlan; busy: boolean; onApply: () => void }) {
   const t = useTranslate();
-  const { language, formatNumber } = useI18n();
+  const { language } = useI18n();
 
   return (
     <div className="decision-bar">
@@ -17,8 +17,8 @@ export function DecisionBar({ plan, busy, onApply }: { plan: ApplyPlan; busy: bo
         <span>
           {plan.files
             ? t('dup.toReject', {
-                garments: formatNumber(plan.garments),
-                files: formatNumber(plan.files),
+                garments: plan.garments,
+                files: plan.files,
                 mb: formatSize(plan.bytes, language),
               })
             : t('dup.nothingToReject')}

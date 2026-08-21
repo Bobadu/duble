@@ -161,8 +161,9 @@ function MemberColumn({
 
       <div className="col-facts">
         <div>
-          <span className="faint">{t('group.model')}</span> <b>{formatNumber(member.vertices)}</b> {t('group.verts')} ·{' '}
-          <b>{formatNumber(member.triangles)}</b> {t('group.tris')} · {t('group.lods')} <b>{member.lods}</b>
+          <span className="faint">{t('group.model')}</span> <b>{formatNumber(member.vertices)}</b>{' '}
+          {t('group.verts', { n: member.vertices })} · <b>{formatNumber(member.triangles)}</b>{' '}
+          {t('group.tris', { n: member.triangles })} · {t('group.lods')} <b>{member.lods}</b>
         </div>
         <div>
           <span className="faint">{t('group.size')}</span> <b>{formatSize(member.bytes, language)}</b> ·{' '}

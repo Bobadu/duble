@@ -86,9 +86,9 @@ export function SourceCard({
         )}
 
         <div className="stats">
-          <b>{formatNumber(source.garments)}</b> {t('sources.items')}
+          <b>{formatNumber(source.garments)}</b> {t('sources.items', { n: source.garments })}
           <i>·</i>
-          <b>{formatNumber(source.textures)}</b> {t('sources.textures')}
+          <b>{formatNumber(source.textures)}</b> {t('sources.textures', { n: source.textures })}
           {source.kind !== 'rpf' && source.inArchives > 0 && (
             <>
               <i>·</i>
@@ -101,17 +101,15 @@ export function SourceCard({
 
         {slots.length > 0 && (
           <div className="slots">
+            {/* the separator trails its own slot, so a line that wraps starts with a name rather than a dot */}
             {shown.map(([slot, count], index) => (
               <span key={slot}>
-                {index > 0 && <i>·</i>}
                 {t(`slot.${slot}`)} <b>{formatNumber(count)}</b>
+                {(index < shown.length - 1 || rest.length > 0) && <i>·</i>}
               </span>
             ))}
             {rest.length > 0 && (
-              <>
-                <i>·</i>
-                <span title={rest.map(([slot, count]) => `${t(`slot.${slot}`)} ${count}`).join(', ')}>+{rest.length}</span>
-              </>
+              <span title={rest.map(([slot, count]) => `${t(`slot.${slot}`)} ${count}`).join(', ')}>+{rest.length}</span>
             )}
           </div>
         )}
@@ -122,8 +120,8 @@ export function SourceCard({
               {job.state === 'progress' && job.total
                 ? t('sources.indexingOf', {
                     stage: job.stage ? t(`stage.${job.stage}`) : '',
-                    done: formatNumber(job.done),
-                    total: formatNumber(job.total),
+                    done: job.done ?? 0,
+                    total: job.total ?? 0,
                   })
                 : t('sources.indexing')}
             </span>

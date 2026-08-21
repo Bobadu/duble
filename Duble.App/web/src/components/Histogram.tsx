@@ -2,7 +2,11 @@
 //
 // Plain CSS and divs, no charting library: bar height is linear in the count, and each bar says its range and
 // how many fell in it. It is only ever used for calibration, where the shape of the data is the whole point.
+import type { CSSProperties } from 'react';
 import type { Distribution } from '../bridge/contract';
+
+/** Roughly how much of the chart's width one threshold label takes; marks closer than this would overprint. */
+const LABEL_WIDTH = 22;
 
 export interface ThresholdMark {
   value: number | undefined;
@@ -39,6 +43,16 @@ export function Histogram({
   const width = (distribution.to - distribution.from) / distribution.buckets.length;
   const span = distribution.to - distribution.from;
 
+  // two thresholds can sit on the same value — "identical ≤ 0.00" and "similar ≤ 0.00" after a calibration on
+  // a small catalog. Their lines coincide, so the labels are stacked instead of printed over each other, and
+  // a label near the right edge hangs off its line to the left rather than off the card.
+  const placed: { mark: ThresholdMark; left: number; row: number }[] = [];
+  for (const mark of marks) {
+    if (mark.value === undefined) continue;
+    const left = Math.max(0, Math.min(100, ((mark.value - distribution.from) / span) * 100));
+    placed.push({ mark, left, row: placed.filter((other) => Math.abs(other.left - left) < LABEL_WIDTH).length });
+  }
+
   return (
     <div className={tone ? `chart ${tone}` : 'chart'}>
       <div className="chart-bars" style={{ height }}>
@@ -58,18 +72,16 @@ export function Histogram({
         })}
       </div>
 
-      {marks.map((mark) =>
-        mark.value === undefined ? null : (
-          <div
-            key={mark.label}
-            className={mark.className ? `chart-mark ${mark.className}` : 'chart-mark'}
-            style={{ left: `${Math.max(0, Math.min(100, ((mark.value - distribution.from) / span) * 100))}%` }}
-            title={`${mark.label}: ${format(mark.value)}`}
-          >
-            <span>{mark.label}</span>
-          </div>
-        ),
-      )}
+      {placed.map(({ mark, left, row }) => (
+        <div
+          key={mark.label}
+          className={['chart-mark', mark.className, left > 100 - LABEL_WIDTH ? 'flip' : null].filter(Boolean).join(' ')}
+          style={{ left: `${left}%`, '--row': row } as CSSProperties}
+          title={`${mark.label}: ${format(mark.value ?? 0)}`}
+        >
+          <span>{mark.label}</span>
+        </div>
+      ))}
 
       <div className="chart-axis">
         <span>{format(distribution.from)}</span>

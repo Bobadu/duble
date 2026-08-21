@@ -6,7 +6,7 @@ import { bridge, messageOf } from '../bridge/bridge';
 import type { JobKind } from '../bridge/contract';
 import { useBridgeEvent } from '../bridge/hooks';
 import { useToast } from '../components/Toast';
-import { shortenPath, useI18n, useTranslate } from '../i18n';
+import { shortenPath, useTranslate } from '../i18n';
 import { shouldOpenBinAfterApply } from '../views/apply/ApplyDialog';
 import { navigate } from './router';
 
@@ -20,7 +20,6 @@ const FAILURE_MESSAGES: Partial<Record<JobKind, string>> = {
 
 export function useJobNotifications(): void {
   const t = useTranslate();
-  const { formatNumber } = useI18n();
   const toast = useToast();
 
   useBridgeEvent('apply.done', (done) => {
@@ -32,7 +31,7 @@ export function useJobNotifications(): void {
       return;
     }
 
-    toast.ok(t('apply.done', { n: formatNumber(done.moved) }), {
+    toast.ok(t('apply.done', { n: done.moved }), {
       action: {
         label: t('apply.undo'),
         run: () => {
@@ -49,11 +48,11 @@ export function useJobNotifications(): void {
 
   useBridgeEvent('undo.done', (done) => {
     const skipped = done.skipped ? ` (${t('history.skipped', { n: done.skipped })})` : '';
-    toast.ok(t('history.undoDone', { n: formatNumber(done.restored) }) + skipped);
+    toast.ok(t('history.undoDone', { n: done.restored }) + skipped);
   });
 
   useBridgeEvent('unpack.done', (done) => {
-    toast.show(done.errors.length ? 'warn' : 'ok', t('unpack.done', { files: formatNumber(done.files), archives: formatNumber(done.archives) }), {
+    toast.show(done.errors.length ? 'warn' : 'ok', t('unpack.done', { files: done.files, archives: done.archives }), {
       detail: shortenPath(done.folder, 48),
       action: {
         label: t('history.showFolder'),
