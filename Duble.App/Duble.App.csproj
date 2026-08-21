@@ -11,10 +11,19 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>assets\duble.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- the entry point is written out in App.xaml.cs — Velopack's hooks must run before WPF wakes up -->
+    <StartupObject>Duble.App.App</StartupObject>
   </PropertyGroup>
+
+  <!-- App.xaml compiles as a page rather than the application definition, so it stops generating a Main -->
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
     <ProjectReference Include="..\Duble.Core\Duble.Core.csproj" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
   </ItemGroup>
@@ -47,8 +56,7 @@
   <Target Name="EmbedInterface" AfterTargets="BuildInterface" BeforeTargets="PrepareForBuild">
     <ItemGroup>
       <InterfaceBundle Include="web\dist\**\*" />
-      <EmbeddedResource Include="@(InterfaceBundle)"
-                        LogicalName="ui/%(InterfaceBundle.RecursiveDir)%(InterfaceBundle.Filename)%(InterfaceBundle.Extension)" />
+      <EmbeddedResource Include="@(InterfaceBundle)" LogicalName="ui/%(InterfaceBundle.RecursiveDir)%(InterfaceBundle.Filename)%(InterfaceBundle.Extension)" />
     </ItemGroup>
   </Target>
 </Project>

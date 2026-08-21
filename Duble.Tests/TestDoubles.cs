@@ -45,6 +45,28 @@ public sealed class FakeUpdateSource : IUpdateSource
             : System.Threading.Tasks.Task.FromResult(Release);
 }
 
+/// <summary>
+/// The installer, without Velopack: it records that an apply was asked for and reports some progress on the
+/// way. Out of the box it cannot apply, which is what the portable exe and a development run look like.
+/// </summary>
+public sealed class FakeUpdateInstaller : IUpdateInstaller
+{
+    public bool CanApply { get; set; }
+
+    public bool Applied { get; private set; }
+
+    public Exception? Failure { get; set; }
+
+    public System.Threading.Tasks.Task Apply(Action<int> progress, System.Threading.CancellationToken cancel = default)
+    {
+        if (Failure != null) return System.Threading.Tasks.Task.FromException(Failure);
+        progress(50);
+        progress(100);
+        Applied = true;
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+}
+
 /// <summary>The window, without WPF: it records what the interface asked it to do.</summary>
 public sealed class FakeWindow : IHostWindow
 {

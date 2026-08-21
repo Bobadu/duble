@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { Markdown } from '../components/Markdown';
 import { useToast } from '../components/Toast';
+import { UpdateAction } from '../components/UpdateAction';
 import { useTranslate } from '../i18n';
 
 /** What Duble is built on, and under what licence — the same list as THIRD-PARTY-NOTICES.md. */
@@ -37,7 +38,7 @@ export function About() {
 
   return (
     <div className="about">
-      {update && <UpdateBanner update={update} current={info.version} open={open} />}
+      {update && <UpdateBanner update={update} current={info.version} />}
 
       <div className="card about-card">
         <div className="card-body">
@@ -141,7 +142,7 @@ export function About() {
 }
 
 /** A newer release, announced by the check at start: its notes, and the way to it. */
-function UpdateBanner({ update, current, open }: { update: UpdateAvailable; current: string; open: (url: string) => void }) {
+function UpdateBanner({ update, current }: { update: UpdateAvailable; current: string }) {
   const t = useTranslate();
 
   return (
@@ -151,9 +152,7 @@ function UpdateBanner({ update, current, open }: { update: UpdateAvailable; curr
           <Icon name="info" />
           <h2>{t('update.title', { version: update.version })}</h2>
           <span className="faint">{t('update.yours', { version: current })}</span>
-          <Button variant="primary" icon="external" onClick={() => open(update.url)}>
-            {t('update.download')}
-          </Button>
+          <UpdateAction url={update.url} canApply={update.canApply} />
         </div>
         {update.notes && (
           <div className="update-notes">

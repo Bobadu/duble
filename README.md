@@ -49,10 +49,16 @@ are. [docs/how-it-works.md](docs/how-it-works.md) explains the fingerprints and 
 
 ## Install
 
-Download `Duble.exe` from the [latest release](https://github.com/Bobadu/duble/releases/latest) and run it. It is
-a single self-contained file of about 60 MB, with no installer. The executable is not code signed, so SmartScreen
-asks for confirmation on the first run (More info → Run anyway). Every release publishes a `Duble.exe.sha256`
-checksum next to the binary.
+Two ways, from the [latest release](https://github.com/Bobadu/duble/releases/latest):
+
+- **`Duble-win-Setup.exe`** — the installer. Shortcuts on the desktop and in the Start menu, an entry in
+  "Installed apps" to uninstall by, no administrator asked. The installed program updates itself: when a new
+  release is out, one button downloads it and restarts into it.
+- **`Duble.exe`** — the portable version: one self-contained file of about 60 MB, run from anywhere. It tells
+  you about new releases too, but downloading them is up to you.
+
+Neither is code signed, so SmartScreen asks for confirmation on the first run (More info → Run anyway). Every
+release publishes `.sha256` checksums next to the binaries.
 
 Settings live in `%AppData%\Bobadu\Duble\`, projects default to `Documents\Duble\`.
 
@@ -114,8 +120,8 @@ made with.
 - Unpacking an `.rpf` source into a folder of RSC7 files, like an OpenIV or CodeWalker export
 - Calibration: comparison thresholds measured on your own catalog and drawn as distribution charts
 - Polish and English interface, light and dark theme
-- No telemetry, no account. The one network call is the update check against github.com — nothing is sent, and
-  Settings turns it off
+- No telemetry, no account. The program talks to github.com and to nothing else: the update check at start
+  (Settings turns it off) and the download when you press Install
 
 ## Build from source
 

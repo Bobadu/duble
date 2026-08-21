@@ -146,6 +146,8 @@
   "update.title": "Duble {version} is out",
   "update.yours": "you have {version}",
   "update.download": "Download",
+  "update.install": "Install and restart",
+  "update.installing": "Downloading… {percent}%",
   "about.changelog": "What's new",
   "about.title": "About",
   "about.tagline": "Duble finds duplicate clothing in GTA V packs and helps you tidy up your mod library safely — no guesswork, no lost files.",

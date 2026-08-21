@@ -37,7 +37,7 @@ public sealed class TestApp : IDisposable
         Jobs = new JobRunner(Bridge.Event);
         Groups = new LiveGroups(Session, Services.GetRequiredService<IResolutionService>());
 
-        Modules = CommandModules.Create(Services, Bridge, Session, Jobs, Updates);
+        Modules = CommandModules.Create(Services, Bridge, Session, Jobs, Updates, Installer);
         foreach (var module in Modules) module.Register();
     }
 
@@ -51,6 +51,7 @@ public sealed class TestApp : IDisposable
     public FakeWindow Window { get; } = new();
     public FakeDialogs Dialogs { get; } = new();
     public FakeUpdateSource Updates { get; } = new();
+    public FakeUpdateInstaller Installer { get; } = new();
     public IReadOnlyList<ICommandModule> Modules { get; }
 
     /// <summary>The one module of that type, for a test that drives it directly rather than through Call.</summary>

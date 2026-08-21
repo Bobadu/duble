@@ -418,6 +418,9 @@ export interface UpdateCheck {
   /** The release notes, as Markdown — the same section CHANGELOG.md carries. */
   notes?: string;
   published?: string;
+  /** Whether this copy can install the update itself — true when the Setup put it here, false for the
+   * portable exe, whose button opens the release page instead. */
+  canApply: boolean;
 }
 
 export interface AddedSources {
@@ -442,6 +445,7 @@ export interface Commands {
   'settings.get': { args: null; result: AppSettings };
   'settings.set': { args: { language?: string; theme?: string; checkUpdates?: boolean }; result: AppSettings };
   'update.check': { args: null; result: UpdateCheck };
+  'update.apply': { args: null; result: unknown };
 
   'window.minimize': { args: null; result: unknown };
   'window.maximize': { args: null; result: { maximized: boolean } };
@@ -572,7 +576,9 @@ export interface Events {
   'report.done': { file: string; kind: 'html' | 'csv' };
   'calibrate.done': { report: CalibrationReport };
   'settings.changed': { source: 'project' | 'cache' };
-  'update.available': { version: string; url: string; notes?: string };
+  'update.available': { version: string; url: string; notes?: string; canApply: boolean };
+  /** Percent of the update downloaded, while `update.apply` runs. */
+  'update.progress': { percent: number };
   'window.state': { maximized: boolean };
   'files.dropped': { paths: string[] };
 }

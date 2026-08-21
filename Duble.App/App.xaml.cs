@@ -1,12 +1,29 @@
-// App.xaml.cs — starting up: the command line, the settings, the services, the window.
+// App.xaml.cs — starting up: Velopack's hooks, the command line, the settings, the services, the window.
 using System;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using Velopack;
 
 namespace Duble.App;
 
 public partial class App : Application
 {
+    /// <summary>
+    /// The entry point is written out — WPF would otherwise generate one — because Velopack has to run first:
+    /// during an install or an update, Setup.exe starts this executable with special arguments to make the
+    /// shortcuts and the like, and Run() answers those and exits before any window exists. In the portable
+    /// exe and in development it does nothing at all.
+    /// </summary>
+    [STAThread]
+    static void Main()
+    {
+        VelopackApp.Build().Run();
+
+        var app = new App();
+        app.InitializeComponent();
+        app.Run();
+    }
+
     /// <summary>Everything Duble.Core offers, built once at start-up.</summary>
     public static IServiceProvider Services { get; private set; } = null!;
 
