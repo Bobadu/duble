@@ -43,7 +43,7 @@ almost the same colour, and colour variants of one garment have almost the same 
 
 ## 3. Thresholds and where they come from
 
-The defaults were measured with `duble kalibruj` on a catalog of **1132 garments / 9437 textures** (15 Aug 2026).
+The defaults were measured with `duble calibrate` on a catalog of **1132 garments / 9437 textures** (15 Aug 2026).
 Settings → Calibration re-runs that measurement on *your* catalog and draws the distributions, so you can check
 whether the defaults fit your packs.
 
