@@ -6,6 +6,8 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-08-21
+
 ### Added
 
 - **Duble notices a new release.** At start — and on the button in Settings → Updates — the program asks
@@ -117,6 +119,7 @@ First public release.
   your own catalog, drawn as charts, with a suggested threshold.
 - **Command line** (`duble`) — `indeks`, `porownaj`, `raport`, `zastosuj`, `cofnij`, `kalibruj` for scripted use.
 
-[Unreleased]: https://github.com/Bobadu/duble/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Bobadu/duble/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/Bobadu/duble/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Bobadu/duble/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/Bobadu/duble/releases/tag/v1.0.0
