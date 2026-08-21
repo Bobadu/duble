@@ -6,6 +6,12 @@ All notable changes to Duble are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-08-21
+
+The tool speaks English in its code, its command line and its files; the interface is a React and TypeScript
+application. The major version marks the breaks: the CLI verbs are renamed, a `_odrzucone` bin from 1.0.0 is
+no longer recognised, and the working files moved.
+
 ### Changed
 
 - **The interface is a React and TypeScript application**, built into the executable as before. Nothing about
@@ -102,5 +108,6 @@ First public release.
   your own catalog, drawn as charts, with a suggested threshold.
 - **Command line** (`duble`) — `indeks`, `porownaj`, `raport`, `zastosuj`, `cofnij`, `kalibruj` for scripted use.
 
-[Unreleased]: https://github.com/Bobadu/duble/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Bobadu/duble/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Bobadu/duble/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/Bobadu/duble/releases/tag/v1.0.0
